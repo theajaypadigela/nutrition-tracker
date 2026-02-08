@@ -1,9 +1,14 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Button } from './components/ui';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LoginScreen } from './components/LoginScreen';
 
 function App() {
   return (
-    <View></View>
+    <SafeAreaView style={{ flex: 1 }}>
+      <LoginScreen />
+    </SafeAreaView>
   );
 }
 
