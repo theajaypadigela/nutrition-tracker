@@ -1,25 +1,25 @@
 import React from 'react';
 import { View } from 'react-native';
-import { HStack } from './ui/hstack';
+import { Calendar, DateData } from 'react-native-calendars';
 import { Activity, Apple, CheckCircle2, XCircle } from 'lucide-react-native';
 
+import { HStack } from './ui/hstack';
 import { VStack } from './ui/vstack';
 import { Divider } from './ui/divider';
 import { Text } from './ui/text';
-import { Calendar, DateData } from 'react-native-calendars';
-import { FoodLog, Habit } from '../types/types';
+import { Heading } from './ui/heading';
+import { CloseIcon, Icon } from './ui/icon';
+import { Button, ButtonText } from './ui/button';
 import {
   Drawer,
   DrawerBackdrop,
   DrawerBody,
   DrawerCloseButton,
   DrawerContent,
-  DrawerFooter,
   DrawerHeader,
 } from './ui/drawer';
-import { Heading } from './ui/heading';
-import { CloseIcon, Icon } from './ui/icon';
-import { Button, ButtonText } from './ui/button';
+
+import { FoodLog, Habit } from '../types/types';
 
 const DashBoardScreen = () => {
   const [showDrawer, setShowDrawer] = React.useState(false);
@@ -108,6 +108,7 @@ const DashBoardScreen = () => {
     setSelectedDate(day.dateString);
     setShowDrawer(true);
   };
+
   return (
     <>
       <VStack className="flex-1 gap-6 items-center p-4">
@@ -127,12 +128,14 @@ const DashBoardScreen = () => {
               Habits Today
             </Text>
           </HStack>
+
           <HStack className="justify-between items-center">
             <Text size="2xl" className="font-bold text-gray-900">
               2 / 3
             </Text>
             <Text className="text-gray-600">completed</Text>
           </HStack>
+
           <View
             className="w-full h-3 bg-gray-300 rounded-full"
             style={{ overflow: 'hidden' }}
@@ -142,6 +145,7 @@ const DashBoardScreen = () => {
               style={{ width: `${(2 / 3) * 100}%` }}
             />
           </View>
+
           <Text>{Math.round((2 / 3) * 100)}% completed</Text>
         </VStack>
 
@@ -154,22 +158,27 @@ const DashBoardScreen = () => {
               Food Summary
             </Text>
           </HStack>
+
           <HStack className="justify-between items-center">
             <Text size="2xl" className="font-bold text-gray-900">
               1,290
             </Text>
             <Text className="text-gray-600">calories</Text>
           </HStack>
+
           <Divider className="h-[1px] bg-gray-200" />
+
           <HStack className="justify-between items-center">
             <VStack>
-              <Text className="text-gray-600">Protien</Text>
+              <Text className="text-gray-600">Protein</Text>
               <Text className="text-gray-900 font-bold">150g</Text>
             </VStack>
+
             <VStack>
               <Text className="text-gray-600">Carbs</Text>
               <Text className="text-gray-900 font-bold">150g</Text>
             </VStack>
+
             <VStack>
               <Text className="text-gray-600">Fats</Text>
               <Text className="text-gray-900 font-bold">150g</Text>
@@ -177,29 +186,32 @@ const DashBoardScreen = () => {
           </HStack>
         </VStack>
       </VStack>
+
       <Drawer
         isOpen={showDrawer}
         size="lg"
         anchor="bottom"
-        onClose={() => {
-          setShowDrawer(false);
-        }}
+        onClose={() => setShowDrawer(false)}
       >
         <DrawerBackdrop />
+
         <DrawerContent className="p-0">
           <DrawerHeader className="p-6 border-b-2 border-gray-200 pb-2">
             <Heading size="lg">
               {selectedDate ? formatDate(selectedDate) : 'Select a date'}
             </Heading>
+
             <DrawerCloseButton>
               <Icon as={CloseIcon} />
             </DrawerCloseButton>
           </DrawerHeader>
+
           <DrawerBody className="p-6">
             <VStack className="gap-6">
               <Text size="lg" className="text-gray-800 font-bold">
                 Habits
               </Text>
+
               <VStack className="gap-2">
                 {habits.map(item => (
                   <HStack
@@ -211,15 +223,18 @@ const DashBoardScreen = () => {
                     ) : (
                       <XCircle size={20} color="#EF4444" />
                     )}
+
                     <Text className="rounded-lg text-gray-900 font-medium">
                       {item.name}
                     </Text>
                   </HStack>
                 ))}
               </VStack>
+
               <Text size="lg" className="text-gray-800 font-bold">
                 Food Log
               </Text>
+
               <HStack className="w-full bg-emerald-50 rounded-xl p-3 mb-3">
                 <HStack className="justify-between w-full">
                   <View className="flex-1 flex-col items-center gap-1">
@@ -228,18 +243,21 @@ const DashBoardScreen = () => {
                       1290g
                     </Text>
                   </View>
+
                   <View className="flex-1 flex-col items-center gap-1">
                     <Text className="text-xs text-gray-600">Protein</Text>
                     <Text className="text-sm font-semibold text-gray-900">
                       1290g
                     </Text>
                   </View>
+
                   <View className="flex-1 flex-col items-center gap-1">
                     <Text className="text-xs text-gray-600">Carbohydrates</Text>
                     <Text className="text-sm font-semibold text-gray-900">
                       1290g
                     </Text>
                   </View>
+
                   <View className="flex-1 flex-col items-center gap-1">
                     <Text className="text-xs text-gray-600">Fats</Text>
                     <Text className="text-sm font-semibold text-gray-900">
@@ -248,22 +266,27 @@ const DashBoardScreen = () => {
                   </View>
                 </HStack>
               </HStack>
+
               <VStack className="gap-2">
                 {foodLogs.map(food => (
                   <View key={food.id} className="p-3 rounded-xl bg-gray-50">
                     <Text className="text-sm font-medium text-gray-900 mb-1">
                       {food.name}
                     </Text>
+
                     <HStack className="gap-4">
                       <Text className="text-xs text-gray-600">
                         {food.calories} cal
                       </Text>
+
                       <Text className="text-xs text-gray-600">
                         P: {food.protein}g
                       </Text>
+
                       <Text className="text-xs text-gray-600">
                         C: {food.carbs}g
                       </Text>
+
                       <Text className="text-xs text-gray-600">
                         F: {food.fat}g
                       </Text>
