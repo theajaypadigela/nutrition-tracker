@@ -1,0 +1,90 @@
+import React from 'react';
+import { View } from 'react-native';
+import { HStack } from '../ui/hstack';
+import { VStack } from '../ui/vstack';
+import { Text } from '../ui/text';
+import { MicroNutrient } from './types';
+
+interface MicroNutrientCardProps {
+  item: MicroNutrient;
+}
+
+const MicroNutrientCard: React.FC<MicroNutrientCardProps> = ({ item }) => {
+  const percentage = Math.round((item.current / item.goal) * 100);
+
+  return (
+    <View
+      style={{
+        width: 160,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        gap: 12,
+      }}
+    >
+      <HStack className="justify-between items-start">
+        <View
+          style={{
+            backgroundColor: item.iconBg,
+            borderRadius: 999,
+            padding: 8,
+          }}
+        >
+          {item.icon}
+        </View>
+        <View
+          style={{
+            backgroundColor: item.iconBg,
+            borderRadius: 999,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: item.color }}>
+            {percentage}%
+          </Text>
+        </View>
+      </HStack>
+
+      <VStack className="gap-1">
+        <Text className="text-xs text-gray-500 font-medium uppercase">
+          {item.label}
+        </Text>
+        <HStack className="items-end gap-1">
+          <Text className="text-3xl font-bold text-gray-900">
+            {item.current}
+          </Text>
+          <Text className="text-sm text-gray-500 mb-1">{item.unit}</Text>
+        </HStack>
+        <Text className="text-xs text-gray-400">
+          Goal: {item.goal}
+          {item.unit}
+        </Text>
+      </VStack>
+
+      <View
+        style={{
+          backgroundColor: item.statusBg,
+          borderRadius: 999,
+          paddingHorizontal: 12,
+          paddingVertical: 4,
+          alignSelf: 'flex-start',
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '600',
+            color: item.statusColor,
+          }}
+        >
+          {item.status}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+export default MicroNutrientCard;
