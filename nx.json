@@ -24,6 +24,10 @@
           "watchDepsName": "watch-deps"
         }
       }
+    },
+    {
+      "plugin": "@nxrocks/nx-spring-boot",
+      "exclude": ["apps/mobile/**/*"]
     }
   ],
   "nxCloudId": "698c19dd6dec9b6c73090091"
