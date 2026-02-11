@@ -153,6 +153,16 @@ export const config = {
     '--color-indicator-primary': '55 55 55',
     '--color-indicator-info': '83 153 236',
     '--color-indicator-error': '185 28 28',
+
+    /* Gray */
+    '--color-gray-200': '229 231 235',
+    '--color-gray-300': '209 213 219',
+    '--color-gray-500': '107 114 128',
+    '--color-gray-700': '55 65 81',
+    '--color-gray-900': '17 24 39',
+
+    /* Emerald */
+    '--color-emerald-500': '16 185 129',
   }),
   dark: vars({
     '--color-primary-0': '166 166 166',
@@ -305,5 +315,15 @@ export const config = {
     '--color-indicator-primary': '247 247 247',
     '--color-indicator-info': '161 199 245',
     '--color-indicator-error': '232 70 69',
+
+    /* Gray */
+    '--color-gray-200': '229 231 235',
+    '--color-gray-300': '209 213 219',
+    '--color-gray-500': '107 114 128',
+    '--color-gray-700': '55 65 81',
+    '--color-gray-900': '17 24 39',
+
+    /* Emerald */
+    '--color-emerald-500': '16 185 129',
   }),
 };
