@@ -1,85 +1,44 @@
-################################
-# Maven
-################################
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-################################
-# Logs
-################################
-*.log
-logs/
-*.out
+# compiled output
+dist
+tmp
+out-tsc
 
-################################
-# OS files
-################################
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
 .DS_Store
 Thumbs.db
 
-################################
-# Env / Secrets (VERY IMPORTANT)
-################################
-.env
-.env.*
-application-local.properties
-application-dev.properties
-application-secrets.properties
-
-################################
-# Spring Boot
-################################
-HELP.md
-spring.log
-
-################################
-# STS / Eclipse
-################################
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings/
-.springBeans
-.sts4-cache/
-
-################################
-# IntelliJ
-################################
-.idea/
-*.iws
-*.iml
-*.ipr
-out/
-
-################################
-# NetBeans
-################################
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-################################
-# VS Code
-################################
-.vscode/
-
-################################
-# Node (if you ever add frontend or ReactNative tools)
-################################
-node_modules/
-npm-debug.log*
-yarn-error.log*
-
-################################
-# Coverage / Testing
-################################
-coverage/
-*.lcov
+.nx/cache
+.nx/workspace-data
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
