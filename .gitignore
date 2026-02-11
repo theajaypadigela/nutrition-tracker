@@ -1,0 +1,85 @@
+################################
+# Maven
+################################
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+################################
+# Logs
+################################
+*.log
+logs/
+*.out
+
+################################
+# OS files
+################################
+.DS_Store
+Thumbs.db
+
+################################
+# Env / Secrets (VERY IMPORTANT)
+################################
+.env
+.env.*
+application-local.properties
+application-dev.properties
+application-secrets.properties
+
+################################
+# Spring Boot
+################################
+HELP.md
+spring.log
+
+################################
+# STS / Eclipse
+################################
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+################################
+# IntelliJ
+################################
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+################################
+# NetBeans
+################################
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+################################
+# VS Code
+################################
+.vscode/
+
+################################
+# Node (if you ever add frontend or ReactNative tools)
+################################
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+################################
+# Coverage / Testing
+################################
+coverage/
+*.lcov
