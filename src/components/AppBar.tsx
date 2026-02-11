@@ -6,12 +6,12 @@ import { Button } from './ui/button';
 import { Divider } from './ui/divider';
 import { View } from 'react-native';
 
-const AppBar = () => {
+const AppBar = ({ title }) => {
   return (
     <View>
       <HStack className="justify-between items-center w-full px-6 pb-4">
         <Text size="2xl" className="font-bold text-gray-900">
-          Dashboard
+          {title}
         </Text>
         <Button
           className="w-10 h-10 flex items-center justify-center rounded-full transition-colors"
