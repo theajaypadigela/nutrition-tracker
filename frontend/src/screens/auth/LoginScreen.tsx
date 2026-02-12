@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
-import { Input, InputField, InputSlot, InputIcon } from './ui/input';
-import { FormControl } from './ui/form-control';
-import { VStack } from './ui/vstack';
-import { Heading } from './ui/heading';
-import { Text } from './ui/text';
-import { Button, ButtonText } from './ui/button';
-import { HStack } from './ui/hstack';
-import { Divider } from './ui/divider';
+import { Input, InputField, InputSlot, InputIcon } from '../../components/ui/input';
+import { FormControl } from '../../components/ui/form-control';
+import { VStack } from '../../components/ui/vstack';
+import { Heading } from '../../components/ui/heading';
+import { Text } from '../../components/ui/text';
+import { Button, ButtonText } from '../../components/ui/button';
+import { HStack } from '../../components/ui/hstack';
+import { Divider } from '../../components/ui/divider';
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -110,7 +110,7 @@ export function LoginScreen() {
             size="xl"
             className="w-full bg-emerald-500 rounded-xl"
           >
-            <ButtonText className="text-white font-medium">Login</ButtonText>
+                 <ButtonText className="text-white font-medium">Login</ButtonText>
           </Button>
           <HStack className="items-center my-4">
             <Divider className="flex-1 h-[1px]" />

@@ -27,6 +27,7 @@ import {
   Download,
   Plus,
 } from 'lucide-react-native';
+import SetDailyTarget from './SetDailyTarget';
 
 // --- Types & Interfaces ---
 export interface NutrientData {
@@ -42,6 +43,8 @@ export interface NutrientData {
   trend: number[]; // Array of 7 days
   topSources: string[];
   pinned?: boolean;
+  recommendedValue?: number;
+  currentTarget?: number;
 }
 
 export interface FoodSource {
@@ -126,7 +129,14 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
 }) => {
   if (!selectedNutrient) return null;
 
+  const [showModal, setShowModal] = React.useState(false);
+
+  const openModal = () => {
+    setShowModal(true);
+  };
+
   return (
+    <>
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[85]}>
       <ActionsheetBackdrop />
       <ActionsheetContent
@@ -195,16 +205,6 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
               </Text>
             </Text>
           </HStack>
-
-          {/* Avoid Preference Badge */}
-          {selectedNutrient.hasAvoidPreference && (
-            <HStack className="items-center gap-1 mt-2">
-              <Icon as={Ban} size="xs" className="text-red-500 w-[10px] h-[10px]" />
-              <Text className="text-[10px] text-red-600 font-medium">
-                Avoid preference active
-              </Text>
-            </HStack>
-          )}
         </Box>
 
         {/* --- Scrollable Content --- */}
@@ -299,34 +299,48 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
               ) : (
                 // Regular chart with partial data handling
                 <Box>
-                  <HStack className={`items-end justify-between gap-1 h-24 p-2 rounded-lg bg-${COLORS.bg.tertiary}`}>
+                  <HStack className="items-end justify-between gap-1 p-2 rounded-lg bg-gray-100" style={{ height: 96 }}>
                     {selectedNutrient.trend.map((val, i) => {
                       const isNoEntry = val === 0 && hasPartialTrendData(selectedNutrient.trend);
                       const statusKey = val > 100 ? 'high' : val < 50 ? 'low' : 'ok';
-                      const status = getStatusColor(statusKey);
+                      
+                      // Get color values for inline styles
+                      const getBarColor = (key: string) => {
+                        switch(key) {
+                          case 'low': return '#f87171'; // red-400
+                          case 'high': return '#fbbf24'; // amber-400
+                          case 'ok': return '#4ade80'; // green-400
+                          default: return '#d1d5db'; // gray-300
+                        }
+                      };
+                      
+                      const barHeight = Math.min(val, 100);
                       
                       return (
-                        <VStack key={i} className="flex-1 items-center gap-1 h-full justify-end">
-                           <Box className="w-full flex-1 relative items-center justify-end">
+                        <VStack key={i} className="flex-1 items-center gap-1 justify-end" style={{ height: '100%' }}>
+                           <Box className="w-full relative items-center justify-end" style={{ flex: 1 }}>
                               {isNoEntry ? (
-                                <Box className="absolute bottom-0 w-full h-[30%] bg-gray-200 rounded-t items-center justify-center">
+                                <Box className="absolute bottom-0 w-full bg-gray-200 rounded-t items-center justify-center" style={{ height: '30%' }}>
                                    <Text className="text-[6px] text-gray-400" style={{ transform: [{ rotate: '-90deg' }] }}>No entry</Text>
                                 </Box>
                               ) : (
                                 <Box 
-                                  className={`absolute bottom-0 w-full rounded-t bg-${status.bar}`} 
-                                  style={{ height: `${Math.min(val, 100)}%` }} 
+                                  className="absolute bottom-0 w-full rounded-t" 
+                                  style={{ 
+                                    height: `${barHeight}%`,
+                                    backgroundColor: getBarColor(statusKey)
+                                  }} 
                                 />
                               )}
                            </Box>
-                           <Text className={`text-[8px] text-${COLORS.text.tertiary}`}>
+                           <Text className="text-[8px] text-gray-400">
                              {WEEK_DAYS[i]}
                            </Text>
                         </VStack>
                       );
                     })}
                   </HStack>
-                  <Text className={`text-[10px] mt-1.5 text-${COLORS.text.tertiary}`}>
+                  <Text className="text-[10px] mt-1.5 text-gray-400">
                     Trend shows daily intake over the last 7 days.
                   </Text>
                 </Box>
@@ -366,7 +380,7 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
                {/* Set Target Button */}
                <Pressable 
                   className={`flex-1 flex-col items-center justify-center py-2 rounded-xl border border-${COLORS.accent.primary}`}
-                  onPress={onSetTarget}
+                  onPress={() => setShowModal(true)}
                >
                  <HStack className="items-center gap-1">
                     <Icon as={Target} size="xs" className={`text-${COLORS.accent.primary}`} />
@@ -381,20 +395,6 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
             {/* 5. Quick Actions with Helper Text */}
             <Box className="space-y-2">
                <HStack className="gap-2">
-                  {/* Add Food */}
-                  <Pressable 
-                     className={`flex-1 flex-col items-center py-3 rounded-xl bg-${COLORS.accent.primary}`}
-                     onPress={onAddFood}
-                  >
-                     <HStack className="items-center">
-                        <Icon as={Plus} size="xs" className="mr-1 text-white" />
-                        <Text className="text-xs font-semibold text-white">Add Food to Today</Text>
-                     </HStack>
-                     <Text className="text-[9px] font-normal opacity-80 mt-0.5 text-white">
-                        Increases today's intake
-                     </Text>
-                  </Pressable>
-
                   {/* Mark Avoid */}
                   <Pressable 
                      className="flex-1 flex-col items-center py-3 rounded-xl bg-red-100"
@@ -415,6 +415,12 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
         </ScrollView>
       </ActionsheetContent>
     </Actionsheet>
+      {showModal && <SetDailyTarget RecommendedValue={selectedNutrient.recommendedValue} unit={selectedNutrient.unit} currentTarget={selectedNutrient.currentTarget} showModal={showModal} onClose={() => setShowModal(false)} onSave={(value) => {
+        // TODO: Implement saving the target value
+        console.log('Save target:', value);
+        if (onSetTarget) onSetTarget();
+      }}></SetDailyTarget>}
+      </>
   );
 };
 

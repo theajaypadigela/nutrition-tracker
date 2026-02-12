@@ -1,11 +1,11 @@
 import React from 'react';
-import { VStack } from './ui/vstack';
+import { VStack } from '../../components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
 import { View } from 'react-native';
-import { Text } from './ui/text';
-import { HStack } from './ui/hstack';
-import { Button, ButtonText } from './ui/button';
-import { Input, InputField } from './ui/input';
+import { Text } from '../../components/ui/text';
+import { HStack } from '../../components/ui/hstack';
+import { Button, ButtonText } from '../../components/ui/button';
+import { Input, InputField } from '../../components/ui/input';
 import {
   Select,
   SelectBackdrop,
@@ -17,9 +17,14 @@ import {
   SelectItem,
   SelectPortal,
   SelectTrigger,
-} from './ui/select';
+} from '../../components/ui/select';
+import { RouteProp } from '@react-navigation/native';
+import { MainTabParamList } from '../../navigation/MainTabNavigator';
 
-const ProfileScreen = ({ name, age, gender }) => {
+type ProfileScreenRouteProp = RouteProp<MainTabParamList, 'Profile'>;
+
+const ProfileScreen = ({ route }: { route: ProfileScreenRouteProp }) => {
+  const { name, age, gender } = route.params;
   const [isEditing, setIsEditing] = React.useState(false);
   const [form, setForm] = React.useState({
     name,

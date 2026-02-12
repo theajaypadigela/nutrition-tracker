@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Text } from './ui/text';
-import { Input, InputField, InputSlot, InputIcon } from './ui/input';
-import { VStack } from './ui/vstack';
+import { Text } from '../../components/ui/text';
+import { Input, InputField, InputSlot, InputIcon } from '../../components/ui/input';
+import { VStack } from '../../components/ui/vstack';
 import { ScrollView } from 'react-native';
 import {
   Select,
@@ -14,11 +14,10 @@ import {
   SelectItem,
   SelectPortal,
   SelectTrigger,
-} from './ui/select';
-import { ChevronDownIcon } from './ui/icon';
+} from '../../components/ui/select';
+import { ChevronDownIcon } from '../../components/ui/icon';
 import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
-import { Button } from './ui';
-import { ButtonText } from './ui/button';
+import { ButtonText, Button } from '../../components/ui/button';
 
 const RegisterScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');

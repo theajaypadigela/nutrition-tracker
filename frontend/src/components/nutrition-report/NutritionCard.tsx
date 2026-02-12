@@ -18,7 +18,7 @@ const NutritionCard = ({
   return (
     <Pressable
       onPress={onPress}
-      className="bg-white justify-between items-center border-b border-gray-200 p-4 h-auto rounded-none w-full data-[pressed=true]:bg-white data-[pressed=true]:border-gray-200 data-[pressed=true]:opacity-70"
+      className="bg-white justify-between flex-row p-4 border-b border-gray-200"
     >
       <VStack className="gap-2">
         <HStack className="gap-2">

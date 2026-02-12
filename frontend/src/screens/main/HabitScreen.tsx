@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { VStack } from './ui/vstack';
-import { Text } from './ui/text';
-import { HStack } from './ui/hstack';
-import { Habit } from '../types/types';
+import { VStack } from '../../components/ui/vstack';
+import { Text } from '../../components/ui/text';
+import { HStack } from '../../components/ui/hstack';
+import { Habit } from '../../types/types';
 import { View } from 'react-native';
 import { Trash2, CheckCircle, Circle } from 'lucide-react-native';
-import { Button } from './ui/button';
+import { Button } from '../../components/ui/button';
 
 const HabitScreen = () => {
   const initialHabits: Habit[] = [

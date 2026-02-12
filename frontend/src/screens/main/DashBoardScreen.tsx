@@ -3,13 +3,13 @@ import { View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { Activity, Apple, CheckCircle2, XCircle } from 'lucide-react-native';
 
-import { HStack } from './ui/hstack';
-import { VStack } from './ui/vstack';
-import { Divider } from './ui/divider';
-import { Text } from './ui/text';
-import { Heading } from './ui/heading';
-import { CloseIcon, Icon } from './ui/icon';
-import { Button, ButtonText } from './ui/button';
+import { HStack } from '../../components/ui/hstack';
+import { VStack } from '../../components/ui/vstack';
+import { Divider } from '../../components/ui/divider';
+import { Text } from '../../components/ui/text';
+import { Heading } from '../../components/ui/heading';
+import { CloseIcon, Icon } from '../../components/ui/icon';
+import { Button, ButtonText } from '../../components/ui/button';
 import {
   Drawer,
   DrawerBackdrop,
@@ -17,9 +17,9 @@ import {
   DrawerCloseButton,
   DrawerContent,
   DrawerHeader,
-} from './ui/drawer';
+} from '../../components/ui/drawer';
 
-import { FoodLog, Habit } from '../types/types';
+import { FoodLog, Habit } from '../../types/types';
 
 const DashBoardScreen = () => {
   const [showDrawer, setShowDrawer] = React.useState(false);

@@ -1,14 +1,14 @@
 import { ScrollView, View } from 'react-native';
-import { VStack } from './ui/vstack';
-import { HStack } from './ui/hstack';
+import { VStack } from '../../components/ui/vstack';
+import { HStack } from '../../components/ui/hstack';
 import React from 'react';
-import CaloriesSummaryCard from './nutrition-report/CaloriesSummaryCard';
-import MacroNutrientsSection from './nutrition-report/MacroNutrientsSection';
-import MicroNutrientsSection from './nutrition-report/MicroNutrientsSection';
+import CaloriesSummaryCard from '../../components/nutrition-report/CaloriesSummaryCard';
+import MacroNutrientsSection from '../../components/nutrition-report/MacroNutrientsSection';
+import MicroNutrientsSection from '../../components/nutrition-report/MicroNutrientsSection';
 import { Lightbulb } from 'lucide-react-native';
-import { Text } from './ui/text';
-import InsightsBadge from './nutrition-report/InsightsBadge';
-import AllNutritionsCard from './nutrition-report/AllNutritionsCard';
+import { Text } from '../../components/ui/text';
+import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
+import AllNutritionsCard from '../../components/nutrition-report/AllNutritionsCard';
 
 
 interface Insight {

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Text } from './ui/text';
-import { VStack } from './ui/vstack';
-import { MealGroup } from './food-log/MealGroup';
-import { EditFoodDrawer } from './food-log/EditFoodDrawer';
-import { FoodItem, Meals } from './food-log/types';
-import NutritionDisplay from './food-log/NutritionDisplay';
+import { Text } from '../../components/ui/text';
+import { VStack } from '../../components/ui/vstack';
+import { MealGroup } from '../../components/food-log/MealGroup';
+import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
+import { FoodItem, Meals } from '../../components/food-log/types';
+import NutritionDisplay from '../../components/food-log/NutritionDisplay';
 import { ScrollView } from 'react-native';
 
 const FoodLogScreen = () => {
