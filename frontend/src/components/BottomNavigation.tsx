@@ -7,10 +7,11 @@ import {
   BarChart3,
 } from 'lucide-react-native';
 
-// Simple interface for props if you don't have the types file
+import { TabName } from '../types/types';
+
 export interface BottomNavigationProps {
   activeTab: string;
-  onTabChange: (id: string) => void;
+  onTabChange: (tab: string) => void;
 }
 
 const BottomNavigation = ({

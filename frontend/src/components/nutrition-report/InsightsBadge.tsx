@@ -3,6 +3,12 @@ import { View } from 'react-native';
 import { Text } from '../ui/text';
 import { TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react-native';
 import { HStack } from '../ui/hstack';
+import { InsightVariant } from './types';
+
+interface InsightsBadgeProps {
+  variant: InsightVariant;
+  message: string;
+}
 
 interface Theme {
   positive: {
@@ -34,12 +40,9 @@ const theme: Theme = {
   },
 };
 
-const InsightsBadge = ({
+const InsightsBadge: React.FC<InsightsBadgeProps> = ({
   variant,
   message,
-}: {
-  variant: 'positive' | 'negative' | 'neutral';
-  message: string;
 }) => {
   const activeTheme = theme[variant] || theme.neutral;
 

@@ -9,12 +9,8 @@ import { Lightbulb } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
 import AllNutritionsCard from '../../components/nutrition-report/AllNutritionsCard';
+import { Insight } from '../../components/nutrition-report/types';
 
-
-interface Insight {
-    variant: 'positive' | 'negative' | 'neutral';
-    message: string;
-}
 
 const NutritionReportScreen = () => {
   // Sample data - replace with your actual data

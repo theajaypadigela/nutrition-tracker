@@ -28,36 +28,15 @@ import {
   Plus,
 } from 'lucide-react-native';
 import SetDailyTarget from './SetDailyTarget';
+import { NutrientDetailData, FoodSource } from './types';
 
-// --- Types & Interfaces ---
-export interface NutrientData {
-  id: string;
-  name: string;
-  amount: number;
-  unit: string;
-  target?: number;
-  pctDV: number;
-  weeklyAvg?: number;
-  flag: 'low' | 'high' | 'none' | 'ok';
-  hasAvoidPreference?: boolean;
-  trend: number[]; // Array of 7 days
-  topSources: string[];
-  pinned?: boolean;
-  recommendedValue?: number;
-  currentTarget?: number;
-}
-
-export interface FoodSource {
-  name: string;
-  amount: number;
-  unit: string;
-  contribution: number;
-}
+// Re-export for backward compatibility
+export type { NutrientDetailData };
 
 interface NutritionDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedNutrient: NutrientData | null;
+  selectedNutrient: NutrientDetailData | null;
   nutrientBreakdown?: FoodSource[];
   onPin?: (id: string) => void;
   onSetTarget?: () => void;

@@ -2,18 +2,10 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Edit2, Trash2 } from 'lucide-react-native';
 import { Text } from './ui/text';
+import { FoodItem as FoodItemType } from '../types/types';
 
 interface FoodItemProps {
-  item: {
-    id: string;
-    name: string;
-    quantity: string;
-    servingSize: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
+  item: FoodItemType;
   onEdit: () => void;
   onDelete: () => void;
 }

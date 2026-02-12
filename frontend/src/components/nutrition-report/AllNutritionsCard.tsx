@@ -18,16 +18,8 @@ import {
 } from '../ui/select';
 import { ChevronDownIcon } from 'lucide-react-native';
 import NutritionCard from './NutritionCard';
-import NutritionDetailDrawer, { NutrientData } from './NutritionDetailDrawer';
-
-export interface Nutrition {
-  id: number;
-  name: string;
-  unit: string;
-  value: number;
-  goal: number;
-  type: string;
-}
+import NutritionDetailDrawer from './NutritionDetailDrawer';
+import { Nutrition, NutrientDetailData } from './types';
 
 const NutritionData: Nutrition[] = [
   {
@@ -66,14 +58,14 @@ const NutritionData: Nutrition[] = [
 
 const AllNutritionsCard = () => {
   const [showDrawer, setShowDrawer] = useState(false);
-  const [selectedNutrient, setSelectedNutrient] = useState<NutrientData | null>(
+  const [selectedNutrient, setSelectedNutrient] = useState<NutrientDetailData | null>(
     null,
   );
 
   const handleOpenDrawer = (item: Nutrition) => {
     console.log('Opening drawer for:', item.name);
     // Map simple Nutrition item to detailed NutrientData
-    const detailedNutrient: NutrientData = {
+    const detailedNutrient: NutrientDetailData = {
       id: item.id.toString(),
       name: item.name,
       amount: item.value,

@@ -1,35 +1,19 @@
 import { useState } from 'react';
-
-interface FoodItem {
-  id: string;
-  name: string;
-  quantity: string;
-  servingSize: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
-interface FormErrors {
-  foodName: string;
-  quantity: string;
-  servingSize: string;
-}
+import { FoodItem, FoodErrors } from '../types/types';
 
 export const useFoodForm = () => {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [foodName, setFoodName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [servingSize, setServingSize] = useState('');
-  const [errors, setErrors] = useState<FormErrors>({
+  const [errors, setErrors] = useState<FoodErrors>({
     foodName: '',
     quantity: '',
     servingSize: '',
   });
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {
+    const newErrors: FoodErrors = {
       foodName: '',
       quantity: '',
       servingSize: '',
@@ -92,7 +76,7 @@ export const useFoodForm = () => {
     });
   };
 
-  const clearError = (field: keyof FormErrors) => {
+  const clearError = (field: keyof FoodErrors) => {
     setErrors(prev => ({ ...prev, [field]: '' }));
   };
 

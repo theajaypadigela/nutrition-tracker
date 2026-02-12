@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { HStack } from '../ui/hstack';
 import { VStack } from '../ui/vstack';
-import { Nutrition } from './AllNutritionsCard';
+import { Nutrition } from './types';
 import { Text } from '../ui/text';
 import { Badge, BadgeText, BadgeIcon } from '../ui/badge';
 import { Pressable } from '../ui/pressable';

@@ -5,23 +5,16 @@ import { formatIndianNumber } from '@/src/utils/numberFormatter';
 import { Divider } from '../ui/divider';
 import MacroProgressBar from '../ui/MacroProgressBar';
 import { AppleIcon, Droplets, Cookie, Drumstick } from 'lucide-react-native';
+import { DailyNutritionTotals, DailyNutritionGoals } from '../../types/types';
 
-const NutritionDisplay = (props: {
+interface NutritionDisplayProps {
   calories: number;
   targetCalories: number;
-  totals: {
-    protein: number;
-    carbs: number;
-    fat: number;
-    sugar: number;
-  };
-  dailyGoals: {
-    protein: number;
-    carbs: number;
-    fat: number;
-    sugar: number;
-  };
-}) => {
+  totals: DailyNutritionTotals;
+  dailyGoals: DailyNutritionGoals;
+}
+
+const NutritionDisplay: React.FC<NutritionDisplayProps> = (props) => {
   const { totals, dailyGoals } = props;
 
   return (

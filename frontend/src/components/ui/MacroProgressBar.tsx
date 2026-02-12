@@ -5,7 +5,7 @@ import { Text } from './text';
 import { HStack } from './hstack';
 import { Badge, BadgeText } from './badge';
 
-interface Props {
+interface MacroProgressBarProps {
   goal: number;
   current: number;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -15,7 +15,7 @@ interface Props {
   is_healthy?: boolean;
 }
 
-const MacroProgressBar = (props: Props) => {
+const MacroProgressBar = (props: MacroProgressBarProps) => {
   const colors = {
     green: 'bg-green-500',
     yellow: 'bg-yellow-500',

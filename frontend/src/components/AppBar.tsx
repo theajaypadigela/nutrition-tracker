@@ -6,7 +6,11 @@ import { Button } from './ui/button';
 import { Divider } from './ui/divider';
 import { View } from 'react-native';
 
-const AppBar = ({ title }) => {
+interface AppBarProps {
+  title: string;
+}
+
+const AppBar: React.FC<AppBarProps> = ({ title }) => {
   return (
     <View>
       <HStack className="justify-between items-center w-full px-6 pb-4">

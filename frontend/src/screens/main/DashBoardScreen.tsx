@@ -26,7 +26,15 @@ const DashBoardScreen = () => {
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
   const foodLogs: FoodLog[] = [
-    { id: '1', name: 'Apple', calories: 95, protein: 0.5, carbs: 25, fat: 0.3 },
+    { id: '1',
+      name: 'Apple',
+      calories: 95,
+      protein: 0.5,
+      carbs: 25,
+      fat: 0.3 ,
+      quantity: 1,
+      unit: 'piece'
+    },
     {
       id: '2',
       name: 'Chicken Breast',
@@ -34,6 +42,8 @@ const DashBoardScreen = () => {
       protein: 31,
       carbs: 0,
       fat: 3.6,
+      quantity: 111,
+      unit: 'g'
     },
     {
       id: '3',
@@ -42,6 +52,8 @@ const DashBoardScreen = () => {
       protein: 5,
       carbs: 44,
       fat: 1.8,
+      quantity: 111,
+      unit: 'g'
     },
     {
       id: '4',
@@ -50,12 +62,14 @@ const DashBoardScreen = () => {
       protein: 1.3,
       carbs: 27,
       fat: 0.4,
+      quantity: 111,
+      unit: 'g'
     },
   ];
 
   const habits: Habit[] = [
     { id: '1', name: 'Drink Water', completed: true },
-    { id: '2', name: 'Exercise', completed: false },
+    { id: '2', name: 'Exercise',    completed: false },
     { id: '3', name: 'Read a Book', completed: true },
     { id: '4', name: 'Read a Book', completed: true },
     { id: '5', name: 'Read a Book', completed: false },

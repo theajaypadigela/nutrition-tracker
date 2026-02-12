@@ -17,10 +17,19 @@ import {
 } from "../ui/modal";
 import { Heading } from "../ui/heading";
 
-const SetDailyTarget = ({
+interface SetDailyTargetProps {
+  showModal: boolean;
+  onClose: () => void;
+  onSave?: (value: string) => void;
+  RecommendedValue?: number;
+  unit?: string;
+  currentTarget?: number;
+}
+
+const SetDailyTarget: React.FC<SetDailyTargetProps> = ({
   showModal,
   onClose,
-  onSave, // Added onSave prop to pass data back
+  onSave,
   RecommendedValue = 100,
   unit = "g",
   currentTarget,

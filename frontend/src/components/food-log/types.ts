@@ -1,22 +1,6 @@
-export interface FoodItem {
-  id: string;
-  name: string;
-  quantity: string;
-  servingSize: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
+/**
+ * Re-exported from central types — these types are shared across features.
+ * Import directly from '@/src/types/types' for new code.
+ */
+export type { FoodItem, Meals, MealType, FoodErrors } from '../../types/types';
 
-export interface Meals {
-  [key: string]: FoodItem[];
-}
-
-export type MealType = 'Breakfast' | 'Lunch' | 'Snacks' | 'Dinner';
-
-export interface FoodErrors {
-  foodName: string;
-  quantity: string;
-  servingSize: string;
-}

@@ -11,7 +11,7 @@ interface BadgeStatusType {
   action: 'success' | 'error' | 'warning' | 'muted' | 'info';
 }
 
-interface Props {
+interface CircularProgressProps {
   // Required props
   goal: number;
   current: number;
@@ -19,29 +19,29 @@ interface Props {
   // Display customization
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   label?: string;
-  subtitle?: string; // Additional text below label
+  subtitle?: string;
   icon?: React.ReactNode;
   unit?: string;
   variant?: 'main' | 'normal' | 'badge';
 
   // Progress behavior
   is_healthy?: boolean;
-  showPercentage?: boolean; // Show percentage inside circle
-  showBadge?: boolean; // Show status badge (for normal variant)
+  showPercentage?: boolean;
+  showBadge?: boolean;
 
   // Color customization
-  progressColor?: string; // Custom progress color (overrides auto color)
-  backgroundColor?: string; // Custom background circle color
+  progressColor?: string;
+  backgroundColor?: string;
 
   // Advanced customization
-  strokeWidthMultiplier?: number; // Multiplier for stroke width (default 0.1)
-  customBadgeStatus?: BadgeStatusType; // Override badge status logic
+  strokeWidthMultiplier?: number;
+  customBadgeStatus?: BadgeStatusType;
 
   // Formatting
-  formatValue?: (value: number) => string; // Custom value formatter
+  formatValue?: (value: number) => string;
 }
 
-const CircularProgress: React.FC<Props> = ({
+const CircularProgress: React.FC<CircularProgressProps> = ({
   goal,
   current,
   size = 'md',
@@ -177,13 +177,7 @@ const CircularProgress: React.FC<Props> = ({
           origin={`${currentSize / 2}, ${currentSize / 2}`}
         />
       </Svg>
-      {/* Center Content for variants other than badge/main which might position differently */}
-      {/* Actually "main" logic is separate text, "normal" has text below or inside? 
-          User said: "if the varient is normal then only 125g protien comes below the circular bar"
-          So normal: chart, then text below.
-          Main: chart, then text right.
-          Badge: chart (maybe small), then label + percentage right, inside a badge container.
-      */}
+
       {variant === 'normal' && showPercentage && (
         <View className="absolute items-center justify-center">
           {icon && <View className="mb-1">{icon}</View>}
