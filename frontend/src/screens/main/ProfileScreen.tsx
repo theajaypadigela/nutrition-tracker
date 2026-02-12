@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { use } from 'react';
 import { VStack } from '../../components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
 import { View } from 'react-native';
@@ -20,11 +20,13 @@ import {
 } from '../../components/ui/select';
 import { RouteProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../navigation/MainTabNavigator';
+import { useAuth } from '@/src/context/AuthContext';
 
 type ProfileScreenRouteProp = RouteProp<MainTabParamList, 'Profile'>;
 
 const ProfileScreen = ({ route }: { route: ProfileScreenRouteProp }) => {
-  const { name, age, gender } = route.params;
+  const { name, age, gender } = useAuth().user || {};
+  
   const [isEditing, setIsEditing] = React.useState(false);
   const [form, setForm] = React.useState({
     name,
