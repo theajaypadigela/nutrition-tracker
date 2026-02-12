@@ -1,7 +1,5 @@
-// ============================================================
-// User & Auth
-// ============================================================
 
+// User & Auth
 export interface User {
   id: string;
   name: string;
@@ -10,15 +8,11 @@ export interface User {
   gender?: string;
 }
 
-// ============================================================
 // Navigation
-// ============================================================
 
 export type TabName = 'Home' | 'Habits' | 'Food' | 'Reports' | 'Profile';
 
-// ============================================================
 // Habits
-// ============================================================
 
 export interface Habit {
   id: string;
@@ -28,11 +22,8 @@ export interface Habit {
   repeatedDays?: string;
 }
 
-// ============================================================
 // Food Logging
-// ============================================================
 
-/** Simplified food entry used in dashboard / calendar day summaries */
 export interface FoodLog {
   id: string;
   name: string;
@@ -44,7 +35,6 @@ export interface FoodLog {
   fat: number;
 }
 
-/** Detailed food item used in the food-log feature (meals, editing, etc.) */
 export interface FoodItem {
   id: string;
   name: string;
@@ -68,9 +58,7 @@ export interface FoodErrors {
   servingSize: string;
 }
 
-// ============================================================
 // Daily Nutrition Aggregates
-// ============================================================
 
 export interface DailyNutritionTotals {
   protein: number;
@@ -86,9 +74,7 @@ export interface DailyNutritionGoals {
   sugar: number;
 }
 
-// ============================================================
 // Nutrient Tracking Configuration
-// ============================================================
 
 export type TrackingFrequency = 'daily' | 'weekly' | 'optional';
 
