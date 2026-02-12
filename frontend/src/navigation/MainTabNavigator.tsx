@@ -9,10 +9,10 @@ import { useAuth } from '../context/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
 
 export type MainTabParamList = {
-  Dashboard: undefined;
+  Home: undefined;
   Habits: undefined;
-  FoodLog: undefined;
-  Nutrition: undefined;
+  Food: undefined;
+  Reports: undefined;
   Profile: undefined;
 };
 
@@ -33,14 +33,11 @@ export const MainTabNavigator = () => {
         },
       }}
       tabBar={(props) => {
-        // We'll use our custom BottomNavigation component
-        // For now, return null and handle it in the screens
-
-        return <BottomNavigation activeTab='home' onTabChange={(id) => {  }} /> //selected tab and onTabChange handler
+        return <BottomNavigation activeTab={props.state.routeNames[props.state.index]} onTabChange={(tab) => { props.navigation.navigate(tab); }} />
       }}
     >
       <Tab.Screen 
-        name="Dashboard" 
+        name="Home" 
         component={DashBoardScreen}
         options={{ title: 'Dashboard' }}
       />
@@ -50,12 +47,12 @@ export const MainTabNavigator = () => {
         options={{ title: 'Habits' }}
       />
       <Tab.Screen 
-        name="FoodLog" 
+        name="Food" 
         component={FoodLogScreen}
         options={{ title: 'Food Log' }}
       />
       <Tab.Screen 
-        name="Nutrition" 
+        name="Reports" 
         component={NutritionReportScreen}
         options={{ title: 'Nutrition Report' }}
       />

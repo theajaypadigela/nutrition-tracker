@@ -18,10 +18,10 @@ const BottomNavigation = ({
   onTabChange,
 }: BottomNavigationProps) => {
   const tabs = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'habits', label: 'Habits', icon: Activity },
-    { id: 'food', label: 'Food', icon: UtensilsCrossed },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'Home', label: 'Home', icon: Home },
+    { id: 'Habits', label: 'Habits', icon: Activity },
+    { id: 'Food', label: 'Food', icon: UtensilsCrossed },
+    { id: 'Reports', label: 'Reports', icon: BarChart3 },
   ];
 
   return (
