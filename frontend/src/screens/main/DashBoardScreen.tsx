@@ -118,7 +118,6 @@ const DashBoardScreen = () => {
   };
 
   const handleDayPress = (day: DateData) => {
-    console.log(day.dateString);
     setSelectedDate(day.dateString);
     setShowDrawer(true);
   };

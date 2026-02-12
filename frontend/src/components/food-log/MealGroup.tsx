@@ -41,7 +41,7 @@ export const MealGroup: React.FC<MealGroupProps> = ({
   };
 
   return (
-    <View className="w-full rounded-2xl border border-gray-200 flex justify-between mb-4">
+    <View className="w-full rounded-2xl border border-gray-200 flex justify-between mb-4 bg-white">
       <Pressable onPress={onToggleExpand} style={{ width: '100%' }}>
         <HStack
           style={{

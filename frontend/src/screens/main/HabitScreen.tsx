@@ -76,7 +76,7 @@ const HabitScreen = () => {
       {habits.map(habit => (
         <HStack
           key={habit.id}
-          className="rounded-xl p-4 border-2 border-gray-200 flex items-center gap-4"
+          className="rounded-xl p-4 border-2 border-gray-200 flex items-center gap-4 bg-white"
         >
           <Button variant="link" onPress={() => toggleHabit(habit.id)}>
             {habit.completed ? (
