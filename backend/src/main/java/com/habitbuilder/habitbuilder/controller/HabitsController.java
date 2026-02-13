@@ -5,6 +5,5 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/habits")
-public class Habits {
-
+public class HabitsController {
 }
