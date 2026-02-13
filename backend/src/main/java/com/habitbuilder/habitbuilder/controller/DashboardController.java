@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.habitbuilder.habitbuilder.dto.DashboardResponse;
 import com.habitbuilder.habitbuilder.service.DashboardService;
 
 @RestController
@@ -19,7 +20,7 @@ public class DashboardController {
     }
 
     @GetMapping
-    public String hello(@RequestParam(required = false) String date) {
+    public DashboardResponse getDashboardData(@RequestParam(required = false) String date) {
         return dashboardService.getDashboardData(date);
     }
 
