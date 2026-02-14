@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 public class HabitDto {
     private String id;
     private String name;
-    private boolean completed;
+    private boolean isCompleted;
     private String reason;
     private String time;
     private String repeatedDays;
