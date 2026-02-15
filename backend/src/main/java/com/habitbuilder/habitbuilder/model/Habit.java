@@ -16,11 +16,12 @@ public class Habit {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String userId;
+    private Long userId;
     private String name;
     private String category;
     private String reminderTime;
     private String daysOfWeek;
     private String reminderType;
     private String notes;
+    private boolean completed;
 }

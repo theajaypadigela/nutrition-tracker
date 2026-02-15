@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class FoodLogDto {
-    private String id;
+    private Long id;
     private String name;
     private int calories;
     private double protein;

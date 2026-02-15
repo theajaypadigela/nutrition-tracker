@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class HabitDto {
-    private String id;
+    private Long id;
     private String name;
     private boolean isCompleted;
     private String reason;

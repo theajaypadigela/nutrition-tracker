@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.habitbuilder.habitbuilder.dto.DashboardResponse;
 import com.habitbuilder.habitbuilder.service.DashboardService;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/dashboard")
@@ -20,8 +21,9 @@ public class DashboardController {
     }
 
     @GetMapping
-    public DashboardResponse getDashboardData(@RequestParam(required = false) String date) {
-        return dashboardService.getDashboardData(date);
+    public DashboardResponse getDashboardData(@RequestParam Long userId,
+            @RequestParam(required = false) String date) {
+        return dashboardService.getDashboardData(userId, LocalDate.parse(date));
     }
 
 }

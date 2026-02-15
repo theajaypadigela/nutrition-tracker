@@ -1,5 +1,7 @@
 package com.habitbuilder.habitbuilder.model;
 
+import java.time.LocalDate;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -20,6 +22,10 @@ public class FoodLog {
     private int calories;
     private double protein;
     private double carbs;
-    private double fats;
+    private double fat;
+    private int quantity;
+    private String unit;
+    private Long userId;
+    private LocalDate date;
 
 }
