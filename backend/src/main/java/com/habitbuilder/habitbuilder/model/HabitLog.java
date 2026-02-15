@@ -1,25 +1,24 @@
 package com.habitbuilder.habitbuilder.model;
 
+import java.time.LocalDate;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class FoodLog {
+public class HabitLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String name;
-    private int calories;
-    private double protein;
-    private double carbs;
-    private double fats;
-
+    private Long habitId;
+    private LocalDate date;
+    private boolean isCompleted;
+    private String reason;
 }
