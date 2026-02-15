@@ -1,28 +1,38 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
-import { Input, InputField, InputSlot, InputIcon } from '../../components/ui/input';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  Input,
+  InputField,
+  InputSlot,
+  InputIcon,
+} from '../../components/ui/input';
 import { FormControl } from '../../components/ui/form-control';
 import { VStack } from '../../components/ui/vstack';
-import { Heading } from '../../components/ui/heading';
 import { Text } from '../../components/ui/text';
 import { Button, ButtonText } from '../../components/ui/button';
 import { HStack } from '../../components/ui/hstack';
 import { Divider } from '../../components/ui/divider';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { useAuth } from '@/src/context/AuthContext';
+
+type LoginScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'Login'
+>;
 
 export function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const navigation = useNavigation<LoginScreenNavigationProp>();
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [globalError, setGlobalError] = useState('');
-  const [networkError, setNetworkError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
-  const handleState = () => {
-    setShowPassword(prevState => !prevState);
-  };
+  const { login, isLoading } = useAuth();
 
   const validateEmail = (email: string): boolean => {
     if (!email) {
@@ -43,8 +53,50 @@ export function LoginScreen() {
       setPasswordError('Password is required');
       return false;
     }
+    if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return false;
+    }
     setPasswordError('');
     return true;
+  };
+
+  const handleEmailBlur = () => {
+    validateEmail(email);
+  };
+
+  const handlePasswordBlur = () => {
+    validatePassword(password);
+  };
+
+  const isFormValid = (): boolean => {
+    return validateEmail(email) && validatePassword(password);
+  };
+
+  const handleState = () => {
+    setShowPassword(prevState => !prevState);
+  };
+
+  const loadRegisterScreen = () => {
+    navigation.navigate('Register');
+  };
+
+  const loginUser = async () => {
+    if (!isFormValid()) return;
+
+    setLoginError('');
+
+    try {
+      await login(email, password);
+      console.log('Login successful');
+    } catch (error) {
+      console.error('Login error:', error);
+      setLoginError(
+        error instanceof Error
+          ? error.message
+          : 'Login failed. Please try again.',
+      );
+    }
   };
 
   return (
@@ -73,7 +125,13 @@ export function LoginScreen() {
                 ${emailError ? 'border-red-500' : 'border-gray-200'}
               `}
             >
-              <InputField type="text" />
+              <InputField
+                type="text"
+                value={email}
+                onChangeText={setEmail}
+                onBlur={handleEmailBlur}
+                placeholder="Enter your email"
+              />
             </Input>
             {emailError && (
               <Text className="text-red-500 text-md ml-2">{emailError}</Text>
@@ -90,7 +148,13 @@ export function LoginScreen() {
                 ${passwordError ? 'border-red-500' : 'border-gray-200'}
               `}
             >
-              <InputField type={showPassword ? 'text' : 'password'} />
+              <InputField
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChangeText={setPassword}
+                onBlur={handlePasswordBlur}
+                placeholder="Enter your password"
+              />
               <InputSlot className="pr-8" onPress={handleState}>
                 <InputIcon as={showPassword ? EyeIcon : EyeOffIcon} />
               </InputSlot>
@@ -105,12 +169,28 @@ export function LoginScreen() {
             </ButtonText>
           </Button>
 
+          {loginError && (
+            <VStack className="w-full bg-red-50 border border-red-200 rounded-xl p-4">
+              <Text className="text-red-600 text-center">{loginError}</Text>
+            </VStack>
+          )}
+
           <Button
             variant="solid"
             size="xl"
             className="w-full bg-emerald-500 rounded-xl"
+            isDisabled={
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+              !password ||
+              password.length < 6 ||
+              isLoading
+            }
+            onPress={loginUser}
           >
-                 <ButtonText className="text-white font-medium">Login</ButtonText>
+            <ButtonText className="text-white font-medium">
+              {isLoading ? 'Logging in...' : 'Login'}
+            </ButtonText>
           </Button>
           <HStack className="items-center my-4">
             <Divider className="flex-1 h-[1px]" />
@@ -120,6 +200,7 @@ export function LoginScreen() {
         </VStack>
       </FormControl>
       <Button
+        onPress={loadRegisterScreen}
         variant="outline"
         size="xl"
         className="w-full rounded-xl border-gray-200"

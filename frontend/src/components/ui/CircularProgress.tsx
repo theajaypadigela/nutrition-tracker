@@ -41,6 +41,15 @@ interface CircularProgressProps {
   formatValue?: (value: number) => string;
 }
 
+// Hex codes for tailwind colors - moved outside component to avoid recreating on every render
+const DEFAULT_COLORS = {
+  green: '#22c55e',
+  yellow: '#eab308',
+  red: '#ef4444',
+  blue: '#3b82f6',
+  gray: '#d1d5db',
+};
+
 const CircularProgress: React.FC<CircularProgressProps> = ({
   goal,
   current,
@@ -83,13 +92,9 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
   const radius = (currentSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  // Hex codes for tailwind colors
   const colors = {
-    green: '#22c55e',
-    yellow: '#eab308',
-    red: '#ef4444',
-    blue: '#3b82f6',
-    gray: customBackgroundColor || '#d1d5db', // Use custom background color if provided
+    ...DEFAULT_COLORS,
+    gray: customBackgroundColor || DEFAULT_COLORS.gray, // Use custom background color if provided
   };
 
   const badgeStatus = useMemo(() => {
@@ -137,7 +142,16 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
       if (percentage >= 80) return colors.yellow;
       return colors.green;
     }
-  }, [current, goal, is_healthy, customProgressColor]);
+  }, [
+    current,
+    goal,
+    is_healthy,
+    customProgressColor,
+    colors.blue,
+    colors.green,
+    colors.red,
+    colors.yellow,
+  ]);
 
   const percentage = Math.min(Math.max((current / goal) * 100, 0), 100);
   const strokeDashoffset = circumference - (circumference * percentage) / 100;

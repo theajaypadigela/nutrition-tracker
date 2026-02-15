@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Text } from '../../components/ui/text';
-import { Input, InputField, InputSlot, InputIcon } from '../../components/ui/input';
+import {
+  Input,
+  InputField,
+  InputSlot,
+  InputIcon,
+} from '../../components/ui/input';
 import { VStack } from '../../components/ui/vstack';
 import { ScrollView } from 'react-native';
 import {
@@ -18,9 +23,9 @@ import {
 import { ChevronDownIcon } from '../../components/ui/icon';
 import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
 import { ButtonText, Button } from '../../components/ui/button';
+import { useAuth } from '@/src/context/AuthContext';
 
 const RegisterScreen = () => {
-  const [selectedDate, setSelectedDate] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
   const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
@@ -35,6 +40,9 @@ const RegisterScreen = () => {
   const [genderError, setGenderError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+
+  const { register, isLoading } = useAuth();
 
   const handleTogglePassword = () => {
     setShowPassword(prevState => !prevState);
@@ -156,6 +164,27 @@ const RegisterScreen = () => {
     passwordError,
     confirmPasswordError,
   ]);
+
+  const handleRegister = async () => {
+    if (!isFormValid) {
+      return;
+    }
+
+    setRegisterError('');
+
+    try {
+      await register(fullName, email, password, age, selectedGender);
+      console.log('Registration successful');
+      // Navigation will be handled by AuthContext
+    } catch (error) {
+      console.error('Registration error:', error);
+      setRegisterError(
+        error instanceof Error
+          ? error.message
+          : 'Registration failed. Please try again.',
+      );
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -335,13 +364,23 @@ const RegisterScreen = () => {
             </Text>
           )}
         </VStack>
+
+        {registerError && (
+          <VStack className="w-full bg-red-50 border border-red-200 rounded-xl p-4">
+            <Text className="text-red-600 text-center">{registerError}</Text>
+          </VStack>
+        )}
+
         <Button
           variant="solid"
           size="xl"
           className="w-full bg-emerald-500 rounded-xl"
-          isDisabled={!isFormValid}
+          isDisabled={!isFormValid || isLoading}
+          onPress={handleRegister}
         >
-          <ButtonText className="text-white font-medium">Register</ButtonText>
+          <ButtonText className="text-white font-medium">
+            {isLoading ? 'Registering...' : 'Register'}
+          </ButtonText>
         </Button>
 
         <Button variant="link" size="md" className="mt-3">

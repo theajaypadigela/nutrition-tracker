@@ -9,8 +9,8 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      {/* {isAuthenticated ? <MainTabNavigator /> : <AuthNavigator />} */}
-      {isAuthenticated ? <MainTabNavigator /> : <MainTabNavigator />}
+      {isAuthenticated ? <MainTabNavigator /> : <AuthNavigator />}
+      {/* {isAuthenticated ? <MainTabNavigator /> : <MainTabNavigator />} */}
     </NavigationContainer>
   );
 };

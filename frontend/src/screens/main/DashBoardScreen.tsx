@@ -9,7 +9,6 @@ import { Divider } from '../../components/ui/divider';
 import { Text } from '../../components/ui/text';
 import { Heading } from '../../components/ui/heading';
 import { CloseIcon, Icon } from '../../components/ui/icon';
-import { Button, ButtonText } from '../../components/ui/button';
 import {
   Drawer,
   DrawerBackdrop,
@@ -26,14 +25,15 @@ const DashBoardScreen = () => {
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
   const foodLogs: FoodLog[] = [
-    { id: '1',
+    {
+      id: '1',
       name: 'Apple',
       calories: 95,
       protein: 0.5,
       carbs: 25,
-      fat: 0.3 ,
+      fat: 0.3,
       quantity: 1,
-      unit: 'piece'
+      unit: 'piece',
     },
     {
       id: '2',
@@ -43,7 +43,7 @@ const DashBoardScreen = () => {
       carbs: 0,
       fat: 3.6,
       quantity: 111,
-      unit: 'g'
+      unit: 'g',
     },
     {
       id: '3',
@@ -53,7 +53,7 @@ const DashBoardScreen = () => {
       carbs: 44,
       fat: 1.8,
       quantity: 111,
-      unit: 'g'
+      unit: 'g',
     },
     {
       id: '4',
@@ -63,13 +63,13 @@ const DashBoardScreen = () => {
       carbs: 27,
       fat: 0.4,
       quantity: 111,
-      unit: 'g'
+      unit: 'g',
     },
   ];
 
   const habits: Habit[] = [
     { id: '1', name: 'Drink Water', completed: true },
-    { id: '2', name: 'Exercise',    completed: false },
+    { id: '2', name: 'Exercise', completed: false },
     { id: '3', name: 'Read a Book', completed: true },
     { id: '4', name: 'Read a Book', completed: true },
     { id: '5', name: 'Read a Book', completed: false },

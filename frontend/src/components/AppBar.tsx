@@ -18,10 +18,8 @@ const AppBar: React.FC<AppBarProps> = ({ title }) => {
           {title}
         </Text>
         <Button
-          className="w-10 h-10 flex items-center justify-center rounded-full transition-colors"
-          style={{
-            backgroundColor: '#D1FAE5',
-          }}
+          className="w-10 h-10 flex items-center justify-center rounded-full"
+          style={{ backgroundColor: '#D1FAE5' }}
           aria-label="Profile"
         >
           <User size={20} stroke="#10B981" />
