@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Text } from '../ui/text';
 import { VStack } from '../ui/vstack';
 import SearchBar from '../ui/SearchBar';
-import { HStack } from '../ui/hstack';
 import {
   Select,
   SelectItem,
@@ -58,9 +56,8 @@ const NutritionData: Nutrition[] = [
 
 const AllNutritionsCard = () => {
   const [showDrawer, setShowDrawer] = useState(false);
-  const [selectedNutrient, setSelectedNutrient] = useState<NutrientDetailData | null>(
-    null,
-  );
+  const [selectedNutrient, setSelectedNutrient] =
+    useState<NutrientDetailData | null>(null);
 
   const handleOpenDrawer = (item: Nutrition) => {
     console.log('Opening drawer for:', item.name);
@@ -160,7 +157,7 @@ const AllNutritionsCard = () => {
         selectedNutrient={selectedNutrient}
         onPin={id => console.log('Pin', id)}
         onSetTarget={() => console.log('Set Target')}
-        onAddFood={() => console.log('Add Food')}
+        _onAddFood={() => console.log('Add Food')}
         onMarkAvoid={() => console.log('Mark Avoid')}
       />
     </VStack>

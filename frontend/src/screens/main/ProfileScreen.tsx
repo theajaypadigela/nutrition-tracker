@@ -1,4 +1,4 @@
-import React, { use } from 'react';
+import React from 'react';
 import { VStack } from '../../components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
 import { View } from 'react-native';
@@ -18,15 +18,11 @@ import {
   SelectPortal,
   SelectTrigger,
 } from '../../components/ui/select';
-import { RouteProp } from '@react-navigation/native';
-import { MainTabParamList } from '../../navigation/MainTabNavigator';
 import { useAuth } from '@/src/context/AuthContext';
 
-type ProfileScreenRouteProp = RouteProp<MainTabParamList, 'Profile'>;
-
-const ProfileScreen = ({ route }: { route: ProfileScreenRouteProp }) => {
+const ProfileScreen = () => {
   const { name, age, gender } = useAuth().user || {};
-  
+
   const [isEditing, setIsEditing] = React.useState(false);
   const [form, setForm] = React.useState({
     name,
@@ -60,7 +56,9 @@ const ProfileScreen = ({ route }: { route: ProfileScreenRouteProp }) => {
       </VStack>
       <VStack className="bg-white rounded-2xl p-6 border border-gray-200 gap-6">
         <HStack className="justify-between">
-          <Text size='xl' className='font-semibold'>Personal Details</Text>
+          <Text size="xl" className="font-semibold">
+            Personal Details
+          </Text>
           <Button variant="link" action="positive" onPress={handleEditPress}>
             <ButtonText size="md">{isEditing ? 'Save' : 'Edit'}</ButtonText>
           </Button>

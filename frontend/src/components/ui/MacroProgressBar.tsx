@@ -15,13 +15,47 @@ interface MacroProgressBarProps {
   is_healthy?: boolean;
 }
 
+const colors = {
+  green: 'bg-green-500',
+  yellow: 'bg-yellow-500',
+  red: 'bg-red-500',
+  blue: 'bg-blue-500',
+};
+
+const getProgressTheme = (
+  current: number,
+  goal: number,
+  is_healthy: boolean,
+) => {
+  const percentage = (current / goal) * 100;
+
+  if (is_healthy) {
+    // Logic for "Good" things (Protein, Fiber, Vitamins)
+    // Higher is better; going over is usually fine.
+    if (percentage >= 100) return colors.blue; // Goal reached/exceeded
+    if (percentage >= 80) return colors.green;
+    if (percentage >= 40) return colors.yellow;
+    return colors.red; // Low is bad
+  } else {
+    // Logic for "Bad" things (Sugar, Sodium, Saturated Fat)
+    // Lower is better; going over is bad.
+    if (percentage > 100) return colors.red; // Over limit
+    if (percentage >= 80) return colors.yellow; // Approaching limit
+    return colors.green; // Low is good
+  }
+};
+
 const MacroProgressBar = (props: MacroProgressBarProps) => {
-  const colors = {
-    green: 'bg-green-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
-    blue: 'bg-blue-500',
-  };
+  const {
+    goal,
+    current,
+    is_healthy = false,
+    size: propsSize,
+    icon,
+    label,
+    unit,
+  } = props;
+
   const size = {
     sm: 'h-1',
     md: 'h-2',
@@ -31,9 +65,9 @@ const MacroProgressBar = (props: MacroProgressBarProps) => {
   };
 
   const badgeStatus = useMemo(() => {
-    const percentage = (props.current / props.goal) * 100;
+    const percentage = (current / goal) * 100;
 
-    if (props.is_healthy) {
+    if (is_healthy) {
       // Logic for Protein / Nutrients (High = Good)
       if (percentage > 100)
         return { label: 'Exceed', action: 'success' as const };
@@ -52,60 +86,33 @@ const MacroProgressBar = (props: MacroProgressBarProps) => {
         return { label: 'Moderate', action: 'muted' as const }; // Or warning
       return { label: 'Good', action: 'success' as const };
     }
-  }, [props.current, props.goal, props.is_healthy]);
+  }, [current, goal, is_healthy]);
 
-  const DisplaySize = size[props.size] || size.xl;
-
-  const getProgressTheme = (
-    current: number,
-    goal: number,
-    is_healthy: boolean,
-  ) => {
-    const percentage = (current / goal) * 100;
-
-    if (is_healthy) {
-      // Logic for "Good" things (Protein, Fiber, Vitamins)
-      // Higher is better; going over is usually fine.
-      if (percentage >= 100) return colors.blue; // Goal reached/exceeded
-      if (percentage >= 80) return colors.green;
-      if (percentage >= 40) return colors.yellow;
-      return colors.red; // Low is bad
-    } else {
-      // Logic for "Bad" things (Sugar, Sodium, Saturated Fat)
-      // Lower is better; going over is bad.
-      if (percentage > 100) return colors.red; // Over limit
-      if (percentage >= 80) return colors.yellow; // Approaching limit
-      return colors.green; // Low is good
-    }
-  };
+  const DisplaySize = size[propsSize] || size.xl;
 
   const DisplayColor = useMemo(() => {
-    return getProgressTheme(
-      props.current,
-      props.goal,
-      props.is_healthy ?? false,
-    );
-  }, [props.current, props.goal, props.is_healthy]);
+    return getProgressTheme(current, goal, is_healthy);
+  }, [current, goal, is_healthy]);
 
   const percentage = useMemo(() => {
-    const raw = (props.current / props.goal) * 100;
+    const raw = (current / goal) * 100;
     return Math.min(Math.max(raw, 0), 100);
-  }, [props.current, props.goal]);
+  }, [current, goal]);
 
   return (
     <VStack>
       <HStack className="justify-between">
         <HStack className="flex-row gap-2">
-          <Text>{props.icon}</Text>
+          <Text>{icon}</Text>
           <Text size="lg" className="font-bold">
-            {props.label}
+            {label}
           </Text>
         </HStack>
         <HStack className="flex-row">
           <Text size="lg" className="font-bold">
-            {props.current}
-            {props.unit} / {props.goal}
-            {props.unit}
+            {current}
+            {unit} / {goal}
+            {unit}
           </Text>
         </HStack>
       </HStack>
