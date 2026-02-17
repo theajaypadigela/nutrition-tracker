@@ -34,13 +34,13 @@ export function LoginScreen() {
 
   const { login, isLoading } = useAuth();
 
-  const validateEmail = (email: string): boolean => {
-    if (!email) {
+  const validateEmail = (emailValue: string): boolean => {
+    if (!emailValue) {
       setEmailError('Email is required');
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(emailValue)) {
       setEmailError('Invalid email format');
       return false;
     }
@@ -48,12 +48,12 @@ export function LoginScreen() {
     return true;
   };
 
-  const validatePassword = (password: string): boolean => {
-    if (!password) {
+  const validatePassword = (passwordValue: string): boolean => {
+    if (!passwordValue) {
       setPasswordError('Password is required');
       return false;
     }
-    if (password.length < 6) {
+    if (passwordValue.length < 6) {
       setPasswordError('Password must be at least 6 characters');
       return false;
     }

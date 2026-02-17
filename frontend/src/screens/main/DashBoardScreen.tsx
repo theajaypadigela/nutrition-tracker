@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { Activity, Apple, CheckCircle2, XCircle } from 'lucide-react-native';
+import AppBar from '../../components/AppBar';
 
 import { HStack } from '../../components/ui/hstack';
 import { VStack } from '../../components/ui/vstack';
@@ -123,12 +124,10 @@ const DashBoardScreen = () => {
   };
 
   return (
-    <>
+    <View className="flex-1">
+      <AppBar title="Dashboard" />
       <VStack className="flex-1 gap-6 items-center p-4">
-        <View
-          className="w-full rounded-xl border border-gray-200"
-          style={{ overflow: 'hidden' }}
-        >
+        <View className="w-full rounded-xl border border-gray-200 overflow-hidden">
           <Calendar hideExtraDays={true} onDayPress={handleDayPress} />
         </View>
 
@@ -149,10 +148,7 @@ const DashBoardScreen = () => {
             <Text className="text-gray-600">completed</Text>
           </HStack>
 
-          <View
-            className="w-full h-3 bg-gray-300 rounded-full"
-            style={{ overflow: 'hidden' }}
-          >
+          <View className="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
             <View
               className="h-full bg-emerald-500 rounded-full"
               style={{ width: `${(2 / 3) * 100}%` }}
@@ -311,7 +307,7 @@ const DashBoardScreen = () => {
           </DrawerBody>
         </DrawerContent>
       </Drawer>
-    </>
+    </View>
   );
 };
 

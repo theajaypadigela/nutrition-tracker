@@ -1,4 +1,4 @@
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
 import React from 'react';
@@ -10,6 +10,7 @@ import { Text } from '../../components/ui/text';
 import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
 import AllNutritionsCard from '../../components/nutrition-report/AllNutritionsCard';
 import { Insight } from '../../components/nutrition-report/types';
+import AppBar from '../../components/AppBar';
 
 const NutritionReportScreen = () => {
   // Sample data - replace with your actual data
@@ -44,40 +45,43 @@ const NutritionReportScreen = () => {
   ];
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
-      <VStack className="p-6 gap-6">
-        {/* Weekly Calories Summary */}
-        <CaloriesSummaryCard
-          weeklyAvgCalories={weeklyAvgCalories}
-          dailyCalorieGoal={dailyCalorieGoal}
-        />
-
-        {/* Macro Nutrients Section */}
-        <MacroNutrientsSection macroNutrients={macroNutrients} />
-      </VStack>
-
-      {/* Micro Nutrients Section - FlatList outside VStack for horizontal scroll */}
-      <MicroNutrientsSection microNutrients={microNutrients} />
-
-      <VStack className="p-6 bg-white border rounded-2xl border-gray-200 m-6 gap-4">
-        <HStack>
-          <Lightbulb size={20} color={'#d97706'} />
-          <Text size="md" className="font-bold">
-            AI Insights
-          </Text>
-        </HStack>
-
-        {insights.map((insight, index) => (
-          <InsightsBadge
-            key={index}
-            variant={insight.variant}
-            message={insight.message}
+    <View className="flex-1">
+      <AppBar title="Nutrition Report" />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <VStack className="p-6 gap-6">
+          {/* Weekly Calories Summary */}
+          <CaloriesSummaryCard
+            weeklyAvgCalories={weeklyAvgCalories}
+            dailyCalorieGoal={dailyCalorieGoal}
           />
-        ))}
-      </VStack>
-      <AllNutritionsCard />
-      <VStack className="h-20" />
-    </ScrollView>
+
+          {/* Macro Nutrients Section */}
+          <MacroNutrientsSection macroNutrients={macroNutrients} />
+        </VStack>
+
+        {/* Micro Nutrients Section - FlatList outside VStack for horizontal scroll */}
+        <MicroNutrientsSection microNutrients={microNutrients} />
+
+        <VStack className="p-6 bg-white border rounded-2xl border-gray-200 m-6 gap-4">
+          <HStack>
+            <Lightbulb size={20} color={'#d97706'} />
+            <Text size="md" className="font-bold">
+              AI Insights
+            </Text>
+          </HStack>
+
+          {insights.map((insight, index) => (
+            <InsightsBadge
+              key={index}
+              variant={insight.variant}
+              message={insight.message}
+            />
+          ))}
+        </VStack>
+        <AllNutritionsCard />
+        <VStack className="h-20" />
+      </ScrollView>
+    </View>
   );
 };
 

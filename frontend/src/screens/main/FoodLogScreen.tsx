@@ -5,7 +5,8 @@ import { MealGroup } from '../../components/food-log/MealGroup';
 import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
 import { FoodItem, Meals } from '../../components/food-log/types';
 import NutritionDisplay from '../../components/food-log/NutritionDisplay';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import AppBar from '../../components/AppBar';
 
 const FoodLogScreen = () => {
   const [expandedMeal, setExpandedMeal] = useState<string | null>('Breakfast');
@@ -146,61 +147,64 @@ const FoodLogScreen = () => {
   };
 
   return (
-    <ScrollView>
-      <VStack className="w-full p-6 mb-10">
-        <VStack>
-          <Text size="md" className="font-bold text-gray-500">
-            MEAL BREAKDOWN
-          </Text>
-          {Object.entries(meals).map(([mealType, items]) => (
-            <MealGroup
-              key={mealType}
-              mealType={mealType}
-              items={items}
-              isExpanded={expandedMeal === mealType}
-              onToggleExpand={() =>
-                setExpandedMeal(expandedMeal === mealType ? null : mealType)
-              }
-              onEdit={handleEditFood}
-              onDelete={handleDeleteFood}
-            />
-          ))}
+    <View className="flex-1">
+      <AppBar title="Food Log" />
+      <ScrollView>
+        <VStack className="w-full p-6 mb-10">
+          <VStack>
+            <Text size="md" className="font-bold text-gray-500">
+              MEAL BREAKDOWN
+            </Text>
+            {Object.entries(meals).map(([mealType, items]) => (
+              <MealGroup
+                key={mealType}
+                mealType={mealType}
+                items={items}
+                isExpanded={expandedMeal === mealType}
+                onToggleExpand={() =>
+                  setExpandedMeal(expandedMeal === mealType ? null : mealType)
+                }
+                onEdit={handleEditFood}
+                onDelete={handleDeleteFood}
+              />
+            ))}
+          </VStack>
+          <NutritionDisplay
+            calories={Object.values(meals)
+              .flat()
+              .reduce((acc, item) => acc + item.calories, 0)}
+            targetCalories={2500}
+            totals={{
+              protein: Object.values(meals)
+                .flat()
+                .reduce((acc, item) => acc + item.protein, 0),
+              carbs: Object.values(meals)
+                .flat()
+                .reduce((acc, item) => acc + item.carbs, 0),
+              fat: Object.values(meals)
+                .flat()
+                .reduce((acc, item) => acc + item.fat, 0),
+              sugar: 40,
+            }}
+            dailyGoals={{
+              protein: 180,
+              carbs: 250,
+              fat: 70,
+              sugar: 40,
+            }}
+          />
         </VStack>
-        <NutritionDisplay
-          calories={Object.values(meals)
-            .flat()
-            .reduce((acc, item) => acc + item.calories, 0)}
-          targetCalories={2500}
-          totals={{
-            protein: Object.values(meals)
-              .flat()
-              .reduce((acc, item) => acc + item.protein, 0),
-            carbs: Object.values(meals)
-              .flat()
-              .reduce((acc, item) => acc + item.carbs, 0),
-            fat: Object.values(meals)
-              .flat()
-              .reduce((acc, item) => acc + item.fat, 0),
-            sugar: 40,
+        <EditFoodDrawer
+          isOpen={showDrawer}
+          onClose={() => {
+            setShowDrawer(false);
+            setSelectedFood(null);
           }}
-          dailyGoals={{
-            protein: 180,
-            carbs: 250,
-            fat: 70,
-            sugar: 40,
-          }}
+          onSave={handleSaveFood}
+          initialData={selectedFood}
         />
-      </VStack>
-      <EditFoodDrawer
-        isOpen={showDrawer}
-        onClose={() => {
-          setShowDrawer(false);
-          setSelectedFood(null);
-        }}
-        onSave={handleSaveFood}
-        initialData={selectedFood}
-      />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 

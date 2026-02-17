@@ -51,7 +51,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         data: error.response?.data,
         code: error.code,
       });
-      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      const errorMessage =
+        error.response?.data?.message || error.message || 'Login failed';
       throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -67,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     setIsLoading(true);
     try {
-      const response = await apiClient({
+      await apiClient({
         method: 'POST',
         url: '/auth/register',
         data: { name, email, password, age, gender },
@@ -91,7 +92,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       });
     } catch (error: any) {
       console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
+      const errorMessage =
+        error.response?.data?.message || error.message || 'Registration failed';
       throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
