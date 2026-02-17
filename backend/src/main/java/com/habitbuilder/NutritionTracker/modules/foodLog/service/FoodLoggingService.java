@@ -1,4 +1,4 @@
-package com.habitbuilder.habitbuilder.service;
+package com.habitbuilder.NutritionTracker.modules.foodLog.service;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.habitbuilder.habitbuilder.dto.FoodLogDto;
-import com.habitbuilder.habitbuilder.model.FoodLog;
-import com.habitbuilder.habitbuilder.repository.FoodLogRepository;
+import com.habitbuilder.NutritionTracker.modules.foodLog.dto.FoodLogDto;
+import com.habitbuilder.NutritionTracker.modules.foodLog.entity.FoodLog;
+import com.habitbuilder.NutritionTracker.modules.foodLog.repository.FoodLogRepository;
 
 @Service
 public class FoodLoggingService {

@@ -1,4 +1,4 @@
-package com.habitbuilder.habitbuilder.model;
+package com.habitbuilder.NutritionTracker.modules.habits.entity;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;

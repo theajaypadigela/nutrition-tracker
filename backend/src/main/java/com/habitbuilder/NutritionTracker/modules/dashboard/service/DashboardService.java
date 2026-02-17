@@ -1,4 +1,4 @@
-package com.habitbuilder.habitbuilder.service;
+package com.habitbuilder.NutritionTracker.modules.dashboard.service;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -6,9 +6,11 @@ import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.habitbuilder.habitbuilder.dto.DashboardResponse;
-import com.habitbuilder.habitbuilder.dto.FoodLogDto;
-import com.habitbuilder.habitbuilder.dto.HabitDto;
+import com.habitbuilder.NutritionTracker.modules.dashboard.dto.DashboardResponse;
+import com.habitbuilder.NutritionTracker.modules.foodLog.dto.FoodLogDto;
+import com.habitbuilder.NutritionTracker.modules.habits.dto.HabitDto;
+import com.habitbuilder.NutritionTracker.modules.foodLog.service.FoodLoggingService;
+import com.habitbuilder.NutritionTracker.modules.habits.service.HabitsService;
 
 @Service
 public class DashboardService {

@@ -1,4 +1,4 @@
-package com.habitbuilder.habitbuilder.dto;
+package com.habitbuilder.NutritionTracker.modules.habits.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

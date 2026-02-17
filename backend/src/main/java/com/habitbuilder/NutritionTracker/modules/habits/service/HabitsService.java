@@ -1,4 +1,4 @@
-package com.habitbuilder.habitbuilder.service;
+package com.habitbuilder.NutritionTracker.modules.habits.service;
 
 import java.time.format.TextStyle;
 import java.util.List;
@@ -9,11 +9,11 @@ import java.util.ArrayList;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.habitbuilder.habitbuilder.repository.HabitLogRepository;
-import com.habitbuilder.habitbuilder.repository.HabitRepository;
-import com.habitbuilder.habitbuilder.model.Habit;
-import com.habitbuilder.habitbuilder.model.HabitLog;
-import com.habitbuilder.habitbuilder.dto.HabitDto;
+import com.habitbuilder.NutritionTracker.modules.habits.repository.HabitLogRepository;
+import com.habitbuilder.NutritionTracker.modules.habits.repository.HabitRepository;
+import com.habitbuilder.NutritionTracker.modules.habits.entity.Habit;
+import com.habitbuilder.NutritionTracker.modules.habits.entity.HabitLog;
+import com.habitbuilder.NutritionTracker.modules.habits.dto.HabitDto;
 
 @Service
 public class HabitsService {

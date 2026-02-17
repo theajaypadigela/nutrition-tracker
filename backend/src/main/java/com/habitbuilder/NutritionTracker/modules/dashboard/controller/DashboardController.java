@@ -1,13 +1,13 @@
-package com.habitbuilder.habitbuilder.controller;
+package com.habitbuilder.NutritionTracker.modules.dashboard.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.habitbuilder.habitbuilder.dto.DashboardResponse;
-import com.habitbuilder.habitbuilder.service.DashboardService;
+import com.habitbuilder.NutritionTracker.modules.dashboard.dto.DashboardResponse;
+import com.habitbuilder.NutritionTracker.modules.dashboard.service.DashboardService;
+
 import java.time.LocalDate;
 
 @RestController
@@ -15,7 +15,6 @@ import java.time.LocalDate;
 public class DashboardController {
     private DashboardService dashboardService;
 
-    // @Autowired
     public DashboardController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
     }
