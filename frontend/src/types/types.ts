@@ -1,4 +1,3 @@
-
 // User & Auth
 export interface User {
   id: string;
@@ -14,12 +13,15 @@ export type TabName = 'Home' | 'Habits' | 'Food' | 'Reports' | 'Profile';
 
 // Habits
 
+export type ReminderType = 'notification' | 'call';
+
 export interface Habit {
   id: string;
   name: string;
   completed: boolean;
   time?: string;
   repeatedDays?: string;
+  reminderType?: ReminderType;
 }
 
 // Food Logging
@@ -78,7 +80,12 @@ export interface DailyNutritionGoals {
 
 export type TrackingFrequency = 'daily' | 'weekly' | 'optional';
 
-export type NutrientCategory = 'macro' | 'micro' | 'vitamin' | 'mineral' | 'custom';
+export type NutrientCategory =
+  | 'macro'
+  | 'micro'
+  | 'vitamin'
+  | 'mineral'
+  | 'custom';
 
 export interface NutrientDefinition {
   id: string;
@@ -91,4 +98,3 @@ export interface NutrientDefinition {
   category: NutrientCategory;
   isRequired: boolean;
 }
-

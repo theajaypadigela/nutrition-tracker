@@ -149,7 +149,7 @@ const FoodLogScreen = () => {
   return (
     <View className="flex-1">
       <AppBar title="Food Log" />
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         <VStack className="w-full p-6 mb-10">
           <VStack>
             <Text size="md" className="font-bold text-gray-500">

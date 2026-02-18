@@ -1,7 +1,7 @@
 import React from 'react';
 import { VStack } from '../../components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
-import { View } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { Text } from '../../components/ui/text';
 import { HStack } from '../../components/ui/hstack';
 import { Button, ButtonText } from '../../components/ui/button';
@@ -43,6 +43,7 @@ const ProfileScreen = () => {
   return (
     <View className="flex-1">
       <AppBar title="Profile" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
       <VStack className="gap-6 p-6">
         <VStack className="bg-white rounded-2xl p-10 border border-gray-200 items-center">
           <View className="flex justify-center mb-4">
@@ -179,6 +180,7 @@ const ProfileScreen = () => {
           </Button>
         </View>
       </VStack>
+      </ScrollView>
     </View>
   );
 };
