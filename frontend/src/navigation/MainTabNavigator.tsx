@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import DashBoardScreen from '../screens/main/DashBoardScreen';
 import HabitScreen from '../screens/main/HabitScreen';
+import HabitCreationScreen from '../screens/main/HabitCreationScreen';
 import FoodLogScreen from '../screens/main/FoodLogScreen';
 import NutritionReportScreen from '../screens/main/NutritionReportScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
@@ -10,6 +11,7 @@ import BottomNavigation from '../components/BottomNavigation';
 export type MainTabParamList = {
   Home: undefined;
   Habits: undefined;
+  HabitCreation: undefined;
   Food: undefined;
   Reports: undefined;
   Profile: undefined;
@@ -18,9 +20,15 @@ export type MainTabParamList = {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const CustomTabBar = (props: any) => {
+  const currentRouteName = props.state.routeNames[props.state.index];
+
+  if (currentRouteName === 'HabitCreation') {
+    return null;
+  }
+
   return (
     <BottomNavigation
-      activeTab={props.state.routeNames[props.state.index]}
+      activeTab={currentRouteName}
       onTabChange={tab => {
         props.navigation.navigate(tab);
       }}
@@ -51,6 +59,11 @@ export const MainTabNavigator = () => {
         name="Habits"
         component={HabitScreen}
         options={{ title: 'Habits' }}
+      />
+      <Tab.Screen
+        name="HabitCreation"
+        component={HabitCreationScreen}
+        options={{ title: 'Create Habit' }}
       />
       <Tab.Screen
         name="Food"

@@ -3,12 +3,17 @@ import { VStack } from '../../components/ui/vstack';
 import { Text } from '../../components/ui/text';
 import { HStack } from '../../components/ui/hstack';
 import { Habit } from '../../types/types';
-import { View } from 'react-native';
-import { Trash2, CheckCircle, Circle } from 'lucide-react-native';
+import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { Trash2, CheckCircle, Circle, Plus } from 'lucide-react-native';
 import { Button } from '../../components/ui/button';
 import AppBar from '../../components/AppBar';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '../../navigation/MainTabNavigator';
 
 const HabitScreen = () => {
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+
   const initialHabits: Habit[] = [
     {
       id: '1',
@@ -54,56 +59,73 @@ const HabitScreen = () => {
   return (
     <View className="flex-1">
       <AppBar title="Habits" />
-      <VStack className="p-6 gap-4">
-        <VStack className="gap-4 bg-white p-6 rounded-lg border-2 border-gray-200 mb-4">
-          <Text size="xl" className="font-bold text-gray-700 mb-2">
-            Today's Progress
-          </Text>
-          <HStack className="flex-row justify-between items-center">
-            <Text size="5xl" className="font-bold text-gray-900">
-              {completedHabits} / {habits.length}
+      <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
+        <VStack className="p-6 gap-4">
+          <VStack className="gap-4 bg-white p-6 rounded-lg border-2 border-gray-200 mb-4">
+            <Text size="xl" className="font-bold text-gray-700 mb-2">
+              Today's Progress
             </Text>
-            <Text>Completed Today</Text>
-          </HStack>
-          <View className="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
-            <View
-              className="h-full bg-emerald-500 rounded-full"
-              style={{ width: `${(completedHabits / habits.length) * 100}%` }}
-            />
-          </View>
-        </VStack>
+            <HStack className="flex-row justify-between items-center">
+              <Text size="5xl" className="font-bold text-gray-900">
+                {completedHabits} / {habits.length}
+              </Text>
+              <Text>Completed Today</Text>
+            </HStack>
+            <View className="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
+              <View
+                className="h-full bg-emerald-500 rounded-full"
+                style={{ width: `${(completedHabits / habits.length) * 100}%` }}
+              />
+            </View>
+          </VStack>
 
-        {habits.map(habit => (
-          <HStack
-            key={habit.id}
-            className="rounded-xl p-4 border-2 border-gray-200 flex items-center gap-4 bg-white"
-          >
-            <Button variant="link" onPress={() => toggleHabit(habit.id)}>
-              {habit.completed ? (
-                <CheckCircle size={24} color="#059669" />
-              ) : (
-                <Circle size={24} color="#9CA3AF" />
-              )}
-            </Button>
-            <VStack>
-              <Text
-                className={`font-medium mb-0.5 ${habit.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}
-              >
-                {habit.name}
-              </Text>
-              <Text size="xs" className="text-gray-500">
-                {habit.time} | {habit.repeatedDays}
-              </Text>
-            </VStack>
-            <Button
-              onPress={() => deleteHabit(habit.id)}
-              className="w-8 h-8 flex items-center justify-center rounded-full ml-auto bg-red-50"
+          {habits.map(habit => (
+            <HStack
+              key={habit.id}
+              className="rounded-xl p-4 border-2 border-gray-200 flex items-center gap-4 bg-white"
             >
-              <Trash2 size={16} color="#EF4444" />
-            </Button>
-          </HStack>
-        ))}
-      </VStack>
+              <Button variant="link" onPress={() => toggleHabit(habit.id)}>
+                {habit.completed ? (
+                  <CheckCircle size={24} color="#059669" />
+                ) : (
+                  <Circle size={24} color="#9CA3AF" />
+                )}
+              </Button>
+              <VStack>
+                <Text
+                  className={`font-medium mb-0.5 ${habit.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}
+                >
+                  {habit.name}
+                </Text>
+                <Text size="xs" className="text-gray-500">
+                  {habit.time} | {habit.repeatedDays}
+                </Text>
+              </VStack>
+              <Button
+                onPress={() => deleteHabit(habit.id)}
+                className="w-8 h-8 flex items-center justify-center rounded-full ml-auto bg-red-50"
+              >
+                <Trash2 size={16} color="#EF4444" />
+              </Button>
+            </HStack>
+          ))}
+        </VStack>
+      </ScrollView>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('HabitCreation')}
+        className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-emerald-500 items-center justify-center"
+        style={{
+          shadowColor: '#059669',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />
+      </TouchableOpacity>
     </View>
   );
 };

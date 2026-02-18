@@ -1,7 +1,8 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import { Activity, Apple, CheckCircle2, XCircle } from 'lucide-react-native';
+import { Activity, Apple, CheckCircle2, XCircle, Plus } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import AppBar from '../../components/AppBar';
 
 import { HStack } from '../../components/ui/hstack';
@@ -22,6 +23,7 @@ import {
 import { FoodLog, Habit } from '../../types/types';
 
 const DashBoardScreen = () => {
+  const navigation = useNavigation<any>();
   const [showDrawer, setShowDrawer] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
@@ -126,19 +128,28 @@ const DashBoardScreen = () => {
   return (
     <View className="flex-1">
       <AppBar title="Dashboard" />
-      <VStack className="flex-1 gap-6 items-center p-4">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <VStack className="gap-6 items-center p-4">
         <View className="w-full rounded-xl border border-gray-200 overflow-hidden">
           <Calendar hideExtraDays={true} onDayPress={handleDayPress} />
         </View>
 
         <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
-          <HStack className="flex items-center gap-2">
-            <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Activity size={18} stroke="#059669" strokeWidth={2.5} />
-            </View>
-            <Text size="xl" className="font-semibold text-gray-900">
-              Habits Today
-            </Text>
+          <HStack className="flex items-center justify-between">
+            <HStack className="items-center gap-2">
+              <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                <Activity size={18} stroke="#059669" strokeWidth={2.5} />
+              </View>
+              <Text size="xl" className="font-semibold text-gray-900">
+                Habits Today
+              </Text>
+            </HStack>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('HabitCreation' as any)}
+              className="w-8 h-8 rounded-full bg-emerald-500 items-center justify-center"
+            >
+              <Plus size={16} color="#FFFFFF" strokeWidth={2.5} />
+            </TouchableOpacity>
           </HStack>
 
           <HStack className="justify-between items-center">
@@ -195,6 +206,7 @@ const DashBoardScreen = () => {
           </HStack>
         </VStack>
       </VStack>
+      </ScrollView>
 
       <Drawer
         isOpen={showDrawer}
