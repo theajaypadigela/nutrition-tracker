@@ -17,6 +17,7 @@
     "@gluestack-ui/themed": "^1.1.73",
     "@gluestack-ui/utils": "^3.0.15",
     "@legendapp/motion": "^2.5.3",
+    "@react-native-community/datetimepicker": "^8.6.0",
     "@react-native/new-app-screen": "0.83.1",
     "@react-navigation/bottom-tabs": "^7.13.0",
     "@react-navigation/native": "^7.1.28",
