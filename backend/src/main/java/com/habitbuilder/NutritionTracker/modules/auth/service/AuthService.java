@@ -13,7 +13,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider jwtService;
 
     public AuthService(UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -22,7 +21,6 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
-        this.jwtService = jwtService;
     }
 
     public void register(String email, String password, String name, String age, String gender) {
