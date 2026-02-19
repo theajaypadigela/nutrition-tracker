@@ -1,10 +1,19 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  ReactNode,
+  useEffect,
+} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/types';
 import apiClient from '../api/client';
+import { setLogoutHandler } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -14,7 +23,7 @@ interface AuthContextType {
     age: string,
     gender: string,
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,9 +33,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  const logout = async () => {
+    await AsyncStorage.removeItem('token');
+    setUser(null);
+  };
+
+  // Set the logout handler for the API client
+  useEffect(() => {
+    setLogoutHandler(logout);
+  }, []);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+
+        if (!token) return;
+
+        const response = await apiClient.get('/auth/me');
+        setUser(response.data);
+      } catch (error) {
+        console.error(error);
+        await AsyncStorage.removeItem('token');
+        setUser(null);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+
     try {
       const response = await apiClient({
         method: 'POST',
@@ -36,7 +78,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       const data = response.data;
 
-      // Set user data from response
+      if (data.token) {
+        await AsyncStorage.setItem('token', data.token);
+      } else {
+        throw new Error('No access token received from server');
+      }
+
       setUser({
         id: data.id,
         name: data.name,
@@ -44,16 +91,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         age: data.age,
         gender: data.gender,
       });
-    } catch (error: any) {
-      console.error('Login error details:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        code: error.code,
-      });
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Login failed';
-      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -74,34 +111,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         data: { name, email, password, age, gender },
       });
 
-      // Auto-login after registration
-      const loginResponse = await apiClient({
-        method: 'POST',
-        url: '/auth/login',
-        data: { email, password },
-      });
-
-      const data = loginResponse.data;
-
-      setUser({
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        age: data.age,
-        gender: data.gender,
-      });
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'Registration failed';
-      throw new Error(errorMessage);
+      await login(email, password);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
   };
 
   return (
@@ -109,6 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       value={{
         user,
         isAuthenticated: !!user,
+        isInitializing,
         isLoading,
         login,
         register,

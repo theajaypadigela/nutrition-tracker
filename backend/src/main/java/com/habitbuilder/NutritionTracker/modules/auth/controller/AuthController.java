@@ -5,6 +5,8 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.habitbuilder.NutritionTracker.modules.auth.service.AuthService;
@@ -12,6 +14,9 @@ import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.dto.AuthRequest;
 import com.habitbuilder.NutritionTracker.modules.auth.dto.LoginResponse;
 import com.habitbuilder.NutritionTracker.security.jwt.JwtTokenProvider;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 
 @RestController
 @RequestMapping("/auth")
@@ -52,4 +57,27 @@ public class AuthController {
                     .body(Map.of("message", e.getMessage()));
         }
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> validateToken() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
+                User user = (User) authentication.getPrincipal();
+                return ResponseEntity.ok(Map.of(
+                    "id", user.getId(),
+                    "name", user.getName(),
+                    "email", user.getEmail(),
+                    "age", user.getAge(),
+                    "gender", user.getGender()
+                ));
+            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("valid", false));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("valid", false));
+        }
+    }
+    
 }
