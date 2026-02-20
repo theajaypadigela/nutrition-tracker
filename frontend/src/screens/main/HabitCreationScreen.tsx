@@ -21,6 +21,7 @@ import { HStack } from '../../components/ui/hstack';
 import { Text } from '../../components/ui/text';
 import { Divider } from '../../components/ui/divider';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import useApi from '../../hooks/useApi';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 type ReminderType = 'notification' | 'call' | 'none';
@@ -37,6 +38,7 @@ const DAYS: { key: DayKey; label: string }[] = [
 
 const HabitCreationScreen = () => {
   const navigation = useNavigation();
+  const { loading, error, request } = useApi();
 
   const [habitName, setHabitName] = useState('');
   const [selectedDays, setSelectedDays] = useState<DayKey[]>([]);
@@ -60,9 +62,12 @@ const HabitCreationScreen = () => {
   };
 
   const selectWeekdays = () => {
-
-    if(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].every(d => selectedDays.includes(d as DayKey)) &&
-    !['Sat', 'Sun'].some(d => selectedDays.includes(d as DayKey))) {
+    if (
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].every(d =>
+        selectedDays.includes(d as DayKey),
+      ) &&
+      !['Sat', 'Sun'].some(d => selectedDays.includes(d as DayKey))
+    ) {
       setSelectedDays([]);
       return;
     }
@@ -78,10 +83,10 @@ const HabitCreationScreen = () => {
       )
     ) {
       setSelectedDays([]);
-        return;
-    } 
-      const weekends: DayKey[] = ['Sat', 'Sun'];
-      setSelectedDays(weekends);
+      return;
+    }
+    const weekends: DayKey[] = ['Sat', 'Sun'];
+    setSelectedDays(weekends);
   };
 
   const formatTime = (date: Date) => {
@@ -115,24 +120,44 @@ const HabitCreationScreen = () => {
     return selectedDays.join(', ');
   };
 
-  const handleSave = () => {
-    if (!habitName.trim()) return;
+  const isFormValid =
+    habitName.trim().length > 0 &&
+    selectedDays.length > 0 &&
+    reminderType.length > 0 &&
+    reminderTime instanceof Date;
 
-    // In a real app, this would save to backend/state
+  const formatTimeToHHMM = date => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    const hours12 = hours % 12 || 12;
+    return `${hours12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+  };
+
+  const handleSave = async () => {
+    if (!isFormValid) return;
+
     const newHabit = {
-      id: Date.now().toString(),
       name: habitName.trim(),
-      completed: false,
-      time: formatTime(reminderTime),
-      repeatedDays: getRepeatSummary(),
+      repeatDays: selectedDays,
+      reminderTime: formatTimeToHHMM(reminderTime),
       reminderType,
     };
 
-    console.log('New habit:', newHabit);
-    navigation.goBack();
-  };
+    try {
+      await request({
+        url: '/habit',
+        method: 'POST',
+        data: newHabit,
+      });
 
-  const isFormValid = habitName.trim().length > 0 && selectedDays.length > 0;
+      console.log('Habit created successfully');
+      navigation.goBack();
+    } catch (err) {
+      console.error('Failed to create habit:', err);
+      // Error is already set in the useApi hook
+    }
+  };
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -496,26 +521,33 @@ const HabitCreationScreen = () => {
               </HStack>
             </VStack>
           )}
-          <VStack className='h-20'></VStack>
+          <VStack className="h-20" />
         </VStack>
       </ScrollView>
 
       {/* Save Button - Fixed at Bottom */}
       <View className="absolute bottom-0 left-0 right-0 px-6 pt-4 pb-8 bg-white border-t border-gray-200">
+        {error && (
+          <View className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <Text size="sm" className="text-red-700">
+              {error}
+            </Text>
+          </View>
+        )}
         <TouchableOpacity
           onPress={handleSave}
-          disabled={!isFormValid}
+          disabled={!isFormValid || loading}
           className={`py-4 rounded-xl items-center ${
-            isFormValid ? 'bg-emerald-500' : 'bg-gray-300'
+            isFormValid && !loading ? 'bg-emerald-500' : 'bg-gray-300'
           }`}
         >
           <Text
             size="lg"
             className={`font-bold ${
-              isFormValid ? 'text-white' : 'text-gray-500'
+              isFormValid && !loading ? 'text-white' : 'text-gray-500'
             }`}
           >
-            Create Habit
+            {loading ? 'Creating...' : 'Create Habit'}
           </Text>
         </TouchableOpacity>
       </View>

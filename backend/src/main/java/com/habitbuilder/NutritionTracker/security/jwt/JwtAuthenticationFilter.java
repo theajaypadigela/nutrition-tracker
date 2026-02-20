@@ -66,7 +66,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // Invalid token — skip authentication, let Spring Security handle access
+            System.err.println("JWT Authentication failed: " + e.getMessage());
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);

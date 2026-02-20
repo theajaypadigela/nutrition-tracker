@@ -1,11 +1,15 @@
 package com.habitbuilder.NutritionTracker.modules.auth.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import com.habitbuilder.NutritionTracker.modules.habit.Habit;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -59,5 +63,9 @@ public class User implements UserDetails {
     public String getPassword() {
         return password;
     }
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Habit> habits;
 
 }
