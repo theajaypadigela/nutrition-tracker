@@ -3,10 +3,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import DashBoardScreen from '../screens/main/DashBoardScreen';
 import HabitScreen from '../screens/main/HabitScreen';
 import HabitCreationScreen from '../screens/main/HabitCreationScreen';
-import FoodLogScreen from '../screens/main/FoodLogScreen';
 import NutritionReportScreen from '../screens/main/NutritionReportScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import BottomNavigation from '../components/BottomNavigation';
+import { FoodStackNavigator } from './FoodStackNavigator';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -67,7 +67,7 @@ export const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Food"
-        component={FoodLogScreen}
+        component={FoodStackNavigator}
         options={{ title: 'Food Log' }}
       />
       <Tab.Screen

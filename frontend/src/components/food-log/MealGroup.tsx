@@ -25,20 +25,26 @@ export const MealGroup: React.FC<MealGroupProps> = ({
 }) => {
   if (items.length === 0) return null;
 
-  const mealCalories = items.reduce((sum, item) => sum + item.calories, 0);
+  const mealCalories = items.reduce((sum, item) => sum + (item.calories || 0), 0);
 
   const getMealIcon = (type: string) => {
-    switch (type) {
-      case 'Breakfast':
+    const lowerType = type.toLowerCase();
+    switch (lowerType) {
+      case 'breakfast':
         return '🌅';
-      case 'Lunch':
+      case 'lunch':
         return '☀️';
-      case 'Snacks':
+      case 'snack':
+      case 'snacks':
         return '🍎';
+      case 'dinner':
       default:
         return '🌙';
     }
   };
+
+  // Capitalize first letter for display
+  const displayMealType = mealType.charAt(0).toUpperCase() + mealType.slice(1);
 
   return (
     <View className="w-full rounded-2xl border border-gray-200 flex justify-between mb-4 bg-white">
@@ -80,15 +86,15 @@ export const MealGroup: React.FC<MealGroupProps> = ({
                 ellipsizeMode="tail"
                 style={{ fontWeight: '600', color: '#111827' }}
               >
-                {mealType}
+                {displayMealType}
               </Text>
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
                 style={{ fontSize: 12, color: '#9CA3AF' }}
               >
-                {items.length} {items.length === 1 ? 'item' : 'items'} •{' '}
-                {mealCalories} cal
+                {items.length} {items.length === 1 ? 'item' : 'items'}
+                {mealCalories > 0 && ` • ${mealCalories} cal`}
               </Text>
             </VStack>
           </HStack>
@@ -178,13 +184,20 @@ export const MealGroup: React.FC<MealGroupProps> = ({
                     marginBottom: 4,
                   }}
                 >
-                  {item.quantity} {item.servingSize} • {item.calories} cal
+                  {item.quantity} {item.servingSize}
+                  {item.calories && ` • ${item.calories} cal`}
                 </Text>
 
-                {/* Macros */}
-                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-                  P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
-                </Text>
+                {/* Macros - only show if available */}
+                {(item.protein || item.carbs || item.fat) && (
+                  <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                    {item.protein !== undefined && `P: ${item.protein}g`}
+                    {item.protein !== undefined && item.carbs !== undefined && ' • '}
+                    {item.carbs !== undefined && `C: ${item.carbs}g`}
+                    {item.carbs !== undefined && item.fat !== undefined && ' • '}
+                    {item.fat !== undefined && `F: ${item.fat}g`}
+                  </Text>
+                )}
               </View>
 
               {/* Action buttons */}

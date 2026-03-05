@@ -1,156 +1,169 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Text } from '../../components/ui/text';
 import { VStack } from '../../components/ui/vstack';
 import { MealGroup } from '../../components/food-log/MealGroup';
 import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
-import { FoodItem, Meals } from '../../components/food-log/types';
-import NutritionDisplay from '../../components/food-log/NutritionDisplay';
-import { ScrollView, View } from 'react-native';
+import {
+  FoodItem,
+  Meals,
+  MealsResponse,
+  NutritionTotals,
+} from '../../types/types';
+import {
+  ScrollView,
+  View,
+  TouchableOpacity,
+  Platform,
+  StyleSheet,
+  RefreshControl,
+} from 'react-native';
 import AppBar from '../../components/AppBar';
+import useApi from '../../hooks/useApi';
+import NutritionDisplay from '../../components/food-log/NutritionDisplay';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Plus } from 'lucide-react-native';
+
+// Use a local type to avoid a circular import with FoodStackNavigator
+type FoodLogNavigationProp = StackNavigationProp<
+  { FoodLog: undefined; ManualFoodLog: undefined },
+  'FoodLog'
+>;
 
 const FoodLogScreen = () => {
-  const [expandedMeal, setExpandedMeal] = useState<string | null>('Breakfast');
+  const navigation = useNavigation<FoodLogNavigationProp>();
+  const [expandedMeal, setExpandedMeal] = useState<string | null>('breakfast');
   const [showDrawer, setShowDrawer] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
 
+  const { data, request } = useApi<MealsResponse>();
+
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
+  const [selectedDate] = useState(getTodayDate());
+  const [refreshing, setRefreshing] = useState(false);
+
   const [meals, setMeals] = useState<Meals>({
-    Breakfast: [
-      {
-        id: '1',
-        name: 'Oatmeal with Berries',
-        quantity: '1',
-        servingSize: 'bowl',
-        calories: 320,
-        protein: 12,
-        carbs: 54,
-        fat: 8,
-      },
-      {
-        id: '2',
-        name: 'Greek Yogurt',
-        quantity: '1',
-        servingSize: 'cup',
-        calories: 150,
-        protein: 20,
-        carbs: 8,
-        fat: 4,
-      },
-    ],
-    Lunch: [
-      {
-        id: '3',
-        name: 'Grilled Chicken Salad',
-        quantity: '1',
-        servingSize: 'plate',
-        calories: 450,
-        protein: 38,
-        carbs: 22,
-        fat: 18,
-      },
-      {
-        id: '4',
-        name: 'Apple',
-        quantity: '1',
-        servingSize: 'medium',
-        calories: 95,
-        protein: 0,
-        carbs: 25,
-        fat: 0,
-      },
-    ],
-    Snacks: [
-      {
-        id: '5',
-        name: 'Mixed Nuts',
-        quantity: '1',
-        servingSize: 'handful',
-        calories: 180,
-        protein: 6,
-        carbs: 8,
-        fat: 15,
-      },
-      {
-        id: '6',
-        name: 'Protein Bar',
-        quantity: '1',
-        servingSize: 'bar',
-        calories: 200,
-        protein: 20,
-        carbs: 24,
-        fat: 7,
-      },
-    ],
-    Dinner: [
-      {
-        id: '7',
-        name: 'Salmon with Vegetables',
-        quantity: '1',
-        servingSize: 'serving',
-        calories: 520,
-        protein: 42,
-        carbs: 18,
-        fat: 28,
-      },
-      {
-        id: '8',
-        name: 'Quinoa',
-        quantity: '1',
-        servingSize: 'cup',
-        calories: 220,
-        protein: 8,
-        carbs: 40,
-        fat: 4,
-      },
-    ],
+    breakfast: [],
+    lunch: [],
+    snack: [],
+    dinner: [],
   });
 
-  const handleEditFood = (item: FoodItem) => {
+  const [nutritionTotals, setNutritionTotals] = useState<NutritionTotals>({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    sugar: 0,
+    sodium: 0,
+  });
+
+  const loadFoodLog = useCallback(async () => {
+    try {
+      await request({
+        url: `/food/${selectedDate}`,
+        method: 'GET',
+      });
+    } catch (error) {
+      console.error('Failed to load food log:', error);
+    }
+  }, [selectedDate, request]);
+
+  useEffect(() => {
+    loadFoodLog();
+  }, [loadFoodLog]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadFoodLog();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    if (data?.meals) {
+      setMeals(data.meals);
+      console.log('Fetched meals:', data.meals, 'for date:', selectedDate);
+    }
+    if (data?.totals) {
+      setNutritionTotals(data.totals);
+      console.log('Nutrition totals:', data.totals);
+    }
+  }, [data, selectedDate]);
+
+  const handleEditFood = async (item: FoodItem) => {
     setSelectedFood(item);
     setShowDrawer(true);
   };
 
-  const handleSaveFood = (
+  const handleSaveFood = async (
     name: string,
     quantity: string,
     servingSize: string,
   ) => {
     if (!selectedFood) return;
 
-    // Find which meal the food belongs to and update it
-    const newMeals = { ...meals };
+    try {
+      const response = await request({
+        url: `/food/${selectedDate}/meals/entries/${selectedFood.id}`,
+        method: 'PUT',
+        data: {
+          name,
+          quantity: parseFloat(quantity),
+          unit: servingSize,
+        },
+      });
 
-    for (const [mealType, items] of Object.entries(newMeals)) {
-      const itemIndex = items.findIndex(
-        (item: FoodItem) => item.id === selectedFood.id,
-      );
-      if (itemIndex !== -1) {
-        newMeals[mealType] = [
-          ...items.slice(0, itemIndex),
-          { ...items[itemIndex], name, quantity, servingSize },
-          ...items.slice(itemIndex + 1),
-        ];
-        break;
+      // Refresh data from backend response
+      if (response?.meals) {
+        setMeals(response.meals);
       }
-    }
+      if (response?.totals) {
+        setNutritionTotals(response.totals);
+      }
 
-    setMeals(newMeals);
-    setShowDrawer(false);
-    setSelectedFood(null);
+      setShowDrawer(false);
+      setSelectedFood(null);
+    } catch (err) {
+      console.error('Error saving food:', err);
+    }
   };
 
-  const handleDeleteFood = (mealType: string, itemId: string) => {
-    const newMeals = { ...meals };
-    newMeals[mealType] = newMeals[mealType].filter(
-      (item: FoodItem) => item.id !== itemId,
-    );
-    setMeals(newMeals);
+  const handleDeleteFood = async (mealType: string, itemId: string) => {
+    try {
+      const response = await request({
+        url: `/food/${selectedDate}/meals/entries/${itemId}`,
+        method: 'DELETE',
+      });
+
+      // Refresh data from backend response
+      if (response?.meals) {
+        setMeals(response.meals);
+      }
+      if (response?.totals) {
+        setNutritionTotals(response.totals);
+      }
+    } catch (err) {
+      console.error('Error deleting food:', err);
+    }
   };
 
   return (
     <View className="flex-1">
       <AppBar title="Food Log" />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <VStack className="w-full p-6 mb-10">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        <VStack className="w-full p-6">
           <VStack>
             <Text size="md" className="font-bold text-gray-500">
               MEAL BREAKDOWN
@@ -170,21 +183,13 @@ const FoodLogScreen = () => {
             ))}
           </VStack>
           <NutritionDisplay
-            calories={Object.values(meals)
-              .flat()
-              .reduce((acc, item) => acc + item.calories, 0)}
+            calories={nutritionTotals.calories}
             targetCalories={2500}
             totals={{
-              protein: Object.values(meals)
-                .flat()
-                .reduce((acc, item) => acc + item.protein, 0),
-              carbs: Object.values(meals)
-                .flat()
-                .reduce((acc, item) => acc + item.carbs, 0),
-              fat: Object.values(meals)
-                .flat()
-                .reduce((acc, item) => acc + item.fat, 0),
-              sugar: 40,
+              protein: nutritionTotals.protein,
+              carbs: nutritionTotals.carbs,
+              fat: nutritionTotals.fat,
+              sugar: nutritionTotals.sugar,
             }}
             dailyGoals={{
               protein: 180,
@@ -204,8 +209,36 @@ const FoodLogScreen = () => {
           initialData={selectedFood}
         />
       </ScrollView>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ManualFoodLog')}
+        style={styles.fab}
+        activeOpacity={0.8}
+      >
+        <Plus size={28} stroke="white" strokeWidth={2.5} />
+      </TouchableOpacity>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: Platform.OS === 'ios' ? 110 : 100,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+});
 
 export default FoodLogScreen;
