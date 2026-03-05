@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { VStack } from '../../components/ui/vstack';
 import { Text } from '../../components/ui/text';
 import { HStack } from '../../components/ui/hstack';
 import { Habit } from '../../types/types';
-import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  RefreshControl,
+} from 'react-native';
 import { Trash2, CheckCircle, Circle, Plus } from 'lucide-react-native';
 import { Button } from '../../components/ui/button';
 import AppBar from '../../components/AppBar';
@@ -19,20 +25,28 @@ const HabitScreen = () => {
 
   const [habits, setHabits] = useState<Habit[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchHabits = useCallback(async () => {
+    try {
+      const fetchedHabits = await request({ url: '/habit/today' });
+      setHabits(fetchedHabits || []);
+    } catch (err) {
+      console.error('Error fetching habits:', err);
+    } finally {
+      setIsInitialLoad(false);
+    }
+  }, [request]);
 
   useEffect(() => {
-    const fetchHabits = async () => {
-      try {
-        const fetchedHabits = await request({ url: '/habit/today' });
-        setHabits(fetchedHabits || []);
-      } catch (err) {
-        console.error('Error fetching habits:', err);
-      } finally {
-        setIsInitialLoad(false);
-      }
-    };
     fetchHabits();
-  }, [request]);
+  }, [fetchHabits]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchHabits();
+    setRefreshing(false);
+  };
   const [completedHabits, setCompletedHabits] = useState(0);
 
   const toggleHabit = async (id: string) => {
@@ -46,9 +60,8 @@ const HabitScreen = () => {
       await request({
         url: `/habit/${id}/toggle`,
         method: 'POST',
-        data: { habit: habits.find(habit => habit.id === id)},
-      })
-
+        data: { habit: habits.find(habit => habit.id === id) },
+      });
     } catch (err) {
       console.error('Error toggling habit:', err);
     }
@@ -64,17 +77,23 @@ const HabitScreen = () => {
       await request({
         url: `/habit/${id}`,
         method: 'DELETE',
-      })
-    } catch(err) {
+      });
+    } catch (err) {
       console.error('Error deleting habit:', err);
     }
-
   }
 
   return (
     <View className="flex-1">
       <AppBar title="Habits" />
-      <ScrollView className="flex-1 pb-24" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         {isInitialLoad && loading ? (
           <VStack className="p-6 items-center justify-center">
             <Text>Loading habits...</Text>
@@ -138,7 +157,7 @@ const HabitScreen = () => {
       {/* Floating Action Button */}
       <TouchableOpacity
         onPress={() => navigation.navigate('HabitCreation')}
-        className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-emerald-500 items-center justify-center"
+        className="absolute bottom-36 right-6 w-14 h-14 rounded-full bg-emerald-500 items-center justify-center"
         style={styles.floatingButton}
       >
         <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />

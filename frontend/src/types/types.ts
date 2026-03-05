@@ -37,22 +37,77 @@ export interface FoodLog {
   fat: number;
 }
 
+// Backend FoodEntry structure (matches API response)
+export interface FoodEntry {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  mealType: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+// Meal group from backend
+export interface MealGroup {
+  mealType: string;
+  entries: FoodEntry[];
+}
+
+// Complete food log response from backend
+export interface FoodLogResponse {
+  foodLogId: string;
+  date: string;
+  meals: MealGroup[];
+}
+
+// Legacy FoodItem (for UI components)
 export interface FoodItem {
   id: string;
   name: string;
   quantity: string;
   servingSize: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+}
+
+export interface NutritionTotals {
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
 }
 
 export interface Meals {
   [key: string]: FoodItem[];
 }
 
-export type MealType = 'Breakfast' | 'Lunch' | 'Snacks' | 'Dinner';
+export interface MealsResponse {
+  meals: Meals;
+  totals: NutritionTotals;
+}
+
+export interface DailyNutritionSummary {
+  date: string;
+  totals: NutritionTotals;
+}
+
+export interface WeeklyNutritionReport {
+  avgDailyCalories: number;
+  weeklyTotals: NutritionTotals;
+  weeklyAverage: NutritionTotals;
+  dailySummaries: DailyNutritionSummary[];
+}
+
+export type MealType = 'breakfast' | 'lunch' | 'snack' | 'dinner';
 
 export interface FoodErrors {
   foodName: string;
@@ -97,4 +152,11 @@ export interface NutrientDefinition {
   trackingFrequency: TrackingFrequency;
   category: NutrientCategory;
   isRequired: boolean;
+}
+
+// Dashboard
+export interface DashboardResponse {
+  date: string;
+  foodSummary: MealsResponse;
+  habits: Habit[];
 }

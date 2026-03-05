@@ -7,7 +7,7 @@ import {
   InputIcon,
 } from '../../components/ui/input';
 import { VStack } from '../../components/ui/vstack';
-import { ScrollView } from 'react-native';
+import { ScrollView, RefreshControl } from 'react-native';
 import {
   Select,
   SelectBackdrop,
@@ -41,6 +41,7 @@ const RegisterScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerError, setRegisterError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const { register, isLoading } = useAuth();
 
@@ -186,8 +187,31 @@ const RegisterScreen = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setSelectedGender('');
+    setAge('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setFullName('');
+    setPasswordError('');
+    setConfirmPasswordError('');
+    setEmailError('');
+    setFullNameError('');
+    setAgeError('');
+    setGenderError('');
+    setRegisterError('');
+    setRefreshing(false);
+  };
+
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+    <ScrollView
+      contentContainerStyle={{ flexGrow: 1 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
+    >
       <VStack className="flex-1 gap-6 items-center justify-center p-6">
         <VStack className="items-center gap-6 space-y-4">
           <VStack className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center">

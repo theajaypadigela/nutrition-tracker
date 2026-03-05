@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   TextInput,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -46,6 +47,7 @@ const HabitCreationScreen = () => {
     useState<ReminderType>('notification');
   const [reminderTime, setReminderTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const toggleDay = (day: DayKey) => {
     setSelectedDays(prev =>
@@ -159,6 +161,16 @@ const HabitCreationScreen = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setHabitName('');
+    setSelectedDays([]);
+    setReminderType('notification');
+    setReminderTime(new Date());
+    setShowTimePicker(false);
+    setRefreshing(false);
+  };
+
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
@@ -180,7 +192,14 @@ const HabitCreationScreen = () => {
       </HStack>
       <Divider className="h-[2px] bg-gray-200" />
 
-      <ScrollView className="flex-1 pb-30" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <VStack className="p-6 gap-5">
           {/* Habit Name */}
           <VStack className="bg-white rounded-2xl p-5 border border-gray-200 gap-3">

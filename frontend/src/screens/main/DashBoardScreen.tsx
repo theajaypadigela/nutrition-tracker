@@ -1,7 +1,18 @@
-import React from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback } from 'react';
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import { Activity, Apple, CheckCircle2, XCircle, Plus } from 'lucide-react-native';
+import {
+  Activity,
+  Apple,
+  CheckCircle2,
+  XCircle,
+  Plus,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppBar from '../../components/AppBar';
 
@@ -20,81 +31,58 @@ import {
   DrawerHeader,
 } from '../../components/ui/drawer';
 
-import { FoodLog, Habit } from '../../types/types';
+import { DashboardResponse, FoodItem, Habit } from '../../types/types';
+import apiClient from '../../api/client';
 
 const DashBoardScreen = () => {
   const navigation = useNavigation<any>();
   const [showDrawer, setShowDrawer] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<string>('');
+  const [selectedDate, setSelectedDate] = React.useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [dashboardData, setDashboardData] =
+    React.useState<DashboardResponse | null>(null);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  const foodLogs: FoodLog[] = [
-    {
-      id: '1',
-      name: 'Apple',
-      calories: 95,
-      protein: 0.5,
-      carbs: 25,
-      fat: 0.3,
-      quantity: 1,
-      unit: 'piece',
-    },
-    {
-      id: '2',
-      name: 'Chicken Breast',
-      calories: 165,
-      protein: 31,
-      carbs: 0,
-      fat: 3.6,
-      quantity: 111,
-      unit: 'g',
-    },
-    {
-      id: '3',
-      name: 'Brown Rice',
-      calories: 216,
-      protein: 5,
-      carbs: 44,
-      fat: 1.8,
-      quantity: 111,
-      unit: 'g',
-    },
-    {
-      id: '4',
-      name: 'Banana',
-      calories: 105,
-      protein: 1.3,
-      carbs: 27,
-      fat: 0.4,
-      quantity: 111,
-      unit: 'g',
-    },
-  ];
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const response = await apiClient.get<DashboardResponse>(
+        `/dashboard/${selectedDate}`,
+      );
+      setDashboardData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data', error);
+    }
+  }, [selectedDate]);
 
-  const habits: Habit[] = [
-    { id: '1', name: 'Drink Water', completed: true },
-    { id: '2', name: 'Exercise', completed: false },
-    { id: '3', name: 'Read a Book', completed: true },
-    { id: '4', name: 'Read a Book', completed: true },
-    { id: '5', name: 'Read a Book', completed: false },
-    { id: '6', name: 'Read a Book', completed: true },
-    { id: '7', name: 'Read a Book', completed: false },
-    { id: '8', name: 'Read a Book', completed: true },
-    { id: '9', name: 'Read a Book', completed: false },
-    { id: '10', name: 'Read a Book', completed: true },
-    { id: '11', name: 'Read a Book', completed: true },
-    { id: '12', name: 'Read a Book', completed: false },
-    { id: '13', name: 'Read a Book', completed: true },
-    { id: '14', name: 'Read a Book', completed: false },
-    { id: '15', name: 'Read a Book', completed: true },
-    { id: '16', name: 'Read a Book', completed: true },
-    { id: '17', name: 'Read a Book', completed: true },
-    { id: '18', name: 'Read a Book', completed: true },
-    { id: '19', name: 'Read a Book', completed: true },
-    { id: '20', name: 'Read a Book', completed: true },
-    { id: '21', name: 'Read a Book', completed: true },
-    { id: '22', name: 'Read a Book', completed: true },
-    { id: '23', name: 'Read a Book', completed: true },
-  ];
+  React.useEffect(() => {
+    if (selectedDate) fetchDashboard();
+  }, [selectedDate, fetchDashboard]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboard();
+    setRefreshing(false);
+  };
+
+  const foodLogs: FoodItem[] = React.useMemo(() => {
+    if (!dashboardData?.foodSummary?.meals) return [];
+    return Object.values(dashboardData.foodSummary.meals).flat();
+  }, [dashboardData]);
+
+  const habits: Habit[] = dashboardData?.habits || [];
+
+  const completedHabits = habits.filter(h => h.completed).length;
+  const totalHabits = habits.length;
+  const habitProgress = totalHabits > 0 ? completedHabits / totalHabits : 0;
+
+  const foodTotals = dashboardData?.foodSummary?.totals || {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  };
 
   const getOrdinal = (n: number) => {
     const s = ['th', 'st', 'nd', 'rd'];
@@ -128,84 +116,96 @@ const DashBoardScreen = () => {
   return (
     <View className="flex-1">
       <AppBar title="Dashboard" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-      <VStack className="gap-6 items-center p-4">
-        <View className="w-full rounded-xl border border-gray-200 overflow-hidden">
-          <Calendar hideExtraDays={true} onDayPress={handleDayPress} />
-        </View>
-
-        <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
-          <HStack className="flex items-center justify-between">
-            <HStack className="items-center gap-2">
-              <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Activity size={18} stroke="#059669" strokeWidth={2.5} />
-              </View>
-              <Text size="xl" className="font-semibold text-gray-900">
-                Habits Today
-              </Text>
-            </HStack>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('HabitCreation' as any)}
-              className="w-8 h-8 rounded-full bg-emerald-500 items-center justify-center"
-            >
-              <Plus size={16} color="#FFFFFF" strokeWidth={2.5} />
-            </TouchableOpacity>
-          </HStack>
-
-          <HStack className="justify-between items-center">
-            <Text size="2xl" className="font-bold text-gray-900">
-              2 / 3
-            </Text>
-            <Text className="text-gray-600">completed</Text>
-          </HStack>
-
-          <View className="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
-            <View
-              className="h-full bg-emerald-500 rounded-full"
-              style={{ width: `${(2 / 3) * 100}%` }}
-            />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        <VStack className="gap-6 items-center p-4">
+          <View className="w-full rounded-xl border border-gray-200 overflow-hidden">
+            <Calendar hideExtraDays={true} onDayPress={handleDayPress} />
           </View>
 
-          <Text>{Math.round((2 / 3) * 100)}% completed</Text>
-        </VStack>
+          <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
+            <HStack className="flex items-center justify-between">
+              <HStack className="items-center gap-2">
+                <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <Activity size={18} stroke="#059669" strokeWidth={2.5} />
+                </View>
+                <Text size="xl" className="font-semibold text-gray-900">
+                  Habits Today
+                </Text>
+              </HStack>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('HabitCreation' as any)}
+                className="w-8 h-8 rounded-full bg-emerald-500 items-center justify-center"
+              >
+                <Plus size={16} color="#FFFFFF" strokeWidth={2.5} />
+              </TouchableOpacity>
+            </HStack>
 
-        <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
-          <HStack className="flex items-center gap-2">
-            <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Apple size={18} stroke="#059669" strokeWidth={2.5} />
+            <HStack className="justify-between items-center">
+              <Text size="2xl" className="font-bold text-gray-900">
+                {completedHabits} / {totalHabits}
+              </Text>
+              <Text className="text-gray-600">completed</Text>
+            </HStack>
+
+            <View className="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
+              <View
+                className="h-full bg-emerald-500 rounded-full"
+                style={{ width: `${habitProgress * 100}%` }}
+              />
             </View>
-            <Text size="xl" className="font-semibold text-gray-900">
-              Food Summary
-            </Text>
-          </HStack>
 
-          <HStack className="justify-between items-center">
-            <Text size="2xl" className="font-bold text-gray-900">
-              1,290
-            </Text>
-            <Text className="text-gray-600">calories</Text>
-          </HStack>
+            <Text>{Math.round(habitProgress * 100)}% completed</Text>
+          </VStack>
 
-          <Divider className="h-[1px] bg-gray-200" />
+          <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
+            <HStack className="flex items-center gap-2">
+              <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                <Apple size={18} stroke="#059669" strokeWidth={2.5} />
+              </View>
+              <Text size="xl" className="font-semibold text-gray-900">
+                Food Summary
+              </Text>
+            </HStack>
 
-          <HStack className="justify-between items-center">
-            <VStack>
-              <Text className="text-gray-600">Protein</Text>
-              <Text className="text-gray-900 font-bold">150g</Text>
-            </VStack>
+            <HStack className="justify-between items-center">
+              <Text size="2xl" className="font-bold text-gray-900">
+                {Math.round(foodTotals.calories).toLocaleString()}
+              </Text>
+              <Text className="text-gray-600">calories</Text>
+            </HStack>
 
-            <VStack>
-              <Text className="text-gray-600">Carbs</Text>
-              <Text className="text-gray-900 font-bold">150g</Text>
-            </VStack>
+            <Divider className="h-[1px] bg-gray-200" />
 
-            <VStack>
-              <Text className="text-gray-600">Fats</Text>
-              <Text className="text-gray-900 font-bold">150g</Text>
-            </VStack>
-          </HStack>
+            <HStack className="justify-between items-center">
+              <VStack>
+                <Text className="text-gray-600">Protein</Text>
+                <Text className="text-gray-900 font-bold">
+                  {Math.round(foodTotals.protein)}g
+                </Text>
+              </VStack>
+
+              <VStack>
+                <Text className="text-gray-600">Carbs</Text>
+                <Text className="text-gray-900 font-bold">
+                  {Math.round(foodTotals.carbs)}g
+                </Text>
+              </VStack>
+
+              <VStack>
+                <Text className="text-gray-600">Fats</Text>
+                <Text className="text-gray-900 font-bold">
+                  {Math.round(foodTotals.fat)}g
+                </Text>
+              </VStack>
+            </HStack>
+          </VStack>
         </VStack>
-      </VStack>
       </ScrollView>
 
       <Drawer
@@ -261,28 +261,28 @@ const DashBoardScreen = () => {
                   <View className="flex-1 flex-col items-center gap-1">
                     <Text className="text-xs text-gray-600">Calories</Text>
                     <Text className="text-sm font-semibold text-gray-900">
-                      1290g
+                      {Math.round(foodTotals.calories)} cal
                     </Text>
                   </View>
 
                   <View className="flex-1 flex-col items-center gap-1">
                     <Text className="text-xs text-gray-600">Protein</Text>
                     <Text className="text-sm font-semibold text-gray-900">
-                      1290g
+                      {Math.round(foodTotals.protein)}g
                     </Text>
                   </View>
 
                   <View className="flex-1 flex-col items-center gap-1">
-                    <Text className="text-xs text-gray-600">Carbohydrates</Text>
+                    <Text className="text-xs text-gray-600">Carbs</Text>
                     <Text className="text-sm font-semibold text-gray-900">
-                      1290g
+                      {Math.round(foodTotals.carbs)}g
                     </Text>
                   </View>
 
                   <View className="flex-1 flex-col items-center gap-1">
                     <Text className="text-xs text-gray-600">Fats</Text>
                     <Text className="text-sm font-semibold text-gray-900">
-                      1290g
+                      {Math.round(foodTotals.fat)}g
                     </Text>
                   </View>
                 </HStack>
@@ -297,19 +297,19 @@ const DashBoardScreen = () => {
 
                     <HStack className="gap-4">
                       <Text className="text-xs text-gray-600">
-                        {food.calories} cal
+                        {Math.round(food.calories || 0)} cal
                       </Text>
 
                       <Text className="text-xs text-gray-600">
-                        P: {food.protein}g
+                        P: {Math.round(food.protein || 0)}g
                       </Text>
 
                       <Text className="text-xs text-gray-600">
-                        C: {food.carbs}g
+                        C: {Math.round(food.carbs || 0)}g
                       </Text>
 
                       <Text className="text-xs text-gray-600">
-                        F: {food.fat}g
+                        F: {Math.round(food.fat || 0)}g
                       </Text>
                     </HStack>
                   </View>

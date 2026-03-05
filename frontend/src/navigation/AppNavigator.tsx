@@ -14,7 +14,6 @@ export const AppNavigator = () => {
   return (
     <NavigationContainer>
       {isAuthenticated ? <MainTabNavigator /> : <AuthNavigator />}
-      {/* {isAuthenticated ? <MainTabNavigator /> : <MainTabNavigator />} TODO delete this line and uncomment above line */}
     </NavigationContainer>
   );
 };
