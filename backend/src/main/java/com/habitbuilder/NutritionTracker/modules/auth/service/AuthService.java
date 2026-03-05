@@ -48,4 +48,26 @@ public class AuthService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
+
+    public User updateProfile(Long userId, String name, String age, String gender) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (name != null && !name.trim().isEmpty()) {
+            user.setName(name);
+        }
+        if (age != null && !age.trim().isEmpty()) {
+            user.setAge(age);
+        }
+        if (gender != null && !gender.trim().isEmpty()) {
+            user.setGender(gender);
+        }
+        
+        return userRepository.save(user);
+    }
+
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 }
