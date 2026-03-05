@@ -45,11 +45,14 @@ public class HabitService {
     }
 
     public List<HabitWithCompletionDTO> getPresentDayHabits() {
-        User currentUser = getCurrentUser();
-        LocalDate today = LocalDate.now();
-        String dayOfWeek = today.getDayOfWeek().toString().substring(0, 3).toUpperCase();
+        return getHabitsByDate(LocalDate.now());
+    }
 
-        System.out.println("Fetching habits for user: " + currentUser.getId() + " on day: " + dayOfWeek);
+    public List<HabitWithCompletionDTO> getHabitsByDate(LocalDate date) {
+        User currentUser = getCurrentUser();
+        String dayOfWeek = date.getDayOfWeek().toString().substring(0, 3).toUpperCase();
+
+        System.out.println("Fetching habits for user: " + currentUser.getId() + " on date: " + date + " (day: " + dayOfWeek + ")");
 
         List<Habit> habits = habitRepository.findByUserAndRepeatDaysContaining(currentUser.getId(), dayOfWeek);
 
@@ -62,12 +65,12 @@ public class HabitService {
                     dto.setReminderTime(habit.getReminderTime());
                     dto.setReminderType(habit.getReminderType());
 
-                    // Check if habit is completed today
+                    // Check if habit is completed on the specified date
                     boolean completed = habitEntityRepository
                             .findByHabitIdAndUserIdAndEntryDate(
                                     habit.getId().toString(),
                                     currentUser.getId().toString(),
-                                    today)
+                                    date)
                             .map(entity -> entity.getStatus() == HabitStatus.COMPLETED)
                             .orElse(false);
 
@@ -108,11 +111,11 @@ public class HabitService {
                     return newEntity;
                 });
 
-                // check current status and toggle
+        // check current status and toggle
         if (habitEntity.getStatus() == HabitStatus.COMPLETED) {
             habitEntity.setStatus(HabitStatus.PENDING);
             habitEntity.setCompletionTime(null);
-        } else { 
+        } else {
             habitEntity.setStatus(HabitStatus.COMPLETED);
             habitEntity.setCompletionTime(java.time.LocalTime.now().toString());
         }

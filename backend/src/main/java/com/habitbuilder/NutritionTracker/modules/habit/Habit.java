@@ -48,17 +48,7 @@ class HabitDTO {
     private String reminderType;
 }
 
-@Getter
-@Setter
-class HabitWithCompletionDTO {
-    private Long id;
-    private String name;
-    private String[] repeatDays;
-    @JsonFormat(pattern = "hh:mm a")
-    private LocalTime reminderTime;
-    private String reminderType;
-    private boolean completed;
-}
+
 
 @Getter
 @Setter
