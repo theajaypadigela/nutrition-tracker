@@ -3,20 +3,27 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logoutHandler } from '../services/authService';
 
-const baseURL =
+export const CUSTOM_BASE_URL_KEY = 'custom_base_url';
+
+export const DEFAULT_BASE_URL =
   Platform.OS === 'android'
     ? 'http://10.0.2.2:8080/'
     : 'http://localhost:8080/';
 
 const apiClient = axios.create({
-  baseURL,
+  baseURL: DEFAULT_BASE_URL,
   timeout: 10000,
 });
 
-// Add request interceptor to include token in headers
+// Add request interceptor to include token in headers and dynamic base URL
 apiClient.interceptors.request.use(async config => {
-  const token = await AsyncStorage.getItem('token');
+  // Dynamically read custom base URL so it reflects runtime changes
+  const customBaseURL = await AsyncStorage.getItem(CUSTOM_BASE_URL_KEY);
+  if (customBaseURL) {
+    config.baseURL = customBaseURL;
+  }
 
+  const token = await AsyncStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -34,7 +41,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;
