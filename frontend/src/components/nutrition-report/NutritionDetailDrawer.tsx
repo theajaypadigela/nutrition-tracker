@@ -37,7 +37,7 @@ interface NutritionDetailDrawerProps {
   selectedNutrient: NutrientDetailData | null;
   nutrientBreakdown?: FoodSource[];
   onPin?: (id: string) => void;
-  onSetTarget?: () => void;
+  onSetTarget?: (nutrientId: string, value: string) => void;
   _onAddFood?: () => void;
   onMarkAvoid?: () => void;
 }
@@ -503,9 +503,8 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
           showModal={showModal}
           onClose={() => setShowModal(false)}
           onSave={value => {
-            // TODO: Implement saving the target value
-            console.log('Save target:', value);
-            if (onSetTarget) onSetTarget();
+            if (onSetTarget) onSetTarget(selectedNutrient.id, value);
+            setShowModal(false);
           }}
         ></SetDailyTarget>
       )}

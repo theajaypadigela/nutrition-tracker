@@ -64,6 +64,36 @@ export interface Nutrition {
   value: number;
   goal: number;
   type: string;
+  trend?: number[];
+  topSources?: string[];
+}
+
+// ============================================================
+// All-nutrients API response (GET /food/nutrition/all)
+// ============================================================
+
+export interface TopFoodSource {
+  name: string;
+  amount: number;
+  unit: string;
+  contribution: number; // percentage
+}
+
+export interface AllNutrientSummary {
+  id: string;
+  name: string;
+  unit: string;
+  category: string; // macro | vitamin | mineral | other
+  value: number; // avg daily intake over date range
+  goal: number; // AI-derived RDI
+  pctDV: number;
+  flag: NutrientFlag;
+  weeklyAvg: number;
+  trend: number[];
+  topSources: TopFoodSource[];
+  pinned?: boolean;
+  avoidedFoods?: string;
+  customTarget?: number;
 }
 
 // ============================================================
