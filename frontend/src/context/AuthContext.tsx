@@ -24,6 +24,7 @@ interface AuthContextType {
     gender: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (name: string, age: string, gender: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -117,6 +118,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const updateProfile = async (name: string, age: string, gender: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient({
+        method: 'PUT',
+        url: '/profile',
+        data: { name, age, gender },
+      });
+
+      setUser(response.data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -127,6 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         login,
         register,
         logout,
+        updateProfile,
       }}
     >
       {children}

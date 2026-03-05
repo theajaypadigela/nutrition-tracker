@@ -11,6 +11,7 @@ import {
   Activity,
   UtensilsCrossed,
   BarChart3,
+  User,
 } from 'lucide-react-native';
 
 export interface BottomNavigationProps {
@@ -27,6 +28,7 @@ const BottomNavigation = ({
     { id: 'Habits', label: 'Habits', icon: Activity },
     { id: 'Food', label: 'Food', icon: UtensilsCrossed },
     { id: 'Reports', label: 'Reports', icon: BarChart3 },
+    { id: 'Profile', label: 'Profile', icon: User },
   ];
 
   return (
