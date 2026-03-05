@@ -41,8 +41,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
+        System.out.println("=== JWT Filter === Path: " + request.getServletPath());
+        System.out.println("=== JWT Filter === Auth Header: " + (authHeader != null ? "Present" : "Missing"));
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("=== JWT Filter === No valid auth header, continuing without authentication");
             filterChain.doFilter(request, response);
             return;
         }
@@ -50,12 +53,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = authHeader.substring(7);
             String email = jwtService.extractEmail(token);
+            System.out.println("=== JWT Filter === Extracted email: " + email);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 var userDetails = userDetailsService.loadUserByUsername(email);
+                System.out.println("=== JWT Filter === Loaded user: " + userDetails.getUsername());
 
                 if (jwtService.isValid(token, userDetails.getUsername())) {
+                    System.out.println("=== JWT Filter === Token is valid, setting authentication");
 
                     var authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -63,10 +69,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails.getAuthorities());
 
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("=== JWT Filter === Authentication set successfully");
+                } else {
+                    System.out.println("=== JWT Filter === Token validation failed");
                 }
             }
         } catch (Exception e) {
-            System.err.println("JWT Authentication failed: " + e.getMessage());
+            System.err.println("=== JWT Filter === JWT Authentication failed: " + e.getMessage());
             e.printStackTrace();
         }
 
