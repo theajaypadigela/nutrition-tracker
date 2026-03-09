@@ -23,6 +23,7 @@ import { Text } from '../../components/ui/text';
 import { Divider } from '../../components/ui/divider';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import useApi from '../../hooks/useApi';
+import { scheduleHabitReminder } from '../../services/habitScheduler';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 type ReminderType = 'notification' | 'call' | 'none';
@@ -131,7 +132,7 @@ const HabitCreationScreen = () => {
   const formatTimeToHHMM = date => {
     const hours = date.getHours();
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'pm' : 'am';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
     const hours12 = hours % 12 || 12;
     return `${hours12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
   };
@@ -147,13 +148,26 @@ const HabitCreationScreen = () => {
     };
 
     try {
-      await request({
+      const createdHabit = await request({
         url: '/habit',
         method: 'POST',
         data: newHabit,
       });
 
       console.log('Habit created successfully');
+
+      // Schedule notification for this habit
+      if (createdHabit) {
+        await scheduleHabitReminder({
+          id: String(createdHabit.id),
+          name: createdHabit.name,
+          reminderTime: formatTimeToHHMM(reminderTime),
+          reminderType: reminderType as 'notification' | 'call',
+          completed: false,
+          repeatDays: selectedDays,
+        });
+      }
+
       navigation.goBack();
     } catch (err) {
       console.error('Failed to create habit:', err);

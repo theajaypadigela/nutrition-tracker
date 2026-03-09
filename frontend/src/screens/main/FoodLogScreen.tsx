@@ -20,13 +20,13 @@ import {
 import AppBar from '../../components/AppBar';
 import useApi from '../../hooks/useApi';
 import NutritionDisplay from '../../components/food-log/NutritionDisplay';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Plus } from 'lucide-react-native';
+import { Plus, Mic } from 'lucide-react-native';
 
 // Use a local type to avoid a circular import with FoodStackNavigator
 type FoodLogNavigationProp = StackNavigationProp<
-  { FoodLog: undefined; ManualFoodLog: undefined },
+  { FoodLog: undefined; ManualFoodLog: undefined; VoiceMealLog: undefined },
   'FoodLog'
 >;
 
@@ -74,6 +74,13 @@ const FoodLogScreen = () => {
       console.error('Failed to load food log:', error);
     }
   }, [selectedDate, request]);
+
+  // Reload data when the screen gains focus (e.g., after returning from VoiceMealLogScreen)
+  useFocusEffect(
+    useCallback(() => {
+      loadFoodLog();
+    }, [loadFoodLog]),
+  );
 
   useEffect(() => {
     loadFoodLog();
@@ -210,6 +217,15 @@ const FoodLogScreen = () => {
         />
       </ScrollView>
 
+      {/* Voice Log Button */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('VoiceMealLog')}
+        style={styles.voiceFab}
+        activeOpacity={0.8}
+      >
+        <Mic size={24} stroke="white" strokeWidth={2.5} />
+      </TouchableOpacity>
+
       {/* Floating Action Button */}
       <TouchableOpacity
         onPress={() => navigation.navigate('ManualFoodLog')}
@@ -223,6 +239,22 @@ const FoodLogScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  voiceFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: Platform.OS === 'ios' ? 180 : 170,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#7c3aed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   fab: {
     position: 'absolute',
     right: 20,

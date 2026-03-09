@@ -1,7 +1,13 @@
 import React from 'react';
 import { VStack } from '../../components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
-import { View, ScrollView, RefreshControl } from 'react-native';
+import {
+  View,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
 import { Text } from '../../components/ui/text';
 import { HStack } from '../../components/ui/hstack';
 import { Button, ButtonText } from '../../components/ui/button';
@@ -19,11 +25,13 @@ import {
   SelectTrigger,
 } from '../../components/ui/select';
 import { useAuth } from '@/src/context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import AppBar from '../../components/AppBar';
 
 const ProfileScreen = () => {
   const { name, age, gender } = useAuth().user || {};
   const { updateProfile, isLoading, logout } = useAuth();
+  const navigation = useNavigation<any>();
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -221,6 +229,15 @@ const ProfileScreen = () => {
             )}
           </VStack>
 
+          <TouchableOpacity
+            style={profileStyles.mealReminderRow}
+            onPress={() => navigation.navigate('MealSchedule')}
+          >
+            <Text style={profileStyles.rowIcon}>🔔</Text>
+            <Text style={profileStyles.rowLabel}>Meal Reminders</Text>
+            <Text style={profileStyles.rowChevron}>›</Text>
+          </TouchableOpacity>
+
           <View>
             <Button
               variant="outline"
@@ -239,5 +256,20 @@ const ProfileScreen = () => {
     </View>
   );
 };
+
+const profileStyles = StyleSheet.create({
+  mealReminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  rowIcon: { fontSize: 22, marginRight: 12 },
+  rowLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+  rowChevron: { fontSize: 22, color: '#999' },
+});
 
 export default ProfileScreen;

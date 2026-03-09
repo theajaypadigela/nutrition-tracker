@@ -19,9 +19,19 @@ export interface Habit {
   id: string;
   name: string;
   completed: boolean;
-  time?: string;
-  repeatedDays?: string;
-  reminderType?: ReminderType;
+  repeatDays: string[];
+  reminderTime: string;
+  reminderType: ReminderType;
+  status?: string; // PENDING, COMPLETED, MISSED, RESCHEDULED
+  completedAt?: string | null;
+  rescheduledTime?: string | null;
+}
+
+export interface HabitVoiceResult {
+  habit_name: string;
+  habit_status: 'completed' | 'not_completed' | 'rescheduled';
+  reschedule_minutes?: number | null;
+  completed_at?: string | null;
 }
 
 // Food Logging

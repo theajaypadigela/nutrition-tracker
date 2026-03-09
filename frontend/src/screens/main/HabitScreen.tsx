@@ -10,13 +10,21 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { Trash2, CheckCircle, Circle, Plus } from 'lucide-react-native';
+import {
+  Trash2,
+  CheckCircle,
+  Circle,
+  Plus,
+  Bell,
+  Phone,
+} from 'lucide-react-native';
 import { Button } from '../../components/ui/button';
 import AppBar from '../../components/AppBar';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/MainTabNavigator';
 import useApi from '@/src/hooks/useApi';
+import { cancelHabitReminder } from '../../services/habitScheduler';
 
 const HabitScreen = () => {
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
@@ -38,9 +46,11 @@ const HabitScreen = () => {
     }
   }, [request]);
 
-  useEffect(() => {
-    fetchHabits();
-  }, [fetchHabits]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchHabits();
+    }, [fetchHabits]),
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -74,6 +84,7 @@ const HabitScreen = () => {
   async function deleteHabit(id: string): Promise<void> {
     try {
       setHabits(prev => prev.filter(habit => habit.id !== id));
+      await cancelHabitReminder(id);
       await request({
         url: `/habit/${id}`,
         method: 'DELETE',
@@ -132,15 +143,60 @@ const HabitScreen = () => {
                     <Circle size={24} color="#9CA3AF" />
                   )}
                 </Button>
-                <VStack>
+                <VStack className="flex-1">
                   <Text
                     className={`font-medium mb-0.5 ${habit.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}
                   >
                     {habit.name}
                   </Text>
-                  <Text size="xs" className="text-gray-500">
-                    {habit.reminderTime} | {habit.repeatDays.join(', ')}
-                  </Text>
+                  <HStack className="items-center gap-2 mt-0.5">
+                    <Text size="xs" className="text-gray-500">
+                      {habit.reminderTime}
+                    </Text>
+                    <Text size="xs" className="text-gray-300">
+                      |
+                    </Text>
+                    <HStack className="items-center gap-1">
+                      {habit.reminderType === 'call' ? (
+                        <Phone size={10} color="#7C3AED" />
+                      ) : (
+                        <Bell size={10} color="#D97706" />
+                      )}
+                      <Text
+                        size="xs"
+                        className={
+                          habit.reminderType === 'call'
+                            ? 'text-purple-600'
+                            : 'text-amber-600'
+                        }
+                      >
+                        {habit.reminderType === 'call' ? 'Call' : 'Push'}
+                      </Text>
+                    </HStack>
+                    <Text size="xs" className="text-gray-300">
+                      |
+                    </Text>
+                    <Text
+                      size="xs"
+                      className={
+                        habit.status === 'COMPLETED'
+                          ? 'text-emerald-600 font-medium'
+                          : habit.status === 'RESCHEDULED'
+                            ? 'text-amber-600 font-medium'
+                            : habit.status === 'MISSED'
+                              ? 'text-red-500 font-medium'
+                              : 'text-gray-400'
+                      }
+                    >
+                      {habit.status === 'COMPLETED'
+                        ? 'Completed'
+                        : habit.status === 'RESCHEDULED'
+                          ? 'Rescheduled'
+                          : habit.status === 'MISSED'
+                            ? 'Missed'
+                            : 'Pending'}
+                    </Text>
+                  </HStack>
                 </VStack>
                 <Button
                   onPress={() => deleteHabit(habit.id)}
