@@ -43,12 +43,9 @@ public class Habit {
 class HabitDTO {
     private String name;
     private String[] repeatDays;
-    @JsonFormat(pattern = "hh:mm a")
-    private LocalTime reminderTime;
+    private String reminderTime;
     private String reminderType;
 }
-
-
 
 @Getter
 @Setter

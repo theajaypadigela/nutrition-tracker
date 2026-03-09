@@ -41,4 +41,9 @@ public class HabitController {
     public void deleteHabit(@PathVariable Long id) {
         habitService.deleteHabit(id);
     }
+
+    @PostMapping("/voice-result")
+    public HabitWithCompletionDTO processVoiceResult(@RequestBody HabitVoiceResultDTO result) {
+        return habitService.processVoiceResult(result);
+    }
 }

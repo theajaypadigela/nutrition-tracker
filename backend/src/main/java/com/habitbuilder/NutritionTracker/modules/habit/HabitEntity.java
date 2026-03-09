@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -38,6 +39,9 @@ public class HabitEntity {
     @Column(name = "status", nullable = false)
     private HabitStatus status = HabitStatus.PENDING;
 
+    @Column(name = "rescheduled_time")
+    private LocalDateTime rescheduledTime;
+
     @PrePersist
     protected void onCreate() {
         if (this.entryDate == null) {
@@ -50,5 +54,6 @@ public class HabitEntity {
 enum HabitStatus {
     COMPLETED,
     MISSED,
-    PENDING
+    PENDING,
+    RESCHEDULED
 }

@@ -85,6 +85,25 @@ public class FoodService {
         return responses;
     }
 
+    /**
+     * Add a single food entry for a specific user (bypasses SecurityContext).
+     * Used by the voice-log webhook where there is no JWT auth context.
+     */
+    public void addFoodEntryForUser(Long userId, LocalDate date, String mealType,
+            String name, double quantity, String unit) {
+        FoodLog foodLog = getOrCreateFoodLog(userId, date);
+
+        FoodEntry entry = new FoodEntry();
+        entry.setFoodLog(foodLog);
+        entry.setName(name);
+        entry.setQuantity(quantity);
+        entry.setUnit(unit);
+        entry.setMealType(mealType);
+
+        FoodEntry savedEntry = foodEntryRepository.save(entry);
+        nutritionEnrichmentService.enrichFoodEntry(savedEntry);
+    }
+
     public MealsResponse getDayLogAsMeals(LocalDate date) {
         Long userId = getCurrentUserId();
         Optional<FoodLog> logOpt = foodLogRepository.findByUserIdAndLogDate(userId, date);
