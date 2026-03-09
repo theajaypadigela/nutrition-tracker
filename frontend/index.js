@@ -2,6 +2,9 @@
  * @format
  */
 
+// Polyfill localStorage for SDKs that expect browser environment
+import './src/utils/localStoragePolyfill';
+
 import 'react-native-gesture-handler';
 import './global.css';
 import { AppRegistry } from 'react-native';

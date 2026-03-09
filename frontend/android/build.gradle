@@ -19,3 +19,21 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        // Prefer the Notifee artifacts bundled inside node_modules to avoid flaky network resolution.
+        maven { url("$rootDir/../node_modules/@notifee/react-native/android/libs") }
+        google()
+        mavenCentral()
+    }
+
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == "app.notifee" && details.requested.name == "core" && details.requested.version == "+") {
+                details.useVersion("202108261754")
+                details.because("Avoid remote metadata lookup for dynamic Notifee core version")
+            }
+        }
+    }
+}
