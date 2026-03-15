@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 const MEAL_CALL_CHANNEL_ID = 'meal-call-v2';
+const MEAL_DAILY_NOTIFICATION_ID = 'meal-alarm-daily';
+const MEAL_RESCHEDULE_NOTIFICATION_ID = 'meal-reschedule-once';
 
 export type MealReminder = {
   hour: number;
@@ -85,7 +87,7 @@ export async function scheduleSingleAlarm(
 
   await notifee.createTriggerNotification(
     {
-      id: 'meal-alarm-daily',
+      id: MEAL_DAILY_NOTIFICATION_ID,
       title: 'AI Nutrition Assistant',
       body: 'Incoming voice call',
       data: { mealSlotId: 'daily', screen: 'IncomingMealCall' },
@@ -126,6 +128,100 @@ export async function scheduleSingleAlarm(
   );
 }
 
+export async function scheduleMealReschedule(
+  delayMinutes: number,
+): Promise<boolean> {
+  const normalizedDelay = Math.floor(delayMinutes);
+  if (!Number.isFinite(normalizedDelay) || normalizedDelay <= 0) {
+    return false;
+  }
+
+  await notifee.createChannel({
+    id: MEAL_CALL_CHANNEL_ID,
+    name: 'Meal Logging Calls',
+    importance: AndroidImportance.HIGH,
+    visibility: AndroidVisibility.PUBLIC,
+    bypassDnd: true,
+    vibration: true,
+    sound: 'default',
+  });
+
+  await notifee.cancelTriggerNotification(MEAL_RESCHEDULE_NOTIFICATION_ID);
+
+  const now = new Date();
+  const fire = new Date(now.getTime() + normalizedDelay * 60 * 1000);
+
+  // Only allow follow-up reminder for the current day.
+  const isSameDay =
+    now.getFullYear() === fire.getFullYear() &&
+    now.getMonth() === fire.getMonth() &&
+    now.getDate() === fire.getDate();
+
+  if (!isSameDay) {
+    return false;
+  }
+
+  const trigger: TimestampTrigger = {
+    type: TriggerType.TIMESTAMP,
+    timestamp: fire.getTime(),
+  };
+
+  if (Platform.OS === 'android') {
+    trigger.alarmManager = {
+      allowWhileIdle: true,
+    };
+  }
+
+  await notifee.createTriggerNotification(
+    {
+      id: MEAL_RESCHEDULE_NOTIFICATION_ID,
+      title: 'AI Nutrition Assistant',
+      body: 'Incoming voice call',
+      data: {
+        mealSlotId: 'rescheduled',
+        screen: 'IncomingMealCall',
+        isRescheduled: 'true',
+        delayMinutes: String(normalizedDelay),
+      },
+      android: {
+        channelId: MEAL_CALL_CHANNEL_ID,
+        importance: AndroidImportance.HIGH,
+        visibility: AndroidVisibility.PUBLIC,
+        category: AndroidCategory.CALL,
+        lightUpScreen: true,
+        ongoing: true,
+        loopSound: true,
+        autoCancel: false,
+        showTimestamp: false,
+        timeoutAfter: 60_000,
+        fullScreenAction: {
+          id: 'meal-fullscreen',
+          launchActivity: 'default',
+        },
+        pressAction: { id: 'default', launchActivity: 'default' },
+        actions: [
+          {
+            title: 'Accept',
+            pressAction: { id: 'accept', launchActivity: 'default' },
+          },
+          { title: 'Decline', pressAction: { id: 'decline' } },
+        ],
+        sound: 'default',
+        vibrationPattern: [1000, 500, 1000, 500],
+      },
+      ios: {
+        sound: 'default',
+        interruptionLevel: 'timeSensitive',
+        categoryId: 'meal-call',
+      },
+    },
+    trigger,
+  );
+
+  return true;
+}
+
 export async function cancelAllMealAlarms(): Promise<void> {
-  await notifee.cancelTriggerNotification('meal-alarm-daily');
+  await notifee.cancelTriggerNotification(MEAL_DAILY_NOTIFICATION_ID);
+  await notifee.cancelTriggerNotification(MEAL_RESCHEDULE_NOTIFICATION_ID);
 }

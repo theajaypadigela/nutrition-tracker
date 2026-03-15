@@ -106,9 +106,19 @@ public class VoiceLogController {
                     .body(Map.of("error", "Transcript is required"));
         }
 
+        String normalizedTranscript = transcript.trim();
+        String loweredTranscript = normalizedTranscript.toLowerCase();
+        boolean hasDelayIntent = loweredTranscript.contains("call me in")
+                || loweredTranscript.contains("remind me in")
+                || loweredTranscript.contains("in 5 min")
+                || loweredTranscript.matches(".*\\b(in|after)\\s+\\d{1,3}\\s*(minutes?|mins?|m)\\b.*");
+
+        logger.info("Received meal transcript parse request: userId={}, chars={}, delayIntentDetected={}",
+                user.getId(), normalizedTranscript.length(), hasDelayIntent);
+
         try {
             int entriesLogged = voiceLogService.parseTranscriptAndLogMeals(
-                    user.getId(), transcript.trim());
+                    user.getId(), normalizedTranscript);
             return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "entriesLogged", entriesLogged));

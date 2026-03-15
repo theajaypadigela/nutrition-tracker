@@ -3,6 +3,8 @@ package com.habitbuilder.NutritionTracker.modules.habit;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +21,8 @@ import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 
 @Service
 public class HabitService {
+
+    private static final Logger log = LoggerFactory.getLogger(HabitService.class);
 
     private HabitRepository habitRepository;
     private HabitEntityRepository habitEntityRepository;
@@ -180,6 +184,9 @@ public class HabitService {
         User currentUser = getCurrentUser();
         LocalDate today = LocalDate.now();
 
+        log.info("Received habit voice result: userId={}, habitId={}, status={}, rescheduleMinutes={}",
+                currentUser.getId(), result.getHabitId(), result.getHabitStatus(), result.getRescheduleMinutes());
+
         Long habitId = result.getHabitId();
         if (habitId == null) {
             throw new IllegalArgumentException("Habit ID is required");
@@ -223,6 +230,9 @@ public class HabitService {
         }
 
         habitEntityRepository.save(habitEntity);
+
+        log.info("Saved habit voice result: userId={}, habitId={}, storedStatus={}, rescheduledTime={}",
+                currentUser.getId(), habit.getId(), habitEntity.getStatus(), habitEntity.getRescheduledTime());
 
         // Build response DTO
         HabitWithCompletionDTO dto = new HabitWithCompletionDTO();

@@ -14,6 +14,53 @@ import VoiceSessionScreen, {
 const VAPI_PUBLIC_KEY = 'ee6c4930-dd4c-416e-9c58-090b8b46eee5';
 const VAPI_HABIT_ASSISTANT_ID = '21a94bba-766c-46bb-8df8-9c7e9aeed50a';
 
+function extractDelayFromText(text: string): number | null {
+  const lowered = text.toLowerCase();
+  const delayPatterns = [
+    /(?:call|remind|ping|check(?:\s+in)?)\s+me\s+(?:again\s+)?(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
+    /(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
+  ];
+
+  for (const pattern of delayPatterns) {
+    const match = lowered.match(pattern);
+    if (!match) continue;
+    const parsed = parseInt(match[1], 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function extractDelayMinutes(lines: string[]): number | null {
+  for (const line of lines) {
+    if (!line.startsWith('You:')) continue;
+    const minutes = extractDelayFromText(line);
+    if (minutes != null) {
+      return minutes;
+    }
+  }
+
+  for (const line of lines) {
+    const minutes = extractDelayFromText(line);
+    if (minutes != null) {
+      return minutes;
+    }
+  }
+
+  return null;
+}
+
+function normalizeHabitStatus(
+  status?: string,
+): 'completed' | 'rescheduled' | 'not_completed' {
+  const normalized = status?.toLowerCase().trim();
+  if (normalized === 'completed') return 'completed';
+  if (normalized === 'rescheduled') return 'rescheduled';
+  return 'not_completed';
+}
+
 export default function VoiceHabitScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
@@ -195,35 +242,64 @@ export default function VoiceHabitScreen() {
   const processHabitResult = useCallback(async () => {
     setStatus('processing');
 
-    const result = voiceResultRef.current;
-    if (!result || !habitId) {
+    if (!habitId) {
+      console.log('[VapiHabit] Missing habitId, skipping result processing.');
       setResultMessage('Call completed');
       setStatus('completed');
       return;
     }
 
-    try {
-      console.log('[VapiHabit] Processing result:', result);
+    const inferredDelay = extractDelayMinutes(transcriptRef.current);
+    let result = voiceResultRef.current;
 
-      await apiClient.post('/habit/voice-result', {
-        habitId: parseInt(habitId, 10),
-        habitName: result.habit_name || habitName,
-        habitStatus: result.habit_status,
-        rescheduleMinutes: result.reschedule_minutes,
-        completedAt: result.completed_at,
+    if (!result && inferredDelay != null) {
+      result = {
+        habit_name: habitName,
+        habit_status: 'rescheduled',
+        reschedule_minutes: inferredDelay,
+      };
+      console.log('[VapiHabit] Inferred reschedule from transcript:', {
+        inferredDelay,
+      });
+    }
+
+    if (!result) {
+      console.log('[VapiHabit] No structured result captured from call.');
+      setResultMessage('Call completed');
+      setStatus('completed');
+      return;
+    }
+
+    const habitStatus = normalizeHabitStatus(result.habit_status);
+    const delayMinutes = result.reschedule_minutes ?? inferredDelay ?? null;
+
+    try {
+      console.log('[VapiHabit] Processing result:', {
+        ...result,
+        habit_status: habitStatus,
+        resolved_delay_minutes: delayMinutes,
       });
 
-      if (result.habit_status === 'completed') {
+      const response = await apiClient.post('/habit/voice-result', {
+        habitId: parseInt(habitId, 10),
+        habitName: result.habit_name || habitName,
+        habitStatus,
+        rescheduleMinutes: delayMinutes,
+        completedAt: result.completed_at,
+      });
+      console.log('[VapiHabit] Backend voice-result response:', response.data);
+
+      if (habitStatus === 'completed') {
         setResultMessage(`✅ "${habitName}" marked as completed!`);
-      } else if (result.habit_status === 'rescheduled') {
-        const mins = result.reschedule_minutes ?? 0;
+      } else if (habitStatus === 'rescheduled') {
+        const mins = delayMinutes ?? 0;
         setResultMessage(
           `⏰ "${habitName}" rescheduled. Will check again in ${mins} minutes.`,
         );
 
         // Schedule local notification for the rescheduled time
         if (mins > 0) {
-          await scheduleHabitReschedule(
+          const scheduled = await scheduleHabitReschedule(
             {
               id: habitId,
               name: habitName,
@@ -234,6 +310,16 @@ export default function VoiceHabitScreen() {
             },
             mins,
           );
+
+          if (!scheduled) {
+            setResultMessage(
+              'Could not schedule follow-up because it would fall on the next day.',
+            );
+            console.log(
+              '[VapiHabit] Skipped habit follow-up scheduling due to current-day rule.',
+              { mins },
+            );
+          }
         }
       } else {
         setResultMessage(`"${habitName}" marked as missed.`);

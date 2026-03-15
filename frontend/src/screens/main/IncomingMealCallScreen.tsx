@@ -166,6 +166,7 @@ export default function IncomingMealCallScreen() {
       clearInterval(vibrationInterval.current);
     }
     notifee.cancelNotification('meal-alarm-daily').catch(() => {});
+    notifee.cancelNotification('meal-reschedule-once').catch(() => {});
   }, []);
 
   const handleAccept = useCallback(() => {

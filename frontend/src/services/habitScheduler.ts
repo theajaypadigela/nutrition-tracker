@@ -133,12 +133,27 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
 export async function scheduleHabitReschedule(
   habit: Habit,
   rescheduleMinutes: number,
-): Promise<void> {
+): Promise<boolean> {
+  const normalizedDelay = Math.floor(rescheduleMinutes);
+  if (!Number.isFinite(normalizedDelay) || normalizedDelay <= 0) {
+    return false;
+  }
+
   const notifId = `habit-reschedule-${habit.id}`;
 
   await notifee.cancelTriggerNotification(notifId);
 
-  const fire = new Date(Date.now() + rescheduleMinutes * 60 * 1000);
+  const now = new Date();
+  const fire = new Date(now.getTime() + normalizedDelay * 60 * 1000);
+
+  const isSameDay =
+    now.getFullYear() === fire.getFullYear() &&
+    now.getMonth() === fire.getMonth() &&
+    now.getDate() === fire.getDate();
+
+  if (!isSameDay) {
+    return false;
+  }
 
   const trigger: TimestampTrigger = {
     type: TriggerType.TIMESTAMP,
@@ -200,6 +215,8 @@ export async function scheduleHabitReschedule(
     },
     trigger,
   );
+
+  return true;
 }
 
 export async function cancelHabitReminder(habitId: string): Promise<void> {

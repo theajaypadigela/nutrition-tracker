@@ -5,12 +5,51 @@ import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
+import { scheduleMealReschedule } from '../../services/mealScheduler';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
 
 const VAPI_PUBLIC_KEY = 'ee6c4930-dd4c-416e-9c58-090b8b46eee5';
 const VAPI_ASSISTANT_ID = 'b544afb0-dd75-4922-be50-e080e01db1b0';
+
+function extractDelayFromText(text: string): number | null {
+  const lowered = text.toLowerCase();
+  const delayPatterns = [
+    /(?:call|remind|ping|check(?:\s+in)?)\s+me\s+(?:again\s+)?(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
+    /(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
+  ];
+
+  for (const pattern of delayPatterns) {
+    const match = lowered.match(pattern);
+    if (!match) continue;
+    const parsed = parseInt(match[1], 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function extractDelayMinutes(lines: string[]): number | null {
+  for (const line of lines) {
+    if (!line.startsWith('You:')) continue;
+    const minutes = extractDelayFromText(line);
+    if (minutes != null) {
+      return minutes;
+    }
+  }
+
+  for (const line of lines) {
+    const minutes = extractDelayFromText(line);
+    if (minutes != null) {
+      return minutes;
+    }
+  }
+
+  return null;
+}
 
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();
@@ -29,8 +68,10 @@ export default function VoiceMealLogScreen() {
   const [transcript, setTranscript] = useState<string[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [entriesLogged, setEntriesLogged] = useState(0);
+  const [followUpMessage, setFollowUpMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
+  const delayMinutesRef = useRef<number | null>(null);
 
   // Wire up Vapi events
   useEffect(() => {
@@ -83,6 +124,31 @@ export default function VoiceMealLogScreen() {
         setTranscript(prev => [...prev, line]);
         transcriptRef.current = [...transcriptRef.current, line];
       }
+
+      if (msg.type === 'function-call' && msg.functionCall?.parameters) {
+        const params = msg.functionCall.parameters;
+        const directMinutes =
+          params?.reschedule_minutes ??
+          params?.delay_minutes ??
+          params?.delayMinutes;
+
+        if (typeof directMinutes === 'number' && directMinutes > 0) {
+          delayMinutesRef.current = Math.floor(directMinutes);
+          console.log(
+            '[VoiceMealLog] Captured delay from structured response:',
+            delayMinutesRef.current,
+          );
+        } else if (typeof directMinutes === 'string') {
+          const parsed = parseInt(directMinutes, 10);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            delayMinutesRef.current = parsed;
+            console.log(
+              '[VoiceMealLog] Captured delay from structured string response:',
+              delayMinutesRef.current,
+            );
+          }
+        }
+      }
     });
 
     vapi.on('volume-level', (volume: number) => {
@@ -130,6 +196,8 @@ export default function VoiceMealLogScreen() {
     setTranscript([]);
     transcriptRef.current = [];
     setEntriesLogged(0);
+    setFollowUpMessage('');
+    delayMinutesRef.current = null;
 
     const hasPermission = await requestMicPermission();
     if (!hasPermission) {
@@ -245,6 +313,15 @@ export default function VoiceMealLogScreen() {
     }
 
     setStatus('processing');
+    const transcriptDelay = extractDelayMinutes(lines);
+    const delayMinutes = delayMinutesRef.current ?? transcriptDelay;
+
+    console.log('[VoiceMealLog] Delay detection:', {
+      structuredDelay: delayMinutesRef.current,
+      transcriptDelay,
+      finalDelay: delayMinutes,
+    });
+
     try {
       const fullTranscript = lines.join('\n');
       console.log('[VoiceMealLog] Sending transcript to backend for parsing');
@@ -262,6 +339,25 @@ export default function VoiceMealLogScreen() {
       if (count > 0) {
         console.log('[VoiceMealLog] Waiting for nutrition enrichment...');
         await waitForNutritionEnrichment(count);
+      }
+
+      if (delayMinutes != null && delayMinutes > 0) {
+        const scheduled = await scheduleMealReschedule(delayMinutes);
+        if (scheduled) {
+          const message = `Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`;
+          setFollowUpMessage(message);
+          console.log('[VoiceMealLog] Meal follow-up scheduled:', {
+            delayMinutes,
+          });
+        } else {
+          const message =
+            'Could not schedule follow-up because it would fall on the next day.';
+          setFollowUpMessage(message);
+          console.log(
+            '[VoiceMealLog] Skipped follow-up scheduling due to current-day rule.',
+            { delayMinutes },
+          );
+        }
       }
 
       setStatus('completed');
@@ -282,6 +378,10 @@ export default function VoiceMealLogScreen() {
       case 'processing':
         return 'Processing your meals...';
       case 'completed':
+        if (followUpMessage) {
+          return followUpMessage;
+        }
+
         return entriesLogged > 0
           ? `${entriesLogged} meal${entriesLogged > 1 ? 's' : ''} logged successfully!`
           : 'Call completed';
