@@ -49,7 +49,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public User updateProfile(Long userId, String name, String age, String gender) {
+    public User updateProfile(String userId, String name, String age, String gender) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
@@ -66,7 +66,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    public User getUserById(Long userId) {
+    public User getUserById(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
