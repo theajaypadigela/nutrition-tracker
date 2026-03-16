@@ -1,12 +1,14 @@
 package com.habitbuilder.NutritionTracker.modules.nutrition;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface NutritionDetailsRepository extends JpaRepository<NutritionDetails, UUID> {
-    Optional<NutritionDetails> findByFoodEntryId(UUID foodEntryId);
+public interface NutritionDetailsRepository extends MongoRepository<NutritionDetails, String> {
+    Optional<NutritionDetails> findByFoodEntryId(String foodEntryId);
+
+    List<NutritionDetails> findByFoodEntryIdIn(List<String> foodEntryIds);
 }

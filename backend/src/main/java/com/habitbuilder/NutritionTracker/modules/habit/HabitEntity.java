@@ -1,53 +1,33 @@
 package com.habitbuilder.NutritionTracker.modules.habit;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity
+@Document(collection = "habit_entries")
 @Getter
 @Setter
 public class HabitEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(name = "habit_id")
     private String habitId;
 
-    @Column(name = "user_id")
     private String userId;
 
-    @Column(name = "entry_date", updatable = false)
     private LocalDate entryDate;
 
-    @Column(name = "completion_time")
     private String completionTime;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
     private HabitStatus status = HabitStatus.PENDING;
 
-    @Column(name = "rescheduled_time")
     private LocalDateTime rescheduledTime;
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.entryDate == null) {
-            this.entryDate = LocalDate.now();
-        }
-    }
 
 }
 

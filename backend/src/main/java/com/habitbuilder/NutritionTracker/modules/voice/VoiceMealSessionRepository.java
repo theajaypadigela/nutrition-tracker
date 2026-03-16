@@ -1,6 +1,6 @@
 package com.habitbuilder.NutritionTracker.modules.voice;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface VoiceMealSessionRepository extends JpaRepository<VoiceMealSession, Long> {
+public interface VoiceMealSessionRepository extends MongoRepository<VoiceMealSession, String> {
 }

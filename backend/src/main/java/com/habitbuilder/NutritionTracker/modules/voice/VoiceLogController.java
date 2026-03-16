@@ -1,6 +1,8 @@
 package com.habitbuilder.NutritionTracker.modules.voice;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
+import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretRequestDTO;
+import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
 
 import org.slf4j.Logger;
@@ -127,5 +129,24 @@ public class VoiceLogController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to process meals from conversation"));
         }
+    }
+
+    @PostMapping("/voice-log/interpret-transcript")
+    public ResponseEntity<?> interpretMealTranscript(
+            @RequestBody MealTranscriptInterpretRequestDTO body) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String transcript = body.getTranscript();
+        if (transcript == null || transcript.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Transcript is required"));
+        }
+
+        MealTranscriptInterpretResponseDTO response = voiceLogService
+                .interpretMealTranscript(transcript.trim(), body.getMealSlotId());
+        return ResponseEntity.ok(response);
     }
 }

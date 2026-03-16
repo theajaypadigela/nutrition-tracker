@@ -1,13 +1,13 @@
 package com.habitbuilder.NutritionTracker.modules.food;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface UserNutrientPreferenceRepository extends JpaRepository<UserNutrientPreference, Long> {
+public interface UserNutrientPreferenceRepository extends MongoRepository<UserNutrientPreference, String> {
 
-    List<UserNutrientPreference> findByUserId(Long userId);
+    List<UserNutrientPreference> findByUserId(String userId);
 
-    Optional<UserNutrientPreference> findByUserIdAndNutrientId(Long userId, String nutrientId);
+    Optional<UserNutrientPreference> findByUserIdAndNutrientId(String userId, String nutrientId);
 }

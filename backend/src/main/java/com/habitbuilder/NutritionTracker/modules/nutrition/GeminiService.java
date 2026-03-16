@@ -18,24 +18,83 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class GeminiService {
 
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
+    private static final String GEMINI_MODEL = "gemini-2.5-flash";
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    private final String copilotBridgeUrl;
-    private final String copilotBridgeToken;
-    private final String copilotModel;
+    private final String geminiApiKey;
 
     public GeminiService(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${copilot.bridge.port}") String copilotPort,
-            @Value("${copilot.bridge.token}") String copilotToken,
-            @Value("${copilot.bridge.model}") String copilotModel) {
+            @Value("${gemini.api.key}") String geminiApiKey) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
-        this.copilotBridgeUrl = "http://127.0.0.1:" + copilotPort + "/v1/chat/completions";
-        this.copilotBridgeToken = copilotToken;
-        this.copilotModel = copilotModel;
+        this.geminiApiKey = geminiApiKey;
+    }
+
+    private String getGeminiUrl() {
+        return "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL
+                + ":generateContent";
+    }
+
+    private Map<String, Object> buildGeminiRequestBody(String prompt) {
+        return Map.of(
+                "contents", List.of(
+                        Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("temperature", 0.1));
+    }
+
+    /**
+     * Extracts the text content from a Gemini API response.
+     * Gemini response structure: candidates[0].content.parts[0].text
+     */
+    private String extractTextFromGeminiResponse(String rawResponse) {
+        try {
+            JsonNode root = objectMapper.readTree(rawResponse);
+            JsonNode candidates = root.path("candidates");
+            if (candidates.isEmpty() || !candidates.isArray()) {
+                throw new GeminiApiException("Invalid Gemini response: no candidates found", rawResponse);
+            }
+            JsonNode content = candidates.get(0).path("content");
+            if (content.isMissingNode()) {
+                throw new GeminiApiException("Invalid Gemini response: no content found", rawResponse);
+            }
+            JsonNode parts = content.path("parts");
+            if (parts.isEmpty() || !parts.isArray()) {
+                throw new GeminiApiException("Invalid Gemini response: no parts found", rawResponse);
+            }
+            return parts.get(0).path("text").asText();
+        } catch (GeminiApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new GeminiApiException("Failed to extract text from Gemini response: " + e.getMessage(),
+                    rawResponse, e);
+        }
+    }
+
+    /**
+     * Calls Gemini API with the given prompt and returns the full raw API response.
+     */
+    private String callGeminiApi(String prompt) {
+        Map<String, Object> requestBody = buildGeminiRequestBody(prompt);
+
+        return webClient.post()
+                .uri(getGeminiUrl())
+                .header("x-goog-api-key", geminiApiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("No response body")
+                                .flatMap(body -> {
+                                    logger.error("Gemini API error response: {}", body);
+                                    return reactor.core.publisher.Mono
+                                            .error(new GeminiApiException("API Error", body));
+                                }))
+                .bodyToMono(String.class)
+                .block();
     }
 
     public NutritionResponse getNutritionInfo(String foodName, double quantity, String unit) {
@@ -43,37 +102,16 @@ public class GeminiService {
         String rawResponse = null;
 
         try {
-            Map<String, Object> requestBody = Map.of(
-                    "model", copilotModel,
-                    "messages", List.of(
-                            Map.of("role", "user", "content", prompt)),
-                    "temperature", 0.1);
+            logger.info("Calling Gemini API for: {} {} {}", foodName, quantity, unit);
 
-            logger.info("Calling Copilot Bridge API for: {} {} {}", foodName, quantity, unit);
+            rawResponse = callGeminiApi(prompt);
 
-            rawResponse = webClient.post()
-                    .uri(copilotBridgeUrl)
-                    .header("Authorization", "Bearer " + copilotBridgeToken)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                            clientResponse -> clientResponse.bodyToMono(String.class)
-                                    .defaultIfEmpty("No response body")
-                                    .flatMap(body -> {
-                                        logger.error("Copilot Bridge API error response: {}", body);
-                                        return reactor.core.publisher.Mono
-                                                .error(new GeminiApiException("API Error", body));
-                                    }))
-                    .bodyToMono(String.class)
-                    .block();
-
-            logger.info("Copilot Bridge API response received: {}", rawResponse);
+            logger.info("Gemini API response received: {}", rawResponse);
             return parseNutritionResponse(rawResponse);
         } catch (GeminiApiException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error calling Copilot Bridge API for food: {} {} {} - Error: {}", foodName, quantity, unit,
+            logger.error("Error calling Gemini API for food: {} {} {} - Error: {}", foodName, quantity, unit,
                     e.getMessage(), e);
             throw new GeminiApiException("Failed to get nutrition info: " + e.getMessage(),
                     rawResponse != null ? rawResponse : "No response received", e);
@@ -81,80 +119,39 @@ public class GeminiService {
     }
 
     /**
-     * Calls Copilot Bridge API and returns the raw response string without any
-     * parsing.
+     * Calls Gemini API and returns the raw response string without any parsing.
      */
     public String getRawNutritionResponse(String foodName, double quantity, String unit) {
         String prompt = buildPrompt(foodName, quantity, unit);
 
         try {
-            Map<String, Object> requestBody = Map.of(
-                    "model", copilotModel,
-                    "messages", List.of(
-                            Map.of("role", "user", "content", prompt)),
-                    "temperature", 0.1);
+            logger.info("[DEBUG] Calling Gemini API for: {} {} {}", foodName, quantity, unit);
 
-            logger.info("[DEBUG] Calling Copilot Bridge API for: {} {} {}", foodName, quantity, unit);
+            String rawResponse = callGeminiApi(prompt);
 
-            String rawResponse = webClient.post()
-                    .uri(copilotBridgeUrl)
-                    .header("Authorization", "Bearer " + copilotBridgeToken)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                            clientResponse -> clientResponse.bodyToMono(String.class)
-                                    .defaultIfEmpty("No response body")
-                                    .flatMap(body -> {
-                                        logger.error("[DEBUG] Copilot Bridge API error: {}", body);
-                                        return reactor.core.publisher.Mono
-                                                .error(new GeminiApiException("API Error", body));
-                                    }))
-                    .bodyToMono(String.class)
-                    .block();
-
-            logger.info("[DEBUG] Raw Copilot Bridge response: {}", rawResponse);
+            logger.info("[DEBUG] Raw Gemini response: {}", rawResponse);
             return rawResponse;
         } catch (Exception e) {
-            logger.error("[DEBUG] Copilot Bridge API call failed: {}", e.getMessage(), e);
-            throw new GeminiApiException("Failed to call Copilot Bridge API: " + e.getMessage(),
+            logger.error("[DEBUG] Gemini API call failed: {}", e.getMessage(), e);
+            throw new GeminiApiException("Failed to call Gemini API: " + e.getMessage(),
                     "No response received", e);
         }
     }
 
     /**
-     * Generic method to call the Copilot Bridge with any prompt and return the raw response.
+     * Generic method to call Gemini with any prompt and return the extracted text content.
      */
     public String callRawPrompt(String prompt) {
         try {
-            Map<String, Object> requestBody = Map.of(
-                    "model", copilotModel,
-                    "messages", List.of(Map.of("role", "user", "content", prompt)),
-                    "temperature", 0.1);
+            logger.info("Calling Gemini API with generic prompt (length={})", prompt.length());
 
-            logger.info("Calling Copilot Bridge with generic prompt (length={})", prompt.length());
-
-            return webClient.post()
-                    .uri(copilotBridgeUrl)
-                    .header("Authorization", "Bearer " + copilotBridgeToken)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                            clientResponse -> clientResponse.bodyToMono(String.class)
-                                    .defaultIfEmpty("No response body")
-                                    .flatMap(body -> {
-                                        logger.error("Copilot Bridge API error: {}", body);
-                                        return reactor.core.publisher.Mono
-                                                .error(new GeminiApiException("API Error", body));
-                                    }))
-                    .bodyToMono(String.class)
-                    .block();
+            String rawResponse = callGeminiApi(prompt);
+            return extractTextFromGeminiResponse(rawResponse);
         } catch (GeminiApiException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error calling Copilot Bridge: {}", e.getMessage(), e);
-            throw new GeminiApiException("Failed to call Copilot Bridge: " + e.getMessage(), "No response received", e);
+            logger.error("Error calling Gemini API: {}", e.getMessage(), e);
+            throw new GeminiApiException("Failed to call Gemini API: " + e.getMessage(), "No response received", e);
         }
     }
 
@@ -186,22 +183,9 @@ public class GeminiService {
 
     public NutritionResponse parseNutritionResponse(String response) {
         try {
-            JsonNode root = objectMapper.readTree(response);
+            String text = extractTextFromGeminiResponse(response);
 
-            // Navigate to the text content in OpenAI's response structure
-            JsonNode choices = root.path("choices");
-            if (choices.isEmpty() || !choices.isArray()) {
-                throw new GeminiApiException("Invalid Copilot Bridge response: no choices found", response);
-            }
-
-            JsonNode message = choices.get(0).path("message");
-            if (message.isEmpty() || message.isMissingNode()) {
-                throw new GeminiApiException("Invalid Copilot Bridge response: no message found", response);
-            }
-
-            String text = message.path("content").asText();
-
-            logger.info("Raw text from Copilot Bridge: {}", text);
+            logger.info("Raw text from Gemini: {}", text);
 
             // Extract JSON from the response (in case there's any surrounding text)
             String jsonStr = extractJson(text);
@@ -222,7 +206,7 @@ public class GeminiService {
         } catch (GeminiApiException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error parsing Copilot Bridge response: {}", response, e);
+            logger.error("Error parsing Gemini response: {}", response, e);
             throw new GeminiApiException("Failed to parse nutrition response: " + e.getMessage(), response, e);
         }
     }

@@ -9,7 +9,7 @@ import java.time.LocalTime;
 @Getter
 @Setter
 public class HabitWithCompletionDTO {
-    private Long id;
+    private String id;
     private String name;
     private String[] repeatDays;
     @JsonFormat(pattern = "hh:mm a")

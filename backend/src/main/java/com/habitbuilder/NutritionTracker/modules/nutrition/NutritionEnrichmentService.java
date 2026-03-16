@@ -3,7 +3,7 @@ package com.habitbuilder.NutritionTracker.modules.nutrition;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
 
@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,7 +43,6 @@ public class NutritionEnrichmentService {
     }
 
     @Async
-    @Transactional
     public void enrichFoodEntry(FoodEntry foodEntry) {
         logger.info("Starting nutrition enrichment for food entry: {} ({} {})",
                 foodEntry.getName(), foodEntry.getQuantity(), foodEntry.getUnit());
@@ -100,7 +98,7 @@ public class NutritionEnrichmentService {
             // Update nutrition details with the response
             updateNutritionDetails(nutritionDetails, nutritionResponse);
             nutritionDetails.setEnrichmentStatus("completed");
-            nutritionDetails.setEnrichedAt(OffsetDateTime.now());
+            nutritionDetails.setEnrichedAt(Instant.now());
             nutritionDetails.setEnrichmentError(null);
             nutritionDetailsRepository.save(nutritionDetails);
 
@@ -116,12 +114,13 @@ public class NutritionEnrichmentService {
     }
 
     private NutritionDetails getOrCreateNutritionDetails(FoodEntry foodEntry) {
-        if (foodEntry.getNutritionDetails() != null) {
-            return foodEntry.getNutritionDetails();
+        Optional<NutritionDetails> existing = nutritionDetailsRepository.findByFoodEntryId(foodEntry.getId());
+        if (existing.isPresent()) {
+            return existing.get();
         }
 
         NutritionDetails nutritionDetails = new NutritionDetails();
-        nutritionDetails.setFoodEntry(foodEntry);
+        nutritionDetails.setFoodEntryId(foodEntry.getId());
         nutritionDetails.setEnrichmentStatus("pending");
         return nutritionDetailsRepository.save(nutritionDetails);
     }

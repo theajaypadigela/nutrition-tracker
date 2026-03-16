@@ -6,13 +6,20 @@ import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,21 +33,32 @@ public class HabitService {
 
     private HabitRepository habitRepository;
     private HabitEntityRepository habitEntityRepository;
+    private GeminiService geminiService;
+    private ObjectMapper objectMapper;
 
-    HabitService(HabitRepository habitRepository, HabitEntityRepository habitEntityRepository) {
+    HabitService(
+            HabitRepository habitRepository,
+            HabitEntityRepository habitEntityRepository,
+            GeminiService geminiService,
+            ObjectMapper objectMapper) {
         this.habitRepository = habitRepository;
         this.habitEntityRepository = habitEntityRepository;
+        this.geminiService = geminiService;
+        this.objectMapper = objectMapper;
     }
+
+    private static final Pattern RESCHEDULE_MINUTES_PATTERN = Pattern
+            .compile("(?:in|after)\\s+(\\d{1,3})\\s*(?:minutes?|mins?|m)\\b", Pattern.CASE_INSENSITIVE);
 
     public Habit addHabit(HabitDTO habitDto) {
         User currentUser = getCurrentUser();
 
         Habit newHabit = new Habit();
         newHabit.setName(habitDto.getName());
-        newHabit.setRepeatDays(habitDto.getRepeatDays());
+        newHabit.setRepeatDays(Arrays.asList(habitDto.getRepeatDays()));
         newHabit.setReminderTime(parseReminderTime(habitDto.getReminderTime()));
         newHabit.setReminderType(habitDto.getReminderType());
-        newHabit.setUser(currentUser);
+        newHabit.setUserId(currentUser.getId());
 
         return habitRepository.save(newHabit);
     }
@@ -87,27 +105,28 @@ public class HabitService {
 
     public List<HabitWithCompletionDTO> getHabitsByDate(LocalDate date) {
         User currentUser = getCurrentUser();
-        String dayOfWeek = date.getDayOfWeek().toString().substring(0, 3).toUpperCase();
+        String raw = date.getDayOfWeek().toString().substring(0, 3);
+        String dayOfWeek = raw.substring(0, 1) + raw.substring(1).toLowerCase();
 
         System.out.println(
                 "Fetching habits for user: " + currentUser.getId() + " on date: " + date + " (day: " + dayOfWeek + ")");
 
-        List<Habit> habits = habitRepository.findByUserAndRepeatDaysContaining(currentUser.getId(), dayOfWeek);
+        List<Habit> habits = habitRepository.findByUserIdAndRepeatDaysContaining(currentUser.getId(), dayOfWeek);
 
         return habits.stream()
                 .map(habit -> {
                     HabitWithCompletionDTO dto = new HabitWithCompletionDTO();
                     dto.setId(habit.getId());
                     dto.setName(habit.getName());
-                    dto.setRepeatDays(habit.getRepeatDays());
+                    dto.setRepeatDays(habit.getRepeatDays().toArray(new String[0]));
                     dto.setReminderTime(habit.getReminderTime());
                     dto.setReminderType(habit.getReminderType());
 
                     // Check habit status on the specified date
                     habitEntityRepository
                             .findByHabitIdAndUserIdAndEntryDate(
-                                    habit.getId().toString(),
-                                    currentUser.getId().toString(),
+                                    habit.getId(),
+                                    currentUser.getId(),
                                     date)
                             .ifPresentOrElse(entity -> {
                                 dto.setCompleted(entity.getStatus() == HabitStatus.COMPLETED);
@@ -128,7 +147,7 @@ public class HabitService {
         User currentUser = getCurrentUser();
         LocalDate today = LocalDate.now();
 
-        Long habitId = habitCompletion.getId();
+        String habitId = habitCompletion.getId();
         if (habitId == null) {
             throw new IllegalArgumentException("Habit ID is required");
         }
@@ -137,20 +156,20 @@ public class HabitService {
         Habit habit = habitRepository.findById(habitId)
                 .orElseThrow(() -> new IllegalArgumentException("Habit not found"));
 
-        if (!habit.getUser().getId().equals(currentUser.getId())) {
+        if (!habit.getUserId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Habit does not belong to user");
         }
 
         // Create or update habit entity for today
         HabitEntity habitEntity = habitEntityRepository
                 .findByHabitIdAndUserIdAndEntryDate(
-                        habit.getId().toString(),
-                        currentUser.getId().toString(),
+                        habit.getId(),
+                        currentUser.getId(),
                         today)
                 .orElseGet(() -> {
                     HabitEntity newEntity = new HabitEntity();
-                    newEntity.setHabitId(habit.getId().toString());
-                    newEntity.setUserId(currentUser.getId().toString());
+                    newEntity.setHabitId(habit.getId());
+                    newEntity.setUserId(currentUser.getId());
                     newEntity.setEntryDate(today);
                     return newEntity;
                 });
@@ -166,14 +185,14 @@ public class HabitService {
         habitEntityRepository.save(habitEntity);
     }
 
-    public void deleteHabit(Long id) {
+    public void deleteHabit(String id) {
         User currentUser = getCurrentUser();
 
         // Get the habit by ID and verify it belongs to the user
         Habit habit = habitRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Habit not found"));
 
-        if (!habit.getUser().getId().equals(currentUser.getId())) {
+        if (!habit.getUserId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Habit does not belong to user");
         }
 
@@ -187,7 +206,7 @@ public class HabitService {
         log.info("Received habit voice result: userId={}, habitId={}, status={}, rescheduleMinutes={}",
                 currentUser.getId(), result.getHabitId(), result.getHabitStatus(), result.getRescheduleMinutes());
 
-        Long habitId = result.getHabitId();
+        String habitId = result.getHabitId();
         if (habitId == null) {
             throw new IllegalArgumentException("Habit ID is required");
         }
@@ -195,19 +214,19 @@ public class HabitService {
         Habit habit = habitRepository.findById(habitId)
                 .orElseThrow(() -> new IllegalArgumentException("Habit not found"));
 
-        if (!habit.getUser().getId().equals(currentUser.getId())) {
+        if (!habit.getUserId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Habit does not belong to user");
         }
 
         HabitEntity habitEntity = habitEntityRepository
                 .findByHabitIdAndUserIdAndEntryDate(
-                        habit.getId().toString(),
-                        currentUser.getId().toString(),
+                        habit.getId(),
+                        currentUser.getId(),
                         today)
                 .orElseGet(() -> {
                     HabitEntity newEntity = new HabitEntity();
-                    newEntity.setHabitId(habit.getId().toString());
-                    newEntity.setUserId(currentUser.getId().toString());
+                    newEntity.setHabitId(habit.getId());
+                    newEntity.setUserId(currentUser.getId());
                     newEntity.setEntryDate(today);
                     return newEntity;
                 });
@@ -238,7 +257,7 @@ public class HabitService {
         HabitWithCompletionDTO dto = new HabitWithCompletionDTO();
         dto.setId(habit.getId());
         dto.setName(habit.getName());
-        dto.setRepeatDays(habit.getRepeatDays());
+        dto.setRepeatDays(habit.getRepeatDays().toArray(new String[0]));
         dto.setReminderTime(habit.getReminderTime());
         dto.setReminderType(habit.getReminderType());
         dto.setCompleted(habitEntity.getStatus() == HabitStatus.COMPLETED);
@@ -247,5 +266,145 @@ public class HabitService {
         dto.setRescheduledTime(habitEntity.getRescheduledTime());
 
         return dto;
+    }
+
+    public HabitVoiceInterpretResponseDTO interpretVoiceTranscript(HabitVoiceInterpretRequestDTO request) {
+        HabitVoiceInterpretResponseDTO response = new HabitVoiceInterpretResponseDTO();
+        response.setHabitStatus("not_completed");
+
+        if (request == null || request.getTranscriptLines() == null || request.getTranscriptLines().isEmpty()) {
+            response.setRationale("No transcript provided");
+            return response;
+        }
+
+        String transcript = String.join("\n", request.getTranscriptLines());
+        String habitName = request.getHabitName() != null ? request.getHabitName() : "Habit";
+        String habitTime = request.getHabitTime() != null ? request.getHabitTime() : "";
+
+        String prompt = """
+                You are classifying a habit check-in voice transcript.
+
+                Return ONLY a JSON object with this exact shape:
+                {
+                  "habitStatus": "completed" | "rescheduled" | "not_completed",
+                  "rescheduleMinutes": number or null,
+                  "rationale": "short explanation"
+                }
+
+                Rules:
+                1) Choose completed when the user confirms they already did/finished/completed the habit.
+                2) Choose rescheduled when the user asks to be reminded later OR confirms a later time proposed by assistant.
+                3) If unsure, choose not_completed.
+                4) If status is rescheduled, provide rescheduleMinutes when inferable from transcript, else null.
+                5) Never include markdown or extra text.
+
+                Context:
+                habitName: %s
+                scheduledTime: %s
+
+                Transcript:
+                %s
+                """.formatted(habitName, habitTime, transcript);
+
+        try {
+            String modelText = geminiService.callRawPrompt(prompt);
+            String jsonText = extractJson(modelText);
+            JsonNode root = objectMapper.readTree(jsonText);
+
+            String habitStatus = normalizeHabitStatus(root.path("habitStatus").asText(null));
+            Integer rescheduleMinutes = root.path("rescheduleMinutes").isNumber()
+                    ? root.path("rescheduleMinutes").asInt()
+                    : null;
+            String rationale = root.path("rationale").asText("classified_by_gemini");
+
+            if ("rescheduled".equals(habitStatus) && (rescheduleMinutes == null || rescheduleMinutes <= 0)) {
+                rescheduleMinutes = inferRescheduleMinutes(request.getTranscriptLines());
+            }
+
+            response.setHabitStatus(habitStatus);
+            response.setRescheduleMinutes(
+                    rescheduleMinutes != null && rescheduleMinutes > 0 ? rescheduleMinutes : null);
+            response.setRationale(rationale);
+
+            log.info("Interpreted habit transcript: status={}, rescheduleMinutes={}, rationale={}",
+                    response.getHabitStatus(), response.getRescheduleMinutes(), response.getRationale());
+            return response;
+        } catch (Exception e) {
+            log.warn("Gemini transcript interpretation failed, falling back to regex inference: {}", e.getMessage());
+
+            Integer fallbackMinutes = inferRescheduleMinutes(request.getTranscriptLines());
+            if (fallbackMinutes != null && fallbackMinutes > 0) {
+                response.setHabitStatus("rescheduled");
+                response.setRescheduleMinutes(fallbackMinutes);
+                response.setRationale("fallback_reschedule_minutes_detected");
+            } else {
+                response.setRationale("fallback_not_completed");
+            }
+            return response;
+        }
+    }
+
+    private String extractJson(String text) {
+        if (text == null) {
+            return "{}";
+        }
+
+        String cleaned = text.trim();
+        if (cleaned.startsWith("```json")) {
+            cleaned = cleaned.substring(7).trim();
+        } else if (cleaned.startsWith("```")) {
+            cleaned = cleaned.substring(3).trim();
+        }
+
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 3).trim();
+        }
+
+        int start = cleaned.indexOf('{');
+        int end = cleaned.lastIndexOf('}');
+        if (start != -1 && end != -1 && end > start) {
+            return cleaned.substring(start, end + 1);
+        }
+
+        return cleaned;
+    }
+
+    private Integer inferRescheduleMinutes(List<String> lines) {
+        if (lines == null) {
+            return null;
+        }
+
+        for (String line : lines) {
+            if (line == null) {
+                continue;
+            }
+            Matcher matcher = RESCHEDULE_MINUTES_PATTERN.matcher(line);
+            if (matcher.find()) {
+                try {
+                    int parsed = Integer.parseInt(matcher.group(1));
+                    if (parsed > 0) {
+                        return parsed;
+                    }
+                } catch (NumberFormatException ignored) {
+                    // Ignore malformed minute captures.
+                }
+            }
+        }
+        return null;
+    }
+
+    private String normalizeHabitStatus(String raw) {
+        if (raw == null) {
+            return "not_completed";
+        }
+
+        String normalized = raw.trim().toLowerCase();
+        if ("completed".equals(normalized)) {
+            return "completed";
+        }
+        if ("rescheduled".equals(normalized)) {
+            return "rescheduled";
+        }
+        return "not_completed";
     }
 }

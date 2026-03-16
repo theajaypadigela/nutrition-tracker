@@ -6,6 +6,7 @@ import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 import com.habitbuilder.NutritionTracker.modules.food.FoodService;
 import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VoiceMealLogRequest;
 
@@ -14,13 +15,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class VoiceLogService {
@@ -39,6 +41,9 @@ public class VoiceLogService {
 
     @Value("${vapi.assistant-id}")
     private String vapiAssistantId;
+
+        private static final Pattern RESCHEDULE_MINUTES_PATTERN = Pattern
+            .compile("(?:in|after)\\s+(\\d{1,3})\\s*(?:minutes?|mins?|m)\\b", Pattern.CASE_INSENSITIVE);
 
     public VoiceLogService(FoodService foodService,
             UserRepository userRepository,
@@ -64,13 +69,13 @@ public class VoiceLogService {
         VoiceMealLogRequest req = objectMapper.convertValue(params, VoiceMealLogRequest.class);
         LocalDate logDate = LocalDate.parse(req.getDate());
 
-        Long userId = resolveUserFromCallMetadata(callMetadata);
+        String userId = resolveUserFromCallMetadata(callMetadata);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found for voice log: " + userId));
 
         // Save session record for audit
         VoiceMealSession session = new VoiceMealSession();
-        session.setUser(user);
+        session.setUserId(user.getId());
         session.setLogDate(logDate);
         session.setRawTranscript(transcriptToString(transcript));
         session.setStatus(VoiceMealSession.SessionStatus.PENDING);
@@ -107,7 +112,7 @@ public class VoiceLogService {
      * The userId is embedded in metadata so the webhook can identify the user.
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public String generateVapiToken(Long userId) {
+    public String generateVapiToken(String userId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(vapiPrivateKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -115,7 +120,7 @@ public class VoiceLogService {
         Map<String, Object> body = Map.of(
                 "assistantId", vapiAssistantId,
                 "assistantOverrides", Map.of(
-                        "metadata", Map.of("userId", userId.toString())));
+                        "metadata", Map.of("userId", userId)));
 
         ResponseEntity<Map> response = restTemplate.postForEntity(
                 "https://api.vapi.ai/call/web",
@@ -130,13 +135,9 @@ public class VoiceLogService {
         return (String) responseBody.get("token");
     }
 
-    private Long resolveUserFromCallMetadata(Map<String, Object> callMetadata) {
+    private String resolveUserFromCallMetadata(Map<String, Object> callMetadata) {
         if (callMetadata != null && callMetadata.containsKey("userId")) {
-            try {
-                return Long.parseLong(callMetadata.get("userId").toString());
-            } catch (NumberFormatException e) {
-                logger.error("Invalid userId in Vapi call metadata: {}", callMetadata.get("userId"));
-            }
+            return callMetadata.get("userId").toString();
         }
         throw new RuntimeException("Cannot resolve user from Vapi webhook — userId missing from call metadata");
     }
@@ -158,7 +159,7 @@ public class VoiceLogService {
      * Not @Transactional so each addFoodEntryForUser call auto-commits,
      * allowing the @Async nutrition enrichment to see the committed rows.
      */
-    public int parseTranscriptAndLogMeals(Long userId, String transcript) {
+    public int parseTranscriptAndLogMeals(String userId, String transcript) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
@@ -166,7 +167,7 @@ public class VoiceLogService {
 
         // Save session record for audit
         VoiceMealSession session = new VoiceMealSession();
-        session.setUser(user);
+        session.setUserId(user.getId());
         session.setLogDate(logDate);
         session.setRawTranscript(transcript);
         session.setStatus(VoiceMealSession.SessionStatus.PENDING);
@@ -175,8 +176,7 @@ public class VoiceLogService {
 
         try {
             String prompt = buildTranscriptParsingPrompt(transcript);
-            String rawResponse = geminiService.callRawPrompt(prompt);
-            String content = extractContentFromLLMResponse(rawResponse);
+            String content = geminiService.callRawPrompt(prompt);
             String json = extractJson(content);
 
             JsonNode root = objectMapper.readTree(json);
@@ -240,19 +240,6 @@ public class VoiceLogService {
                 transcript);
     }
 
-    private String extractContentFromLLMResponse(String rawResponse) {
-        try {
-            JsonNode root = objectMapper.readTree(rawResponse);
-            JsonNode choices = root.path("choices");
-            if (choices.isArray() && !choices.isEmpty()) {
-                return choices.get(0).path("message").path("content").asText("");
-            }
-        } catch (Exception e) {
-            logger.warn("Could not parse LLM response structure, using raw: {}", e.getMessage());
-        }
-        return rawResponse;
-    }
-
     private String extractJson(String text) {
         String cleaned = text.trim();
         if (cleaned.startsWith("```json")) {
@@ -270,5 +257,89 @@ public class VoiceLogService {
             return cleaned.substring(start, end + 1);
         }
         return cleaned;
+    }
+
+    public MealTranscriptInterpretResponseDTO interpretMealTranscript(String transcript, String mealSlotId) {
+        MealTranscriptInterpretResponseDTO response = new MealTranscriptInterpretResponseDTO();
+        response.setShouldLogMeals(false);
+        response.setRescheduleMinutes(null);
+        response.setRationale("no_transcript");
+
+        if (transcript == null || transcript.isBlank()) {
+            return response;
+        }
+
+        String prompt = String.format(
+                """
+                        You are classifying a meal voice call transcript.
+
+                        Return ONLY valid JSON in this exact shape:
+                        {
+                          "shouldLogMeals": true or false,
+                          "rescheduleMinutes": number or null,
+                          "rationale": "short explanation"
+                        }
+
+                        Rules:
+                        1) shouldLogMeals = true when user actually provided meal/food details to be logged now.
+                        2) shouldLogMeals = false when user asks to do it later, asks to be called/reminded later, or only confirms a later time.
+                        3) rescheduleMinutes should be set when user asks for delay or confirms delayed follow-up time; otherwise null.
+                        4) If both happened, keep shouldLogMeals=true and also set rescheduleMinutes.
+                        5) If uncertain, choose shouldLogMeals=false and rescheduleMinutes=null.
+
+                        Context meal slot: %s
+
+                        Transcript:
+                        %s
+                        """,
+                mealSlotId != null ? mealSlotId : "unknown",
+                transcript);
+
+        try {
+            String modelText = geminiService.callRawPrompt(prompt);
+            String json = extractJson(modelText);
+            JsonNode root = objectMapper.readTree(json);
+
+            boolean shouldLogMeals = root.path("shouldLogMeals").asBoolean(false);
+            Integer rescheduleMinutes = root.path("rescheduleMinutes").isNumber()
+                    ? root.path("rescheduleMinutes").asInt()
+                    : null;
+            if (rescheduleMinutes != null && rescheduleMinutes <= 0) {
+                rescheduleMinutes = null;
+            }
+            if (rescheduleMinutes == null) {
+                rescheduleMinutes = inferRescheduleMinutes(transcript);
+            }
+
+            response.setShouldLogMeals(shouldLogMeals);
+            response.setRescheduleMinutes(rescheduleMinutes);
+            response.setRationale(root.path("rationale").asText("classified_by_gemini"));
+            return response;
+        } catch (Exception e) {
+            logger.warn("Meal transcript interpretation failed, using fallback: {}", e.getMessage());
+            Integer fallbackMinutes = inferRescheduleMinutes(transcript);
+            response.setShouldLogMeals(fallbackMinutes == null);
+            response.setRescheduleMinutes(fallbackMinutes);
+            response.setRationale(fallbackMinutes != null ? "fallback_delay_detected" : "fallback_log_meals");
+            return response;
+        }
+    }
+
+    private Integer inferRescheduleMinutes(String transcript) {
+        if (transcript == null || transcript.isBlank()) {
+            return null;
+        }
+
+        Matcher matcher = RESCHEDULE_MINUTES_PATTERN.matcher(transcript);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        try {
+            int parsed = Integer.parseInt(matcher.group(1));
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

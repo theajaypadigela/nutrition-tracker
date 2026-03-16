@@ -14,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetails;
+import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetailsRepository;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionEnrichmentService;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,18 +35,21 @@ public class FoodService {
 
     private FoodLogRepository foodLogRepository;
     private FoodEntryRepository foodEntryRepository;
+    private NutritionDetailsRepository nutritionDetailsRepository;
     private NutritionEnrichmentService nutritionEnrichmentService;
     private GeminiService geminiService;
     private ObjectMapper objectMapper;
     private UserNutrientPreferenceRepository preferenceRepository;
 
     FoodService(FoodLogRepository foodLogRepository, FoodEntryRepository foodEntryRepository,
+            NutritionDetailsRepository nutritionDetailsRepository,
             NutritionEnrichmentService nutritionEnrichmentService,
             GeminiService geminiService,
             ObjectMapper objectMapper,
             UserNutrientPreferenceRepository preferenceRepository) {
         this.foodLogRepository = foodLogRepository;
         this.foodEntryRepository = foodEntryRepository;
+        this.nutritionDetailsRepository = nutritionDetailsRepository;
         this.nutritionEnrichmentService = nutritionEnrichmentService;
         this.geminiService = geminiService;
         this.objectMapper = objectMapper;
@@ -53,14 +58,14 @@ public class FoodService {
 
     public List<FoodEntryResponse> addFoodEntries(LocalDate date, String mealType, List<AddFoodEntryRequest> request) {
 
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         FoodLog foodLog = getOrCreateFoodLog(userId, date);
 
         List<FoodEntryResponse> responses = new ArrayList<>();
 
         for (AddFoodEntryRequest req : request) {
             FoodEntry entry = new FoodEntry();
-            entry.setFoodLog(foodLog);
+            entry.setFoodLogId(foodLog.getId());
             entry.setName(req.getName());
             entry.setQuantity(req.getQuantity());
             entry.setUnit(req.getUnit());
@@ -89,12 +94,12 @@ public class FoodService {
      * Add a single food entry for a specific user (bypasses SecurityContext).
      * Used by the voice-log webhook where there is no JWT auth context.
      */
-    public void addFoodEntryForUser(Long userId, LocalDate date, String mealType,
+    public void addFoodEntryForUser(String userId, LocalDate date, String mealType,
             String name, double quantity, String unit) {
         FoodLog foodLog = getOrCreateFoodLog(userId, date);
 
         FoodEntry entry = new FoodEntry();
-        entry.setFoodLog(foodLog);
+        entry.setFoodLogId(foodLog.getId());
         entry.setName(name);
         entry.setQuantity(quantity);
         entry.setUnit(unit);
@@ -105,7 +110,7 @@ public class FoodService {
     }
 
     public MealsResponse getDayLogAsMeals(LocalDate date) {
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         Optional<FoodLog> logOpt = foodLogRepository.findByUserIdAndLogDate(userId, date);
 
         if (logOpt.isEmpty()) {
@@ -116,10 +121,11 @@ public class FoodService {
         }
 
         FoodLog log = logOpt.get();
+        List<FoodEntry> entries = foodEntryRepository.findByFoodLogId(log.getId());
         Map<String, List<FoodItemResponse>> mealsMap = new HashMap<>();
         NutritionTotals totals = new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
-        for (FoodEntry entry : log.getEntries()) {
+        for (FoodEntry entry : entries) {
             FoodItemResponse item = buildFoodItemResponse(entry);
 
             // Accumulate totals
@@ -150,7 +156,7 @@ public class FoodService {
     public List<DayLogResponse> getDayLogs(LocalDate from, LocalDate to) {
         if (from == null || to == null)
             return null;
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, from, to);
 
         List<DayLogResponse> response = new ArrayList<>();
@@ -159,18 +165,18 @@ public class FoodService {
             DayLogResponse res = DayLogResponse.builder()
                     .foodLogId(log.getId())
                     .date(log.getLogDate())
-                    .meals(groupEntriesByMealType(log.getEntries()))
+                    .meals(groupEntriesByMealType(foodEntryRepository.findByFoodLogId(log.getId())))
                     .build();
             response.add(res);
         }
         return response;
     }
 
-    public MealsResponse updateEntry(LocalDate date, UUID id, UpdateFoodEntryRequest request) {
+    public MealsResponse updateEntry(LocalDate date, String id, UpdateFoodEntryRequest request) {
         if (id == null)
             return null;
 
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         Optional<FoodEntry> entryOpt = foodEntryRepository.findById(id);
 
         if (entryOpt.isEmpty()) {
@@ -179,7 +185,10 @@ public class FoodService {
 
         FoodEntry entry = entryOpt.get();
 
-        if (!entry.getFoodLog().getUserId().equals(userId) || !entry.getFoodLog().getLogDate().equals(date)) {
+        FoodLog foodLog = foodLogRepository.findById(entry.getFoodLogId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Food log not found"));
+
+        if (!foodLog.getUserId().equals(userId) || !foodLog.getLogDate().equals(date)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Entry does not match the specified date and user");
         }
@@ -202,11 +211,11 @@ public class FoodService {
         return getDayLogAsMeals(date);
     }
 
-    public MealsResponse deleteEntry(LocalDate date, UUID id) {
+    public MealsResponse deleteEntry(LocalDate date, String id) {
         if (id == null)
             return null;
 
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         Optional<FoodEntry> entryOpt = foodEntryRepository.findById(id);
 
         if (entryOpt.isEmpty()) {
@@ -215,7 +224,10 @@ public class FoodService {
 
         FoodEntry entry = entryOpt.get();
 
-        if (!entry.getFoodLog().getUserId().equals(userId) || !entry.getFoodLog().getLogDate().equals(date)) {
+        FoodLog foodLog = foodLogRepository.findById(entry.getFoodLogId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Food log not found"));
+
+        if (!foodLog.getUserId().equals(userId) || !foodLog.getLogDate().equals(date)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Entry does not match the specified date and user");
         }
@@ -224,7 +236,7 @@ public class FoodService {
         return getDayLogAsMeals(date);
     }
 
-    private Long getCurrentUserId() {
+    private String getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof User user) {
             return user.getId();
@@ -240,7 +252,7 @@ public class FoodService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
     }
 
-    private FoodLog getOrCreateFoodLog(Long userId, LocalDate date) {
+    private FoodLog getOrCreateFoodLog(String userId, LocalDate date) {
         return foodLogRepository.findByUserIdAndLogDate(userId, date)
                 .orElseGet(() -> {
                     FoodLog log = new FoodLog();
@@ -273,14 +285,15 @@ public class FoodService {
 
     private FoodItemResponse buildFoodItemResponse(FoodEntry entry) {
         FoodItemResponse.FoodItemResponseBuilder builder = FoodItemResponse.builder()
-                .id(entry.getId().toString())
+                .id(entry.getId())
                 .name(entry.getName())
                 .quantity(String.valueOf(entry.getQuantity()))
                 .servingSize(entry.getUnit());
 
         // Add nutrition data if available
-        if (entry.getNutritionDetails() != null) {
-            var nutrition = entry.getNutritionDetails();
+        Optional<NutritionDetails> ndOpt = nutritionDetailsRepository.findByFoodEntryId(entry.getId());
+        if (ndOpt.isPresent()) {
+            var nutrition = ndOpt.get();
             logger.debug("Nutrition details found for entry '{}': status={}, calories={}",
                     entry.getName(), nutrition.getEnrichmentStatus(), nutrition.getCalories());
 
@@ -307,9 +320,26 @@ public class FoodService {
     }
 
     public WeeklyNutritionReport getWeeklyNutritionReport(LocalDate startDate, LocalDate endDate) {
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, startDate,
                 endDate);
+
+        // Batch-fetch all entries for all logs
+        List<String> logIds = logs.stream().map(FoodLog::getId).collect(Collectors.toList());
+        List<FoodEntry> allEntries = new ArrayList<>();
+        for (String logId : logIds) {
+            allEntries.addAll(foodEntryRepository.findByFoodLogId(logId));
+        }
+
+        // Batch-fetch all nutrition details for all entries
+        List<String> entryIds = allEntries.stream().map(FoodEntry::getId).collect(Collectors.toList());
+        List<NutritionDetails> allNutritionDetails = nutritionDetailsRepository.findByFoodEntryIdIn(entryIds);
+        Map<String, NutritionDetails> nutritionMap = allNutritionDetails.stream()
+                .collect(Collectors.toMap(NutritionDetails::getFoodEntryId, nd -> nd, (a, b) -> a));
+
+        // Build a map of logId -> entries
+        Map<String, List<FoodEntry>> entriesByLogId = allEntries.stream()
+                .collect(Collectors.groupingBy(FoodEntry::getFoodLogId));
 
         List<DailyNutritionSummary> dailySummaries = new ArrayList<>();
         NutritionTotals weeklyTotals = new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -318,9 +348,10 @@ public class FoodService {
         for (FoodLog log : logs) {
             NutritionTotals dayTotals = new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
-            for (FoodEntry entry : log.getEntries()) {
-                if (entry.getNutritionDetails() != null) {
-                    var nutrition = entry.getNutritionDetails();
+            List<FoodEntry> logEntries = entriesByLogId.getOrDefault(log.getId(), List.of());
+            for (FoodEntry entry : logEntries) {
+                NutritionDetails nutrition = nutritionMap.get(entry.getId());
+                if (nutrition != null) {
                     if (nutrition.getCalories() != null)
                         dayTotals.setCalories(dayTotals.getCalories() + nutrition.getCalories().doubleValue());
                     if (nutrition.getProteinG() != null)
@@ -381,7 +412,7 @@ public class FoodService {
     // -----------------------------------------------------------------------
     // RDI cache (in-memory per JVM session, keyed by userId)
     // -----------------------------------------------------------------------
-    private final Map<Long, Map<String, Double>> rdiCache = new HashMap<>();
+    private final Map<String, Map<String, Double>> rdiCache = new HashMap<>();
 
     /**
      * Returns all nutrient summaries for the given date range.
@@ -389,10 +420,27 @@ public class FoodService {
      */
     public List<NutrientSummary> getAllNutrientsSummary(LocalDate startDate, LocalDate endDate) {
         User user = getCurrentUser();
-        Long userId = user.getId();
+        String userId = user.getId();
 
         List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, startDate,
                 endDate);
+
+        // Batch-fetch all entries for all logs
+        List<String> logIds = logs.stream().map(FoodLog::getId).collect(Collectors.toList());
+        List<FoodEntry> allEntries = new ArrayList<>();
+        for (String logId : logIds) {
+            allEntries.addAll(foodEntryRepository.findByFoodLogId(logId));
+        }
+
+        // Batch-fetch all nutrition details for all entries
+        List<String> entryIds = allEntries.stream().map(FoodEntry::getId).collect(Collectors.toList());
+        List<NutritionDetails> allNutritionDetails = nutritionDetailsRepository.findByFoodEntryIdIn(entryIds);
+        Map<String, NutritionDetails> nutritionMap = allNutritionDetails.stream()
+                .collect(Collectors.toMap(NutritionDetails::getFoodEntryId, nd -> nd, (a, b) -> a));
+
+        // Build a map of logId -> entries
+        Map<String, List<FoodEntry>> entriesByLogId = allEntries.stream()
+                .collect(Collectors.groupingBy(FoodEntry::getFoodLogId));
 
         // Build map: date -> nutrients
         Map<LocalDate, Map<String, Double>> dailyNutrientMap = new LinkedHashMap<>();
@@ -408,10 +456,11 @@ public class FoodService {
 
         for (FoodLog log : logs) {
             Map<String, Double> dayMap = dailyNutrientMap.getOrDefault(log.getLogDate(), new HashMap<>());
-            for (FoodEntry entry : log.getEntries()) {
-                if (entry.getNutritionDetails() == null)
+            List<FoodEntry> logEntries = entriesByLogId.getOrDefault(log.getId(), List.of());
+            for (FoodEntry entry : logEntries) {
+                NutritionDetails nd = nutritionMap.get(entry.getId());
+                if (nd == null)
                     continue;
-                var nd = entry.getNutritionDetails();
                 String foodName = entry.getName();
 
                 Map<String, Double> nutrientValues = buildNutrientValues(nd);
@@ -561,10 +610,7 @@ public class FoodService {
                 user.getAge(), user.getGender());
 
         try {
-            String rawResponse = callGeminiRaw(prompt);
-            JsonNode root = objectMapper.readTree(rawResponse);
-            JsonNode choices = root.path("choices");
-            String text = choices.get(0).path("message").path("content").asText();
+            String text = callGeminiRaw(prompt);
             // Extract JSON
             int start = text.indexOf('{');
             int end = text.lastIndexOf('}');
@@ -586,16 +632,6 @@ public class FoodService {
     }
 
     private String callGeminiRaw(String prompt) {
-        // Reuse GeminiService's Copilot Bridge infrastructure via the raw call
-        // We'll call getRawNutritionResponse with dummy food name trick; instead we
-        // delegate to a direct call.
-        // Since GeminiService doesn't have a generic prompt method, we'll use the food
-        // name field as the prompt carrier.
-        // Better: call geminiService.getRawNutritionResponse with a constructed prompt
-        // string via reflection trick.
-        // Cleanest: pass prompt as-is by calling the raw endpoint method in
-        // GeminiService.
-        // We expose a new public method in GeminiService: callRawPrompt(String prompt)
         return geminiService.callRawPrompt(prompt);
     }
 
@@ -643,7 +679,7 @@ public class FoodService {
     // ═══════════════════════════════════════════════════════════════════════════
 
     public NutrientPreferenceResponse togglePin(String nutrientId) {
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         UserNutrientPreference pref = preferenceRepository
                 .findByUserIdAndNutrientId(userId, nutrientId)
                 .orElseGet(() -> UserNutrientPreference.builder()
@@ -657,7 +693,7 @@ public class FoodService {
     }
 
     public NutrientPreferenceResponse setCustomTarget(String nutrientId, Double target) {
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         UserNutrientPreference pref = preferenceRepository
                 .findByUserIdAndNutrientId(userId, nutrientId)
                 .orElseGet(() -> UserNutrientPreference.builder()
@@ -670,7 +706,7 @@ public class FoodService {
     }
 
     public NutrientPreferenceResponse setAvoidedFoods(String nutrientId, List<String> foods) {
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         UserNutrientPreference pref = preferenceRepository
                 .findByUserIdAndNutrientId(userId, nutrientId)
                 .orElseGet(() -> UserNutrientPreference.builder()
@@ -683,7 +719,7 @@ public class FoodService {
     }
 
     public List<NutrientPreferenceResponse> getPreferences() {
-        Long userId = getCurrentUserId();
+        String userId = getCurrentUserId();
         return preferenceRepository.findByUserId(userId).stream()
                 .map(this::toPreferenceResponse)
                 .collect(Collectors.toList());
@@ -755,10 +791,7 @@ public class FoodService {
                 avoidedSection.length() > 0 ? "Foods to avoid:\n" + avoidedSection : "");
 
         try {
-            String rawResponse = callGeminiRaw(prompt);
-            JsonNode root = objectMapper.readTree(rawResponse);
-            JsonNode choices = root.path("choices");
-            String text = choices.get(0).path("message").path("content").asText();
+            String text = callGeminiRaw(prompt);
 
             // Extract JSON array
             int start = text.indexOf('[');

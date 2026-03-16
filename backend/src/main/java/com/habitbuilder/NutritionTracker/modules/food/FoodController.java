@@ -23,10 +23,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.Map;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/food")
@@ -67,7 +66,7 @@ public class FoodController {
     @PutMapping("/{date}/meals/entries/{id}")
     public ResponseEntity<MealsResponse> updateEntry(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @PathVariable UUID id,
+            @PathVariable String id,
             @RequestBody @Valid UpdateFoodEntryRequest request) {
         MealsResponse result = foodService.updateEntry(date, id, request);
         return ResponseEntity.ok(result);
@@ -76,7 +75,7 @@ public class FoodController {
     @DeleteMapping("/{date}/meals/entries/{id}")
     public ResponseEntity<MealsResponse> deleteEntry(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @PathVariable UUID id) {
+            @PathVariable String id) {
         MealsResponse result = foodService.deleteEntry(date, id);
         return ResponseEntity.ok(result);
     }
@@ -145,14 +144,14 @@ public class FoodController {
 @AllArgsConstructor
 class FoodEntryResponse {
 
-    private UUID id;
+    private String id;
     private String name;
     private double quantity;
     private String unit;
     private String mealType;
     private String nutritionResponse;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 }
 
 @Data
@@ -185,7 +184,7 @@ class MealEntriesResponse {
 @AllArgsConstructor
 class DayLogResponse {
 
-    private UUID foodLogId;
+    private String foodLogId;
     private LocalDate date;
     private List<MealEntriesResponse> meals;
 }

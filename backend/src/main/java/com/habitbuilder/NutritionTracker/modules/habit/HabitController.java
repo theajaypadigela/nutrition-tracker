@@ -31,19 +31,24 @@ public class HabitController {
     }
 
     @PostMapping("/{id}/toggle")
-    public void toggleHabit(@PathVariable Long id) {
+    public void toggleHabit(@PathVariable String id) {
         HabitCompletionDTO habitCompletion = new HabitCompletionDTO();
         habitCompletion.setId(id);
         habitService.toggleHabit(habitCompletion);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteHabit(@PathVariable Long id) {
+    public void deleteHabit(@PathVariable String id) {
         habitService.deleteHabit(id);
     }
 
     @PostMapping("/voice-result")
     public HabitWithCompletionDTO processVoiceResult(@RequestBody HabitVoiceResultDTO result) {
         return habitService.processVoiceResult(result);
+    }
+
+    @PostMapping("/interpret-voice")
+    public HabitVoiceInterpretResponseDTO interpretVoice(@RequestBody HabitVoiceInterpretRequestDTO request) {
+        return habitService.interpretVoiceTranscript(request);
     }
 }

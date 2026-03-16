@@ -1,11 +1,13 @@
 package com.habitbuilder.NutritionTracker.modules.food;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import lombok.*;
 
-@Entity
-@Table(name = "user_nutrient_preferences",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "nutrient_id"}))
+@Document(collection = "user_nutrient_preferences")
+@CompoundIndex(def = "{'userId': 1, 'nutrientId': 1}", unique = true)
 @Getter
 @Setter
 @Builder
@@ -14,22 +16,16 @@ import lombok.*;
 public class UserNutrientPreference {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private String userId;
 
-    @Column(name = "nutrient_id", nullable = false)
-    private String nutrientId;   // e.g. "protein", "vitamin_c"
+    private String nutrientId;
 
-    @Column(nullable = false)
     @Builder.Default
     private boolean pinned = false;
 
-    @Column(name = "custom_target")
-    private Double customTarget;       // user-defined daily target (null = use default RDI)
+    private Double customTarget;
 
-    @Column(name = "avoided_foods", length = 1024)
-    private String avoidedFoods;       // comma-separated e.g. "soda,cake,candy"
+    private String avoidedFoods;
 }

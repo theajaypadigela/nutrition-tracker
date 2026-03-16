@@ -28,14 +28,15 @@ public class HabitReminderScheduler {
         LocalTime now = LocalTime.now();
         LocalTime windowStart = now.withSecond(0).withNano(0);
         LocalTime windowEnd = windowStart.plusMinutes(1);
-        String dayOfWeek = LocalDate.now().getDayOfWeek().toString().substring(0, 3).toUpperCase();
+        String raw = LocalDate.now().getDayOfWeek().toString().substring(0, 3);
+        String dayOfWeek = raw.substring(0, 1) + raw.substring(1).toLowerCase();
 
         var habits = habitRepository.findByReminderTimeBetweenAndDay(windowStart, windowEnd, dayOfWeek);
 
         for (Habit habit : habits) {
-            Long userId = habit.getUser().getId();
+            String userId = habit.getUserId();
             var existingLog = habitEntityRepository.findByHabitIdAndUserIdAndEntryDate(
-                    habit.getId().toString(), userId.toString(), LocalDate.now());
+                    habit.getId(), userId, LocalDate.now());
 
             if (existingLog.isEmpty()) {
                 log.info("Habit reminder due: {} (type={}) for user={}",

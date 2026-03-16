@@ -1,58 +1,40 @@
 package com.habitbuilder.NutritionTracker.modules.food;
 
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import java.time.Instant;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetails;
-
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "food_entries")
+@Document(collection = "food_entries")
 @Getter
 @Setter
 @NoArgsConstructor
 public class FoodEntry {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JsonIgnore
-    @JoinColumn(name = "food_log_id", nullable = false)
-    private FoodLog foodLog;
+    private String foodLogId;
 
-    @Column(name = "meal_type", nullable = false)
-    private String mealType; // todo - consider making this an enum
+    private String mealType;
 
-    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "quantity", nullable = false)
     private double quantity;
 
-    @Column(name = "unit", nullable = false)
     private String unit;
 
-    @Column(name = "entry_hash")
     private String entryHash;
 
-    @OneToOne(mappedBy = "foodEntry", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private NutritionDetails nutritionDetails;
+    @CreatedDate
+    private Instant createdAt;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+    @LastModifiedDate
+    private Instant updatedAt;
 }

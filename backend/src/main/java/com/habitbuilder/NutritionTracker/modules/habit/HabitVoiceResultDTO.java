@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class HabitVoiceResultDTO {
-    private Long habitId;
+    private String habitId;
     private String habitName;
     private String habitStatus; // "completed", "not_completed", "rescheduled"
     private Integer rescheduleMinutes;
