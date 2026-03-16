@@ -38,6 +38,7 @@
     "react-native": "0.83.1",
     "react-native-background-timer": "^2.4.1",
     "react-native-calendars": "^1.1314.0",
+    "react-native-callkeep": "^4.3.16",
     "react-native-gesture-handler": "^2.30.0",
     "react-native-get-random-values": "^2.0.0",
     "react-native-linear-gradient": "^2.8.3",
@@ -45,9 +46,9 @@
     "react-native-reanimated": "^4.2.1",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "^4.23.0",
+    "react-native-sound": "^0.13.0",
     "react-native-svg": "^15.15.3",
     "react-native-worklets": "^0.7.2",
-    "react-native-worklets-core": "^1.6.2",
     "react-stately": "^3.44.0",
     "tailwind-merge": "^3.4.0",
     "tailwind-variants": "^0.1.20"
@@ -72,6 +73,7 @@
     "metro-react-native-babel-preset": "^0.77.0",
     "patch-package": "^8.0.1",
     "prettier": "^3.8.1",
+    "react-native-dotenv": "^3.4.11",
     "react-test-renderer": "19.2.0",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.8.3"

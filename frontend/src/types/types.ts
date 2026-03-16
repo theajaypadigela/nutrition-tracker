@@ -34,6 +34,18 @@ export interface HabitVoiceResult {
   completed_at?: string | null;
 }
 
+export interface HabitVoiceInterpretationResponse {
+  habitStatus: 'completed' | 'not_completed' | 'rescheduled';
+  rescheduleMinutes?: number | null;
+  rationale?: string;
+}
+
+export interface MealVoiceInterpretationResponse {
+  shouldLogMeals: boolean;
+  rescheduleMinutes?: number | null;
+  rationale?: string;
+}
+
 // Food Logging
 
 export interface FoodLog {

@@ -6,6 +6,20 @@ This is a new [**React Native**](https://reactnative.dev) project, bootstrapped 
 
 ## Step 1: Start Metro
 
+### Environment setup
+
+Create a local `.env` file in the `frontend` folder before running the app:
+
+```sh
+cp .env.example .env
+```
+
+Required variables:
+
+- `VAPI_PUBLIC_KEY`
+- `VAPI_HABIT_ASSISTANT_ID`
+- `VAPI_MEAL_ASSISTANT_ID`
+
 First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
 To start the Metro dev server, run the following command from the root of your React Native project:

@@ -7,8 +7,8 @@ export const CUSTOM_BASE_URL_KEY = 'custom_base_url';
 
 export const DEFAULT_BASE_URL =
   Platform.OS === 'android'
-    ? 'http://localhost:8080/'
-    : 'http://localhost:8080/';
+    ? 'http://localhost:5000/'
+    : 'http://localhost:5000/';
 
 const apiClient = axios.create({
   baseURL: DEFAULT_BASE_URL,

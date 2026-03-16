@@ -19,10 +19,21 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const CustomTabBar = (props: any) => {
-  const currentRouteName = props.state.routeNames[props.state.index];
+const TAB_BAR_HIDDEN_ROUTES = new Set(['HabitCreation', 'VoiceMealLog', 'VoiceHabit']);
 
-  if (currentRouteName === 'HabitCreation') {
+const getDeepestRouteName = (route: any): string => {
+  let current = route;
+  while (current?.state?.index != null && current.state.routes) {
+    current = current.state.routes[current.state.index];
+  }
+  return current?.name ?? route?.name ?? '';
+};
+
+const CustomTabBar = (props: any) => {
+  const currentRoute = props.state.routes[props.state.index];
+  const currentRouteName = getDeepestRouteName(currentRoute);
+
+  if (TAB_BAR_HIDDEN_ROUTES.has(currentRouteName)) {
     return null;
   }
 

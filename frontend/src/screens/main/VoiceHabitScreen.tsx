@@ -5,51 +5,49 @@ import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
-import { HabitVoiceResult } from '../../types/types';
+import {
+  Habit,
+  HabitVoiceInterpretationResponse,
+  HabitVoiceResult,
+} from '../../types/types';
 import { scheduleHabitReschedule } from '../../services/habitScheduler';
+import { APP_ENV } from '../../config/env';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
 
-const VAPI_PUBLIC_KEY = 'ee6c4930-dd4c-416e-9c58-090b8b46eee5';
-const VAPI_HABIT_ASSISTANT_ID = '21a94bba-766c-46bb-8df8-9c7e9aeed50a';
 
-function extractDelayFromText(text: string): number | null {
-  const lowered = text.toLowerCase();
-  const delayPatterns = [
-    /(?:call|remind|ping|check(?:\s+in)?)\s+me\s+(?:again\s+)?(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
-    /(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
-  ];
+/** Uses backend Gemini interpretation to infer completion/reschedule intent. */
+async function interpretVoiceTranscriptWithBackend(
+  transcriptLines: string[],
+  habitName: string,
+  habitTime: string,
+): Promise<HabitVoiceResult | null> {
+  if (transcriptLines.length === 0) return null;
 
-  for (const pattern of delayPatterns) {
-    const match = lowered.match(pattern);
-    if (!match) continue;
-    const parsed = parseInt(match[1], 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
-    }
+  const response = await apiClient.post<HabitVoiceInterpretationResponse>(
+    '/habit/interpret-voice',
+    {
+      transcriptLines,
+      habitName,
+      habitTime,
+    },
+  );
+
+  const interpreted = response.data;
+  const status = normalizeHabitStatus(interpreted?.habitStatus);
+  if (status === 'not_completed') {
+    return {
+      habit_name: habitName,
+      habit_status: 'not_completed',
+    };
   }
 
-  return null;
-}
-
-function extractDelayMinutes(lines: string[]): number | null {
-  for (const line of lines) {
-    if (!line.startsWith('You:')) continue;
-    const minutes = extractDelayFromText(line);
-    if (minutes != null) {
-      return minutes;
-    }
-  }
-
-  for (const line of lines) {
-    const minutes = extractDelayFromText(line);
-    if (minutes != null) {
-      return minutes;
-    }
-  }
-
-  return null;
+  return {
+    habit_name: habitName,
+    habit_status: status,
+    reschedule_minutes: interpreted?.rescheduleMinutes ?? null,
+  };
 }
 
 function normalizeHabitStatus(
@@ -59,6 +57,28 @@ function normalizeHabitStatus(
   if (normalized === 'completed') return 'completed';
   if (normalized === 'rescheduled') return 'rescheduled';
   return 'not_completed';
+}
+
+/** Parse a time string like "2:16 PM" or "02:16PM" into total minutes for comparison. */
+function parseTimeToMinutes(t: string): number | null {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const period = m[3].toUpperCase();
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+function timesMatch(a: string, b: string): boolean {
+  // Quick exact match (normalized whitespace)
+  const normalize = (t: string) => t.replace(/\s+/g, ' ').trim().toUpperCase();
+  if (normalize(a) === normalize(b)) return true;
+  // Parse and compare numerically to handle "2:16 PM" vs "02:16 PM"
+  const pa = parseTimeToMinutes(a);
+  const pb = parseTimeToMinutes(b);
+  return pa !== null && pb !== null && pa === pb;
 }
 
 export default function VoiceHabitScreen() {
@@ -77,11 +97,82 @@ export default function VoiceHabitScreen() {
   const [resultMessage, setResultMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
-  const voiceResultRef = useRef<HabitVoiceResult | null>(null);
+
+  // All pending habits for this time slot (fetched from backend)
+  const [slotHabits, setSlotHabits] = useState<Habit[]>([]);
+  const slotHabitsRef = useRef<Habit[]>([]);
+
+  // Fetch all pending habits for the time slot
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await apiClient.get('/habit/today');
+        const todayHabits: Habit[] = response.data ?? [];
+
+        console.log('[VapiHabit] Fetched today habits:', JSON.stringify(todayHabits, null, 2));
+        console.log('[VapiHabit] Route params -> habitId:', habitId, 'habitTime:', habitTime);
+
+        // Filter for call-type habits at the same time that are still pending
+        const pending = todayHabits.filter(
+          h =>
+            timesMatch(h.reminderTime, habitTime) &&
+            h.reminderType === 'call' &&
+            h.status !== 'COMPLETED',
+        );
+
+        console.log('[VapiHabit] Matched pending habits by time:', pending.length);
+
+        if (pending.length > 0) {
+          setSlotHabits(pending);
+          slotHabitsRef.current = pending;
+        } else if (habitId) {
+          // Fallback: use the single habit from route params
+          const fallback: Habit = {
+            id: habitId,
+            name: habitName,
+            reminderTime: habitTime,
+            reminderType: 'call',
+            completed: false,
+            repeatDays: [],
+          };
+          setSlotHabits([fallback]);
+          slotHabitsRef.current = [fallback];
+        } else {
+          console.log('[VapiHabit] No matching habits found and no habitId available.');
+        }
+      } catch (err) {
+        console.error('[VapiHabit] Failed to fetch habits:', err);
+        // Fallback to single habit from params
+        if (habitId) {
+          const fallback: Habit = {
+            id: habitId,
+            name: habitName,
+            reminderTime: habitTime,
+            reminderType: 'call',
+            completed: false,
+            repeatDays: [],
+          };
+          setSlotHabits([fallback]);
+          slotHabitsRef.current = [fallback];
+        }
+      }
+    })();
+  }, [habitId, habitName, habitTime]);
+
+  const displayTitle =
+    slotHabits.length > 1
+      ? 'Habit Check-in'
+      : slotHabits[0]?.name ?? habitName;
 
   // Wire up Vapi events
   useEffect(() => {
-    const vapi = new Vapi(VAPI_PUBLIC_KEY);
+    if (!APP_ENV.VAPI_PUBLIC_KEY) {
+      console.error('[VapiHabit] Missing VAPI_PUBLIC_KEY env variable');
+      setStatus('error');
+      return;
+    }
+
+    const vapi = new Vapi(APP_ENV.VAPI_PUBLIC_KEY);
     vapiRef.current = vapi;
 
     vapi.on('call-start', () => {
@@ -113,6 +204,7 @@ export default function VoiceHabitScreen() {
     });
 
     vapi.on('message', (msg: any) => {
+      console.log('[VapiHabit] Full VAPI message:', JSON.stringify(msg, null, 2));
       console.log(
         '[VapiHabit] Message:',
         msg?.type,
@@ -125,28 +217,6 @@ export default function VoiceHabitScreen() {
         const line = `${prefix}${msg.transcript}`;
         setTranscript(prev => [...prev, line]);
         transcriptRef.current = [...transcriptRef.current, line];
-      }
-
-      // Capture structured data from function calls or end-of-call report
-      if (msg.type === 'function-call' && msg.functionCall?.parameters) {
-        const params = msg.functionCall.parameters;
-        if (params.habit_status) {
-          voiceResultRef.current = params as HabitVoiceResult;
-          console.log(
-            '[VapiHabit] Captured result from function call:',
-            params,
-          );
-        }
-      }
-
-      // Also check for structured data in analysis/result messages
-      if (msg.type === 'end-of-call-report' && msg.analysis?.structuredData) {
-        voiceResultRef.current = msg.analysis
-          .structuredData as HabitVoiceResult;
-        console.log(
-          '[VapiHabit] Captured result from analysis:',
-          msg.analysis.structuredData,
-        );
       }
     });
 
@@ -187,7 +257,6 @@ export default function VoiceHabitScreen() {
     setStatus('requesting');
     setTranscript([]);
     transcriptRef.current = [];
-    voiceResultRef.current = null;
     setResultMessage('');
 
     const hasPermission = await requestMicPermission();
@@ -207,16 +276,33 @@ export default function VoiceHabitScreen() {
       return;
     }
 
+    // Build habit names list from all pending habits in this time slot
+    const habits = slotHabitsRef.current;
+    const allHabitNames =
+      habits.length > 0
+        ? habits.map(h => h.name).join(', ')
+        : habitName;
+
     try {
-      console.log(
-        '[VapiHabit] Starting call with assistant:',
-        VAPI_HABIT_ASSISTANT_ID,
-      );
-      await vapi.start(VAPI_HABIT_ASSISTANT_ID, {
+      if (!APP_ENV.VAPI_HABIT_ASSISTANT_ID) {
+        console.error(
+          '[VapiHabit] Missing VAPI_HABIT_ASSISTANT_ID env variable',
+        );
+        Alert.alert(
+          'Configuration Error',
+          'Missing VAPI_HABIT_ASSISTANT_ID. Check your .env setup.',
+        );
+        setStatus('error');
+        return;
+      }
+
+
+      await vapi.start(APP_ENV.VAPI_HABIT_ASSISTANT_ID, {
         metadata: { userId: user?.id ?? '' },
         variableValues: {
           name: user?.name ?? 'User',
-          habit: habitName,
+          habit: allHabitNames,
+          habits: allHabitNames,
           habit_time: habitTime,
         },
       });
@@ -227,7 +313,7 @@ export default function VoiceHabitScreen() {
       setStatus('error');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestMicPermission, user?.id, habitName, habitTime]);
+  }, [requestMicPermission, user?.id, user?.name, habitName, habitTime]);
 
   const stopVoiceCall = useCallback(() => {
     const vapi = vapiRef.current;
@@ -242,25 +328,28 @@ export default function VoiceHabitScreen() {
   const processHabitResult = useCallback(async () => {
     setStatus('processing');
 
-    if (!habitId) {
-      console.log('[VapiHabit] Missing habitId, skipping result processing.');
+    const habits = slotHabitsRef.current;
+    console.log('[VapiHabit] processHabitResult -> habits count:', habits.length);
+    console.log('[VapiHabit] processHabitResult -> transcript lines:', transcriptRef.current);
+
+    if (habits.length === 0) {
+      console.log('[VapiHabit] No habits to process.');
       setResultMessage('Call completed');
       setStatus('completed');
       return;
     }
 
-    const inferredDelay = extractDelayMinutes(transcriptRef.current);
-    let result = voiceResultRef.current;
+    let result: HabitVoiceResult | null = null;
 
-    if (!result && inferredDelay != null) {
-      result = {
-        habit_name: habitName,
-        habit_status: 'rescheduled',
-        reschedule_minutes: inferredDelay,
-      };
-      console.log('[VapiHabit] Inferred reschedule from transcript:', {
-        inferredDelay,
-      });
+    try {
+      result = await interpretVoiceTranscriptWithBackend(
+        transcriptRef.current,
+        habits.map(h => h.name).join(', '),
+        habitTime,
+      );
+      console.log('[VapiHabit] Interpreted transcript via backend:', result);
+    } catch (err) {
+      console.error('[VapiHabit] Backend transcript interpretation failed:', err);
     }
 
     if (!result) {
@@ -271,38 +360,53 @@ export default function VoiceHabitScreen() {
     }
 
     const habitStatus = normalizeHabitStatus(result.habit_status);
-    const delayMinutes = result.reschedule_minutes ?? inferredDelay ?? null;
+    const delayMinutes = result.reschedule_minutes ?? null;
 
     try {
-      console.log('[VapiHabit] Processing result:', {
-        ...result,
+      console.log('[VapiHabit] Processing result for all habits:', {
+        habitCount: habits.length,
         habit_status: habitStatus,
         resolved_delay_minutes: delayMinutes,
       });
 
-      const response = await apiClient.post('/habit/voice-result', {
-        habitId: parseInt(habitId, 10),
-        habitName: result.habit_name || habitName,
-        habitStatus,
-        rescheduleMinutes: delayMinutes,
-        completedAt: result.completed_at,
-      });
-      console.log('[VapiHabit] Backend voice-result response:', response.data);
+      // Apply the voice result to ALL habits in the time slot
+      for (const habit of habits) {
+        try {
+          const response = await apiClient.post('/habit/voice-result', {
+            habitId: habit.id,
+            habitName: habit.name,
+            habitStatus,
+            rescheduleMinutes: delayMinutes,
+            completedAt: result.completed_at,
+          });
+          console.log(
+            `[VapiHabit] Processed habit "${habit.name}":`,
+            response.data,
+          );
+        } catch (err) {
+          console.error(
+            `[VapiHabit] Failed to process habit "${habit.name}":`,
+            err,
+          );
+        }
+      }
+
+      const habitNames = habits.map(h => `"${h.name}"`).join(', ');
 
       if (habitStatus === 'completed') {
-        setResultMessage(`✅ "${habitName}" marked as completed!`);
+        setResultMessage(`${habitNames} marked as completed!`);
       } else if (habitStatus === 'rescheduled') {
         const mins = delayMinutes ?? 0;
         setResultMessage(
-          `⏰ "${habitName}" rescheduled. Will check again in ${mins} minutes.`,
+          `${habitNames} rescheduled. Will check again in ${mins} minutes.`,
         );
 
-        // Schedule local notification for the rescheduled time
-        if (mins > 0) {
+        // Schedule ONE consolidated follow-up notification
+        if (mins > 0 && habits.length > 0) {
           const scheduled = await scheduleHabitReschedule(
             {
-              id: habitId,
-              name: habitName,
+              id: habits[0].id,
+              name: habits.map(h => h.name).join(', '),
               reminderTime: habitTime,
               reminderType: 'call',
               completed: false,
@@ -321,8 +425,13 @@ export default function VoiceHabitScreen() {
             );
           }
         }
+
+        // Auto-navigate back so the rescheduled habit immediately appears on screen
+        setTimeout(() => {
+          navigation.navigate('MainTabs' as never);
+        }, 2000);
       } else {
-        setResultMessage(`"${habitName}" marked as missed.`);
+        setResultMessage(`${habitNames} marked as missed.`);
       }
 
       setStatus('completed');
@@ -330,7 +439,7 @@ export default function VoiceHabitScreen() {
       console.error('[VapiHabit] Failed to process result:', err);
       setStatus('error');
     }
-  }, [habitId, habitName, habitTime]);
+  }, [habitTime]);
 
   const getStatusText = () => {
     switch (status) {
@@ -353,7 +462,7 @@ export default function VoiceHabitScreen() {
 
   return (
     <VoiceSessionScreen
-      title={habitName}
+      title={displayTitle}
       statusText={getStatusText()}
       status={status}
       isSpeaking={isSpeaking}
@@ -362,7 +471,7 @@ export default function VoiceHabitScreen() {
       disablePrimary={status === 'requesting' || status === 'processing'}
       processingText="Processing your habit check-in..."
       doneButtonText="Back to Habits"
-      onDonePress={() => navigation.goBack()}
+      onDonePress={() => navigation.navigate('MainTabs' as never)}
       onRetryPress={() => setStatus('idle')}
     />
   );

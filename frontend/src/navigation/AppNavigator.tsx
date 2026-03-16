@@ -7,8 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { useAuth } from '../context/AuthContext';
-import IncomingMealCallScreen from '../screens/main/IncomingMealCallScreen';
-import IncomingHabitCallScreen from '../screens/main/IncomingHabitCallScreen';
+import IncomingCallScreen from '../components/IncomingCallScreen';
 import MealScheduleScreen from '../screens/main/MealScheduleScreen';
 import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealScheduleScreen';
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
@@ -18,20 +17,25 @@ export const navigationRef = createNavigationContainerRef();
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  IncomingMealCall: { mealSlotId: string; autoAccept?: boolean };
+  IncomingMealCall: {
+    mealSlotId?: string;
+    notificationId?: string;
+    autoAccept?: boolean;
+  };
   IncomingHabitCall: {
-    habitId: string;
-    habitName: string;
-    habitTime: string;
+    habitId?: string;
+    habitName?: string;
+    habitTime?: string;
+    notificationId?: string;
     autoAccept?: boolean;
   };
   MealSchedule: undefined;
   OnboardingMealSchedule: undefined;
   VoiceMealLog: { mealSlotId?: string; autoStart?: boolean };
   VoiceHabit: {
-    habitId: string;
-    habitName: string;
-    habitTime: string;
+    habitId?: string;
+    habitName?: string;
+    habitTime?: string;
     autoStart?: boolean;
   };
 };
@@ -44,7 +48,7 @@ const AuthenticatedNavigator = () => {
       <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
       <RootStack.Screen
         name="IncomingMealCall"
-        component={IncomingMealCallScreen}
+        component={IncomingCallScreen}
         options={{
           presentation: 'modal',
           gestureEnabled: false,
@@ -73,7 +77,7 @@ const AuthenticatedNavigator = () => {
       />
       <RootStack.Screen
         name="IncomingHabitCall"
-        component={IncomingHabitCallScreen}
+        component={IncomingCallScreen}
         options={{
           presentation: 'modal',
           gestureEnabled: false,

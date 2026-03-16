@@ -51,10 +51,21 @@ function parseReminderTime(timeStr: string): { hour: number; minute: number } {
   return { hour, minute };
 }
 
-export async function scheduleHabitReminder(habit: Habit): Promise<void> {
-  const notifId = `habit-${habit.id}`;
+/** Normalizes a time string to a stable key, e.g. "08:30AM" */
+function timeSlotKey(timeStr: string): string {
+  return timeStr.replace(/\s+/g, '');
+}
 
-  // Cancel any existing notification for this habit
+export async function scheduleHabitReminder(habit: Habit): Promise<void> {
+  const isCall = habit.reminderType === 'call';
+
+  // For call-type habits, use a time-based ID so all habits at the same time
+  // share one notification. For push-type, keep per-habit IDs.
+  const notifId = isCall
+    ? `habit-call-${timeSlotKey(habit.reminderTime)}`
+    : `habit-${habit.id}`;
+
+  // Cancel any existing notification with this ID
   await notifee.cancelTriggerNotification(notifId);
 
   const { hour, minute } = parseReminderTime(habit.reminderTime);
@@ -77,8 +88,6 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
     trigger.alarmManager = { allowWhileIdle: true };
   }
 
-  const isCall = habit.reminderType === 'call';
-
   await notifee.createTriggerNotification(
     {
       id: notifId,
@@ -87,9 +96,11 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
         ? 'Incoming voice call'
         : `Time for your habit: ${habit.name}`,
       data: {
-        habitId: habit.id,
-        habitName: habit.name,
-        habitTime: habit.reminderTime,
+        // For calls, we don't embed a specific habitId since the VoiceHabitScreen
+        // will fetch all pending habits for this time slot.
+        ...(isCall
+          ? { habitTime: habit.reminderTime }
+          : { habitId: habit.id, habitName: habit.name, habitTime: habit.reminderTime }),
         reminderType: habit.reminderType,
         screen: isCall ? 'IncomingHabitCall' : 'Habits',
       },
@@ -139,7 +150,12 @@ export async function scheduleHabitReschedule(
     return false;
   }
 
-  const notifId = `habit-reschedule-${habit.id}`;
+  // For reschedules of call-type, also use a time-based ID so concurrent
+  // rescheduled habits produce only one call.
+  const isCall = habit.reminderType === 'call';
+  const notifId = isCall
+    ? `habit-reschedule-call-${timeSlotKey(habit.reminderTime)}`
+    : `habit-reschedule-${habit.id}`;
 
   await notifee.cancelTriggerNotification(notifId);
 
@@ -164,8 +180,6 @@ export async function scheduleHabitReschedule(
     trigger.alarmManager = { allowWhileIdle: true };
   }
 
-  const isCall = habit.reminderType === 'call';
-
   await notifee.createTriggerNotification(
     {
       id: notifId,
@@ -174,9 +188,9 @@ export async function scheduleHabitReschedule(
         ? 'Incoming voice call'
         : `Rescheduled reminder: ${habit.name}`,
       data: {
-        habitId: habit.id,
-        habitName: habit.name,
-        habitTime: habit.reminderTime,
+        ...(isCall
+          ? { habitTime: habit.reminderTime }
+          : { habitId: habit.id, habitName: habit.name, habitTime: habit.reminderTime }),
         reminderType: habit.reminderType,
         screen: isCall ? 'IncomingHabitCall' : 'Habits',
       },
@@ -220,6 +234,14 @@ export async function scheduleHabitReschedule(
 }
 
 export async function cancelHabitReminder(habitId: string): Promise<void> {
+  // Cancel per-habit push notification
   await notifee.cancelTriggerNotification(`habit-${habitId}`);
   await notifee.cancelTriggerNotification(`habit-reschedule-${habitId}`);
+}
+
+/** Cancel the consolidated call notification for a time slot. */
+export async function cancelHabitCallSlot(reminderTime: string): Promise<void> {
+  const key = timeSlotKey(reminderTime);
+  await notifee.cancelTriggerNotification(`habit-call-${key}`);
+  await notifee.cancelTriggerNotification(`habit-reschedule-call-${key}`);
 }

@@ -24,7 +24,18 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/MainTabNavigator';
 import useApi from '@/src/hooks/useApi';
-import { cancelHabitReminder } from '../../services/habitScheduler';
+import { cancelHabitReminder, cancelHabitCallSlot } from '../../services/habitScheduler';
+
+function formatRescheduledTime(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '';
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
+  return `${hours}:${mm} ${ampm}`;
+}
 
 const HabitScreen = () => {
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
@@ -83,8 +94,24 @@ const HabitScreen = () => {
 
   async function deleteHabit(id: string): Promise<void> {
     try {
+      const habitToDelete = habits.find(h => h.id === id);
       setHabits(prev => prev.filter(habit => habit.id !== id));
       await cancelHabitReminder(id);
+
+      // If this was a call-type habit, cancel the consolidated time-slot
+      // notification if no other call habits remain at the same time.
+      if (habitToDelete?.reminderType === 'call') {
+        const remaining = habits.filter(
+          h =>
+            h.id !== id &&
+            h.reminderTime === habitToDelete.reminderTime &&
+            h.reminderType === 'call',
+        );
+        if (remaining.length === 0) {
+          await cancelHabitCallSlot(habitToDelete.reminderTime);
+        }
+      }
+
       await request({
         url: `/habit/${id}`,
         method: 'DELETE',
@@ -191,7 +218,7 @@ const HabitScreen = () => {
                       {habit.status === 'COMPLETED'
                         ? 'Completed'
                         : habit.status === 'RESCHEDULED'
-                          ? 'Rescheduled'
+                          ? `Rescheduled${habit.rescheduledTime ? ` for ${formatRescheduledTime(habit.rescheduledTime)}` : ''}`
                           : habit.status === 'MISSED'
                             ? 'Missed'
                             : 'Pending'}

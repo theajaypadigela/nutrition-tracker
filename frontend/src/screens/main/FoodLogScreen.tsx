@@ -22,13 +22,24 @@ import useApi from '../../hooks/useApi';
 import NutritionDisplay from '../../components/food-log/NutritionDisplay';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Plus, Mic } from 'lucide-react-native';
+import { Plus, Mic, Clock } from 'lucide-react-native';
+import { loadMealRescheduleTime, clearMealRescheduleTime } from '../../services/mealScheduler';
 
 // Use a local type to avoid a circular import with FoodStackNavigator
 type FoodLogNavigationProp = StackNavigationProp<
   { FoodLog: undefined; ManualFoodLog: undefined; VoiceMealLog: undefined },
   'FoodLog'
 >;
+
+function formatTime(ts: number): string {
+  const d = new Date(ts);
+  let hours = d.getHours();
+  const minutes = d.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
+  return `${hours}:${mm} ${ampm}`;
+}
 
 const FoodLogScreen = () => {
   const navigation = useNavigation<FoodLogNavigationProp>();
@@ -46,6 +57,7 @@ const FoodLogScreen = () => {
 
   const [selectedDate] = useState(getTodayDate());
   const [refreshing, setRefreshing] = useState(false);
+  const [mealRescheduleTime, setMealRescheduleTime] = useState<number | null>(null);
 
   const [meals, setMeals] = useState<Meals>({
     breakfast: [],
@@ -79,16 +91,15 @@ const FoodLogScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadFoodLog();
+      loadMealRescheduleTime().then(ts => setMealRescheduleTime(ts));
     }, [loadFoodLog]),
   );
-
-  useEffect(() => {
-    loadFoodLog();
-  }, [loadFoodLog]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadFoodLog();
+    const ts = await loadMealRescheduleTime();
+    setMealRescheduleTime(ts);
     setRefreshing(false);
   };
 
@@ -171,6 +182,17 @@ const FoodLogScreen = () => {
         }
       >
         <VStack className="w-full p-6">
+          {mealRescheduleTime && (
+            <View className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 gap-2">
+              <Clock size={16} color="#D97706" />
+              <Text className="text-amber-700 text-sm flex-1">
+                Meal logging call rescheduled for today at{' '}
+                <Text className="font-bold text-amber-800">
+                  {formatTime(mealRescheduleTime)}
+                </Text>
+              </Text>
+            </View>
+          )}
           <VStack>
             <Text size="md" className="font-bold text-gray-500">
               MEAL BREAKDOWN

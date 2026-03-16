@@ -6,50 +6,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
+import { APP_ENV } from '../../config/env';
+import { MealVoiceInterpretationResponse } from '../../types/types';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
-
-const VAPI_PUBLIC_KEY = 'ee6c4930-dd4c-416e-9c58-090b8b46eee5';
-const VAPI_ASSISTANT_ID = 'b544afb0-dd75-4922-be50-e080e01db1b0';
-
-function extractDelayFromText(text: string): number | null {
-  const lowered = text.toLowerCase();
-  const delayPatterns = [
-    /(?:call|remind|ping|check(?:\s+in)?)\s+me\s+(?:again\s+)?(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
-    /(?:in|after)\s+(\d{1,3})\s*(?:minutes?|mins?|m)\b/i,
-  ];
-
-  for (const pattern of delayPatterns) {
-    const match = lowered.match(pattern);
-    if (!match) continue;
-    const parsed = parseInt(match[1], 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
-function extractDelayMinutes(lines: string[]): number | null {
-  for (const line of lines) {
-    if (!line.startsWith('You:')) continue;
-    const minutes = extractDelayFromText(line);
-    if (minutes != null) {
-      return minutes;
-    }
-  }
-
-  for (const line of lines) {
-    const minutes = extractDelayFromText(line);
-    if (minutes != null) {
-      return minutes;
-    }
-  }
-
-  return null;
-}
 
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();
@@ -71,12 +32,17 @@ export default function VoiceMealLogScreen() {
   const [followUpMessage, setFollowUpMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
-  const delayMinutesRef = useRef<number | null>(null);
 
   // Wire up Vapi events
   useEffect(() => {
+    if (!APP_ENV.VAPI_PUBLIC_KEY) {
+      console.error('[Vapi] Missing VAPI_PUBLIC_KEY env variable');
+      setStatus('error');
+      return;
+    }
+
     // Create a fresh Vapi instance for this screen
-    const vapi = new Vapi(VAPI_PUBLIC_KEY);
+    const vapi = new Vapi(APP_ENV.VAPI_PUBLIC_KEY);
     vapiRef.current = vapi;
 
     vapi.on('call-start', () => {
@@ -125,30 +91,6 @@ export default function VoiceMealLogScreen() {
         transcriptRef.current = [...transcriptRef.current, line];
       }
 
-      if (msg.type === 'function-call' && msg.functionCall?.parameters) {
-        const params = msg.functionCall.parameters;
-        const directMinutes =
-          params?.reschedule_minutes ??
-          params?.delay_minutes ??
-          params?.delayMinutes;
-
-        if (typeof directMinutes === 'number' && directMinutes > 0) {
-          delayMinutesRef.current = Math.floor(directMinutes);
-          console.log(
-            '[VoiceMealLog] Captured delay from structured response:',
-            delayMinutesRef.current,
-          );
-        } else if (typeof directMinutes === 'string') {
-          const parsed = parseInt(directMinutes, 10);
-          if (Number.isFinite(parsed) && parsed > 0) {
-            delayMinutesRef.current = parsed;
-            console.log(
-              '[VoiceMealLog] Captured delay from structured string response:',
-              delayMinutesRef.current,
-            );
-          }
-        }
-      }
     });
 
     vapi.on('volume-level', (volume: number) => {
@@ -197,7 +139,6 @@ export default function VoiceMealLogScreen() {
     transcriptRef.current = [];
     setEntriesLogged(0);
     setFollowUpMessage('');
-    delayMinutesRef.current = null;
 
     const hasPermission = await requestMicPermission();
     if (!hasPermission) {
@@ -217,8 +158,22 @@ export default function VoiceMealLogScreen() {
     }
 
     try {
-      console.log('[Vapi] Starting call with assistant:', VAPI_ASSISTANT_ID);
-      await vapi.start(VAPI_ASSISTANT_ID, {
+      if (!APP_ENV.VAPI_MEAL_ASSISTANT_ID) {
+        console.error('[Vapi] Missing VAPI_MEAL_ASSISTANT_ID env variable');
+        Alert.alert(
+          'Configuration Error',
+          'Missing VAPI_MEAL_ASSISTANT_ID. Check your .env setup.',
+        );
+        setStatus('error');
+        return;
+      }
+
+      console.log(
+        
+        '[Vapi] Starting call with assistant:',
+        APP_ENV.VAPI_MEAL_ASSISTANT_ID,
+      );
+      await vapi.start(APP_ENV.VAPI_MEAL_ASSISTANT_ID, {
         metadata: { userId: user?.id ?? '' },
         variableValues: {
           name: user?.name ?? 'User',
@@ -313,25 +268,36 @@ export default function VoiceMealLogScreen() {
     }
 
     setStatus('processing');
-    const transcriptDelay = extractDelayMinutes(lines);
-    const delayMinutes = delayMinutesRef.current ?? transcriptDelay;
-
-    console.log('[VoiceMealLog] Delay detection:', {
-      structuredDelay: delayMinutesRef.current,
-      transcriptDelay,
-      finalDelay: delayMinutes,
-    });
 
     try {
       const fullTranscript = lines.join('\n');
-      console.log('[VoiceMealLog] Sending transcript to backend for parsing');
-      const response = await apiClient.post(
-        '/food/voice-log/parse-transcript',
+      console.log('[VoiceMealLog] Sending transcript to backend for interpretation');
+      const interpretation = await apiClient.post<MealVoiceInterpretationResponse>(
+        '/food/voice-log/interpret-transcript',
         {
           transcript: fullTranscript,
+          mealSlotId,
         },
       );
-      const count = response.data?.entriesLogged ?? 0;
+
+      const shouldLogMeals = interpretation.data?.shouldLogMeals === true;
+      const delayMinutes = interpretation.data?.rescheduleMinutes ?? null;
+
+      console.log('[VoiceMealLog] Backend interpretation:', {
+        shouldLogMeals,
+        rescheduleMinutes: interpretation.data?.rescheduleMinutes,
+        rationale: interpretation.data?.rationale,
+      });
+
+      let count = 0;
+      if (shouldLogMeals) {
+        console.log('[VoiceMealLog] Sending transcript to backend for meal logging');
+        const response = await apiClient.post('/food/voice-log/parse-transcript', {
+          transcript: fullTranscript,
+        });
+        count = response.data?.entriesLogged ?? 0;
+      }
+
       setEntriesLogged(count);
       console.log('[VoiceMealLog] Logged', count, 'meal entries');
 
@@ -344,7 +310,10 @@ export default function VoiceMealLogScreen() {
       if (delayMinutes != null && delayMinutes > 0) {
         const scheduled = await scheduleMealReschedule(delayMinutes);
         if (scheduled) {
-          const message = `Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`;
+          const message =
+            count > 0
+              ? `Meals logged. Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`
+              : `Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`;
           setFollowUpMessage(message);
           console.log('[VoiceMealLog] Meal follow-up scheduled:', {
             delayMinutes,
@@ -358,6 +327,8 @@ export default function VoiceMealLogScreen() {
             { delayMinutes },
           );
         }
+      } else if (count === 0) {
+        setFollowUpMessage('No meals were logged in this call.');
       }
 
       setStatus('completed');
@@ -365,7 +336,7 @@ export default function VoiceMealLogScreen() {
       console.error('[VoiceMealLog] Failed to parse transcript:', err);
       setStatus('error');
     }
-  }, [waitForNutritionEnrichment]);
+  }, [mealSlotId, waitForNutritionEnrichment]);
 
   const getStatusText = () => {
     switch (status) {
@@ -403,7 +374,7 @@ export default function VoiceMealLogScreen() {
       disablePrimary={status === 'requesting' || status === 'processing'}
       processingText="Analyzing your conversation and logging meals..."
       doneButtonText="Back to Food Log"
-      onDonePress={() => navigation.goBack()}
+      onDonePress={() => navigation.navigate('MainTabs' as never)}
       onRetryPress={() => setStatus('idle')}
     />
   );

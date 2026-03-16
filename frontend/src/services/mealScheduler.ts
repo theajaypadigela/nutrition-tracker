@@ -23,6 +23,7 @@ export type MealReminder = {
 export type MealSlot = MealReminder;
 
 const STORAGE_KEY = 'meal_schedule_v2';
+const RESCHEDULE_TIME_KEY = 'meal_reschedule_time';
 
 // ─── Persist schedule ────────────────────────────────────────────────────────
 
@@ -218,10 +219,48 @@ export async function scheduleMealReschedule(
     trigger,
   );
 
+  // Persist the fire timestamp so FoodLogScreen can show a banner
+  await saveMealRescheduleTime(fire.getTime());
+
   return true;
 }
 
 export async function cancelAllMealAlarms(): Promise<void> {
   await notifee.cancelTriggerNotification(MEAL_DAILY_NOTIFICATION_ID);
   await notifee.cancelTriggerNotification(MEAL_RESCHEDULE_NOTIFICATION_ID);
+}
+
+// ─── Persist reschedule time so FoodLogScreen can display it ────────────────
+
+export async function saveMealRescheduleTime(fireTimestamp: number): Promise<void> {
+  await AsyncStorage.setItem(RESCHEDULE_TIME_KEY, String(fireTimestamp));
+}
+
+/**
+ * Returns the rescheduled fire timestamp if it exists and is in the future today.
+ * Automatically clears stale entries (past time or different day).
+ */
+export async function loadMealRescheduleTime(): Promise<number | null> {
+  const raw = await AsyncStorage.getItem(RESCHEDULE_TIME_KEY);
+  if (!raw) return null;
+  const ts = Number(raw);
+  if (!Number.isFinite(ts)) {
+    await AsyncStorage.removeItem(RESCHEDULE_TIME_KEY);
+    return null;
+  }
+  const now = new Date();
+  const fire = new Date(ts);
+  const isSameDay =
+    now.getFullYear() === fire.getFullYear() &&
+    now.getMonth() === fire.getMonth() &&
+    now.getDate() === fire.getDate();
+  if (!isSameDay || ts <= now.getTime()) {
+    await AsyncStorage.removeItem(RESCHEDULE_TIME_KEY);
+    return null;
+  }
+  return ts;
+}
+
+export async function clearMealRescheduleTime(): Promise<void> {
+  await AsyncStorage.removeItem(RESCHEDULE_TIME_KEY);
 }
