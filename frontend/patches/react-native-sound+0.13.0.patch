@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-sound/android/build.gradle b/node_modules/react-native-sound/android/build.gradle
+index d1ee5f5..1e0885b 100644
+--- a/node_modules/react-native-sound/android/build.gradle
++++ b/node_modules/react-native-sound/android/build.gradle
+@@ -20,7 +20,9 @@ def reactNativeArchitectures() {
+ }
+ 
+ def isNewArchitectureEnabled() {
+-  return rootProject.hasProperty("newArchEnabled") && rootProject.getProperty("newArchEnabled") == "true"
++  // react-native-sound 0.13 codegen metadata breaks RN 0.83 Android autolinking
++  // in this project (missing generated JNI CMake dir). Keep this module on old arch.
++  return false
+ }
+ 
+ apply plugin: "com.android.library"
