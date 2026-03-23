@@ -23,6 +23,7 @@ A full-stack nutrition tracking application with a React Native mobile frontend 
 ## Frontend (React Native)
 
 The mobile application is built with React Native, featuring:
+
 - NativeWind for styling
 - Gluestack UI components
 
@@ -45,6 +46,10 @@ The REST API is built with Spring Boot and Java.
 cd backend
 ./mvnw spring-boot:run
 ```
+
+Backend deployment steps are documented in:
+
+- `backend/README.md`
 
 ## Development
 

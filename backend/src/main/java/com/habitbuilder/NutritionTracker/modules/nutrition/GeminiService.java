@@ -1,6 +1,7 @@
 package com.habitbuilder.NutritionTracker.modules.nutrition;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -8,11 +9,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
+import reactor.netty.http.client.HttpClient;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class GeminiService {
@@ -23,14 +31,29 @@ public class GeminiService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final String geminiApiKey;
+    private final long timeout;
 
     public GeminiService(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${gemini.api.key}") String geminiApiKey) {
-        this.webClient = webClientBuilder.build();
-        this.objectMapper = objectMapper;
+            @Value("${gemini.api.key}") String geminiApiKey,
+            @Value("${gemini.api.timeout:55000}") long timeout) {
         this.geminiApiKey = geminiApiKey;
+        this.timeout = timeout;
+        
+        // Configure HttpClient with connection and read/write timeouts
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .responseTimeout(Duration.ofMillis(timeout))
+                .doOnConnected(conn -> conn
+                        .addHandlerLast(new ReadTimeoutHandler(timeout, TimeUnit.MILLISECONDS))
+                        .addHandlerLast(new WriteTimeoutHandler(30000, TimeUnit.MILLISECONDS)));
+        
+        this.webClient = webClientBuilder
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+        this.objectMapper = objectMapper;
     }
 
     private String getGeminiUrl() {
@@ -94,7 +117,8 @@ public class GeminiService {
                                             .error(new GeminiApiException("API Error", body));
                                 }))
                 .bodyToMono(String.class)
-                .block();
+                .timeout(Duration.ofMillis(timeout))
+                .block(Duration.ofMillis(timeout + 5000));
     }
 
     public NutritionResponse getNutritionInfo(String foodName, double quantity, String unit) {

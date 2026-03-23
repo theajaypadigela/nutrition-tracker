@@ -17,10 +17,14 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,6 +32,7 @@ import java.util.regex.Pattern;
 public class VoiceLogService {
 
     private static final Logger logger = LoggerFactory.getLogger(VoiceLogService.class);
+    private static final long TRANSCRIPT_IDEMPOTENCY_WINDOW_MILLIS = 120_000;
 
     private final FoodService foodService;
     private final UserRepository userRepository;
@@ -35,6 +40,7 @@ public class VoiceLogService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final GeminiService geminiService;
+    private final ConcurrentHashMap<String, Long> recentTranscriptParses = new ConcurrentHashMap<>();
 
     @Value("${vapi.private-key}")
     private String vapiPrivateKey;
@@ -163,6 +169,20 @@ public class VoiceLogService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
+        String normalizedTranscript = transcript == null ? "" : transcript.trim();
+        String idempotencyKey = userId + ":" + sha256(normalizedTranscript);
+        long now = System.currentTimeMillis();
+        cleanupOldIdempotencyKeys(now);
+
+        Long previous = recentTranscriptParses.putIfAbsent(idempotencyKey, now);
+        if (previous != null && now - previous < TRANSCRIPT_IDEMPOTENCY_WINDOW_MILLIS) {
+            logger.warn("Skipping duplicate transcript parse request for user {} within idempotency window", userId);
+            return 0;
+        }
+        if (previous != null) {
+            recentTranscriptParses.put(idempotencyKey, now);
+        }
+
         LocalDate logDate = LocalDate.now();
 
         // Save session record for audit
@@ -175,7 +195,7 @@ public class VoiceLogService {
         sessionRepo.save(session);
 
         try {
-            String prompt = buildTranscriptParsingPrompt(transcript);
+            String prompt = buildTranscriptParsingPrompt(normalizedTranscript);
             String content = geminiService.callRawPrompt(prompt);
             String json = extractJson(content);
 
@@ -207,6 +227,7 @@ public class VoiceLogService {
                     totalEntries, userId, logDate);
             return totalEntries;
         } catch (Exception e) {
+            recentTranscriptParses.remove(idempotencyKey);
             session.setStatus(VoiceMealSession.SessionStatus.FAILED);
             sessionRepo.save(session);
             logger.error("Failed to parse transcript for user {}: {}", userId, e.getMessage(), e);
@@ -340,6 +361,25 @@ public class VoiceLogService {
             return parsed > 0 ? parsed : null;
         } catch (NumberFormatException ignored) {
             return null;
+        }
+    }
+
+    private void cleanupOldIdempotencyKeys(long nowMillis) {
+        recentTranscriptParses.entrySet().removeIf(
+                entry -> nowMillis - entry.getValue() >= TRANSCRIPT_IDEMPOTENCY_WINDOW_MILLIS);
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm unavailable", e);
         }
     }
 }
