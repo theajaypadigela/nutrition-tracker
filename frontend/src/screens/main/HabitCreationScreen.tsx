@@ -27,6 +27,9 @@ import { scheduleHabitReminder } from '../../services/habitScheduler';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 type ReminderType = 'notification' | 'call' | 'none';
+const IOS_PLATFORM = 'ios';
+const REMINDER_NOTIFICATION: ReminderType = 'notification';
+const REMINDER_CALL: ReminderType = 'call';
 
 const DAYS: { key: DayKey; label: string }[] = [
   { key: 'Mon', label: 'M' },
@@ -49,6 +52,7 @@ const HabitCreationScreen = () => {
   const [reminderTime, setReminderTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const isIOS = Platform.OS === IOS_PLATFORM;
 
   const toggleDay = (day: DayKey) => {
     setSelectedDays(prev =>
@@ -383,10 +387,10 @@ const HabitCreationScreen = () => {
                 <DateTimePicker
                   value={reminderTime}
                   mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={isIOS ? 'spinner' : 'default'}
                   onChange={onTimeChange}
                 />
-                {Platform.OS === 'ios' && (
+                {isIOS && (
                   <TouchableOpacity
                     onPress={() => setShowTimePicker(false)}
                     className="py-2.5 items-center border-t border-gray-200"
@@ -412,16 +416,16 @@ const HabitCreationScreen = () => {
             <VStack className="gap-2.5">
               {/* Notification Option */}
               <TouchableOpacity
-                onPress={() => setReminderType('notification')}
+                onPress={() => setReminderType(REMINDER_NOTIFICATION)}
                 className={`rounded-xl p-4 flex-row items-center gap-3 border ${
-                  reminderType === 'notification'
+                  reminderType === REMINDER_NOTIFICATION
                     ? 'bg-emerald-50 border-emerald-300'
                     : 'bg-gray-50 border-gray-200'
                 }`}
               >
                 <View
                   className={`w-10 h-10 rounded-full items-center justify-center ${
-                    reminderType === 'notification'
+                    reminderType === REMINDER_NOTIFICATION
                       ? 'bg-emerald-100'
                       : 'bg-gray-200'
                   }`}
@@ -429,14 +433,16 @@ const HabitCreationScreen = () => {
                   <Bell
                     size={18}
                     color={
-                      reminderType === 'notification' ? '#059669' : '#6B7280'
+                      reminderType === REMINDER_NOTIFICATION
+                        ? '#059669'
+                        : '#6B7280'
                     }
                   />
                 </View>
                 <VStack className="flex-1">
                   <Text
                     className={`font-semibold ${
-                      reminderType === 'notification'
+                      reminderType === REMINDER_NOTIFICATION
                         ? 'text-emerald-800'
                         : 'text-gray-900'
                     }`}
@@ -446,7 +452,7 @@ const HabitCreationScreen = () => {
                   <Text
                     size="xs"
                     className={
-                      reminderType === 'notification'
+                      reminderType === REMINDER_NOTIFICATION
                         ? 'text-emerald-600'
                         : 'text-gray-500'
                     }
@@ -456,12 +462,12 @@ const HabitCreationScreen = () => {
                 </VStack>
                 <View
                   className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                    reminderType === 'notification'
+                    reminderType === REMINDER_NOTIFICATION
                       ? 'border-emerald-500'
                       : 'border-gray-300'
                   }`}
                 >
-                  {reminderType === 'notification' && (
+                  {reminderType === REMINDER_NOTIFICATION && (
                     <View className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                   )}
                 </View>
@@ -469,27 +475,27 @@ const HabitCreationScreen = () => {
 
               {/* Call Option */}
               <TouchableOpacity
-                onPress={() => setReminderType('call')}
+                onPress={() => setReminderType(REMINDER_CALL)}
                 className={`rounded-xl p-4 flex-row items-center gap-3 border ${
-                  reminderType === 'call'
+                  reminderType === REMINDER_CALL
                     ? 'bg-emerald-50 border-emerald-300'
                     : 'bg-gray-50 border-gray-200'
                 }`}
               >
                 <View
                   className={`w-10 h-10 rounded-full items-center justify-center ${
-                    reminderType === 'call' ? 'bg-emerald-100' : 'bg-gray-200'
+                    reminderType === REMINDER_CALL ? 'bg-emerald-100' : 'bg-gray-200'
                   }`}
                 >
                   <Phone
                     size={18}
-                    color={reminderType === 'call' ? '#059669' : '#6B7280'}
+                    color={reminderType === REMINDER_CALL ? '#059669' : '#6B7280'}
                   />
                 </View>
                 <VStack className="flex-1">
                   <Text
                     className={`font-semibold ${
-                      reminderType === 'call'
+                      reminderType === REMINDER_CALL
                         ? 'text-emerald-800'
                         : 'text-gray-900'
                     }`}
@@ -499,7 +505,7 @@ const HabitCreationScreen = () => {
                   <Text
                     size="xs"
                     className={
-                      reminderType === 'call'
+                      reminderType === REMINDER_CALL
                         ? 'text-emerald-600'
                         : 'text-gray-500'
                     }
@@ -509,12 +515,12 @@ const HabitCreationScreen = () => {
                 </VStack>
                 <View
                   className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                    reminderType === 'call'
+                    reminderType === REMINDER_CALL
                       ? 'border-emerald-500'
                       : 'border-gray-300'
                   }`}
                 >
-                  {reminderType === 'call' && (
+                  {reminderType === REMINDER_CALL && (
                     <View className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                   )}
                 </View>
@@ -547,7 +553,7 @@ const HabitCreationScreen = () => {
                 <Text size="sm" className="text-emerald-700">
                   {reminderType === 'notification'
                     ? '🔔 Push Notification'
-                    : reminderType === 'call'
+                    : reminderType === REMINDER_CALL
                       ? '📞 Phone Call'
                       : '🔕 No Reminder'}
                 </Text>

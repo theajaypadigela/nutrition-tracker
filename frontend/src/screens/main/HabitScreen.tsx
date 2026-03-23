@@ -26,6 +26,8 @@ import type { MainTabParamList } from '../../navigation/MainTabNavigator';
 import useApi from '@/src/hooks/useApi';
 import { cancelHabitReminder, cancelHabitCallSlot } from '../../services/habitScheduler';
 
+const REMINDER_TYPE_CALL = 'call';
+
 function formatRescheduledTime(iso: string): string {
   const date = new Date(iso);
   if (isNaN(date.getTime())) return '';
@@ -70,7 +72,11 @@ const HabitScreen = () => {
   };
   const [completedHabits, setCompletedHabits] = useState(0);
 
+  const progressPercent =
+    habits.length > 0 ? Math.min(100, (completedHabits / habits.length) * 100) : 0;
+
   const toggleHabit = async (id: string) => {
+    const previousHabits = habits;
     try {
       setHabits(prev =>
         prev.map(habit =>
@@ -81,9 +87,9 @@ const HabitScreen = () => {
       await request({
         url: `/habit/${id}/toggle`,
         method: 'POST',
-        data: { habit: habits.find(habit => habit.id === id) },
       });
     } catch (err) {
+      setHabits(previousHabits);
       console.error('Error toggling habit:', err);
     }
   };
@@ -100,12 +106,12 @@ const HabitScreen = () => {
 
       // If this was a call-type habit, cancel the consolidated time-slot
       // notification if no other call habits remain at the same time.
-      if (habitToDelete?.reminderType === 'call') {
+      if (habitToDelete?.reminderType === REMINDER_TYPE_CALL) {
         const remaining = habits.filter(
           h =>
             h.id !== id &&
             h.reminderTime === habitToDelete.reminderTime &&
-            h.reminderType === 'call',
+            h.reminderType === REMINDER_TYPE_CALL,
         );
         if (remaining.length === 0) {
           await cancelHabitCallSlot(habitToDelete.reminderTime);
@@ -152,7 +158,7 @@ const HabitScreen = () => {
                 <View
                   className="h-full bg-emerald-500 rounded-full"
                   style={{
-                    width: `${(completedHabits / habits.length) * 100}%`,
+                    width: `${progressPercent}%`,
                   }}
                 />
               </View>
@@ -184,7 +190,7 @@ const HabitScreen = () => {
                       |
                     </Text>
                     <HStack className="items-center gap-1">
-                      {habit.reminderType === 'call' ? (
+                      {habit.reminderType === REMINDER_TYPE_CALL ? (
                         <Phone size={10} color="#7C3AED" />
                       ) : (
                         <Bell size={10} color="#D97706" />
@@ -192,12 +198,12 @@ const HabitScreen = () => {
                       <Text
                         size="xs"
                         className={
-                          habit.reminderType === 'call'
+                          habit.reminderType === REMINDER_TYPE_CALL
                             ? 'text-purple-600'
                             : 'text-amber-600'
                         }
                       >
-                        {habit.reminderType === 'call' ? 'Call' : 'Push'}
+                        {habit.reminderType === REMINDER_TYPE_CALL ? 'Call' : 'Push'}
                       </Text>
                     </HStack>
                     <Text size="xs" className="text-gray-300">

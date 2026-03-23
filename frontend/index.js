@@ -2,13 +2,38 @@
  * @format
  */
 
-// Polyfill localStorage for SDKs that expect browser environment
-import './src/utils/localStoragePolyfill';
-
-import 'react-native-gesture-handler';
-import './global.css';
 import { AppRegistry } from 'react-native';
-import App from './src/App';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { name as appName } from './app.json';
 
-AppRegistry.registerComponent(appName, () => App);
+let RootComponent;
+
+try {
+	// Keep bootstrap imports inside try so registerComponent still runs if one fails.
+	require('./src/utils/localStoragePolyfill');
+	require('react-native-gesture-handler');
+	require('./global.css');
+	RootComponent = require('./src/App').default;
+} catch (error) {
+	console.error('[bootstrap] Failed to load app entry', error);
+	RootComponent = () =>
+		React.createElement(
+			View,
+			{
+				style: {
+					alignItems: 'center',
+					flex: 1,
+					justifyContent: 'center',
+					padding: 24,
+				},
+			},
+			React.createElement(
+				Text,
+				{ style: { color: '#111827', fontSize: 16, textAlign: 'center' } },
+				'App bootstrap failed. Check Metro logs for the root error.',
+			),
+		);
+}
+
+AppRegistry.registerComponent(appName, () => RootComponent);

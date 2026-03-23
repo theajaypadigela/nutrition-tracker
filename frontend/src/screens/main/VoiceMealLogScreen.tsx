@@ -32,6 +32,8 @@ export default function VoiceMealLogScreen() {
   const [followUpMessage, setFollowUpMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
+  const isParsingTranscriptRef = useRef(false);
+  const lastParsedTranscriptRef = useRef<{ transcript: string; at: number } | null>(null);
 
   // Wire up Vapi events
   useEffect(() => {
@@ -267,10 +269,33 @@ export default function VoiceMealLogScreen() {
       return;
     }
 
+    const fullTranscript = lines.join('\n').trim();
+    if (!fullTranscript) {
+      setStatus('completed');
+      return;
+    }
+
+    if (isParsingTranscriptRef.current) {
+      console.log('[VoiceMealLog] Skipping duplicate parse request while one is in progress');
+      return;
+    }
+
+    const now = Date.now();
+    const lastParsed = lastParsedTranscriptRef.current;
+    if (
+      lastParsed &&
+      lastParsed.transcript === fullTranscript &&
+      now - lastParsed.at < 120000
+    ) {
+      console.log('[VoiceMealLog] Skipping duplicate parse for identical transcript within guard window');
+      return;
+    }
+
+    isParsingTranscriptRef.current = true;
+
     setStatus('processing');
 
     try {
-      const fullTranscript = lines.join('\n');
       console.log('[VoiceMealLog] Sending transcript to backend for interpretation');
       const interpretation = await apiClient.post<MealVoiceInterpretationResponse>(
         '/food/voice-log/interpret-transcript',
@@ -332,9 +357,12 @@ export default function VoiceMealLogScreen() {
       }
 
       setStatus('completed');
+      lastParsedTranscriptRef.current = { transcript: fullTranscript, at: Date.now() };
     } catch (err) {
       console.error('[VoiceMealLog] Failed to parse transcript:', err);
       setStatus('error');
+    } finally {
+      isParsingTranscriptRef.current = false;
     }
   }, [mealSlotId, waitForNutritionEnrichment]);
 
