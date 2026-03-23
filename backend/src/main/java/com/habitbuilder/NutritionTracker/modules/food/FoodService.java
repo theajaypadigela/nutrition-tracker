@@ -236,6 +236,27 @@ public class FoodService {
         return getDayLogAsMeals(date);
     }
 
+    public MealsResponse deleteEntryById(String id) {
+        if (id == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food entry id is required");
+        }
+
+        String userId = getCurrentUserId();
+        FoodEntry entry = foodEntryRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Food entry not found"));
+
+        FoodLog foodLog = foodLogRepository.findById(entry.getFoodLogId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Food log not found"));
+
+        if (!foodLog.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete another user's entry");
+        }
+
+        LocalDate logDate = foodLog.getLogDate();
+        foodEntryRepository.delete(entry);
+        return getDayLogAsMeals(logDate);
+    }
+
     private String getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof User user) {
@@ -412,7 +433,7 @@ public class FoodService {
     // -----------------------------------------------------------------------
     // RDI cache (in-memory per JVM session, keyed by userId)
     // -----------------------------------------------------------------------
-    private final Map<String, Map<String, Double>> rdiCache = new HashMap<>();
+    private final Map<String, Map<String, Double>> rdiCache = new ConcurrentHashMap<>();
 
     /**
      * Returns all nutrient summaries for the given date range.

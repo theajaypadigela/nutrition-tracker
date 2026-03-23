@@ -124,7 +124,7 @@ public class HabitService {
 
                     // Check habit status on the specified date
                     habitEntityRepository
-                            .findByHabitIdAndUserIdAndEntryDate(
+                            .findFirstByHabitIdAndUserIdAndEntryDateOrderByIdDesc(
                                     habit.getId(),
                                     currentUser.getId(),
                                     date)
@@ -162,7 +162,7 @@ public class HabitService {
 
         // Create or update habit entity for today
         HabitEntity habitEntity = habitEntityRepository
-                .findByHabitIdAndUserIdAndEntryDate(
+            .findFirstByHabitIdAndUserIdAndEntryDateOrderByIdDesc(
                         habit.getId(),
                         currentUser.getId(),
                         today)
@@ -219,7 +219,7 @@ public class HabitService {
         }
 
         HabitEntity habitEntity = habitEntityRepository
-                .findByHabitIdAndUserIdAndEntryDate(
+            .findFirstByHabitIdAndUserIdAndEntryDateOrderByIdDesc(
                         habit.getId(),
                         currentUser.getId(),
                         today)

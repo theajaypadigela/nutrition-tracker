@@ -35,10 +35,10 @@ public class HabitReminderScheduler {
 
         for (Habit habit : habits) {
             String userId = habit.getUserId();
-            var existingLog = habitEntityRepository.findByHabitIdAndUserIdAndEntryDate(
-                    habit.getId(), userId, LocalDate.now());
+            var existingLog = habitEntityRepository.existsByHabitIdAndUserIdAndEntryDate(
+                habit.getId(), userId, LocalDate.now());
 
-            if (existingLog.isEmpty()) {
+            if (!existingLog) {
                 log.info("Habit reminder due: {} (type={}) for user={}",
                         habit.getName(), habit.getReminderType(), userId);
             }

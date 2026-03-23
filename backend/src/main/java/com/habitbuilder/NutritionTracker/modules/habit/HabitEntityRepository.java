@@ -8,7 +8,12 @@ import java.util.Optional;
 
 public interface HabitEntityRepository extends MongoRepository<HabitEntity, String> {
 
-    Optional<HabitEntity> findByHabitIdAndUserIdAndEntryDate(String habitId, String userId, LocalDate entryDate);
+    Optional<HabitEntity> findFirstByHabitIdAndUserIdAndEntryDateOrderByIdDesc(
+            String habitId,
+            String userId,
+            LocalDate entryDate);
+
+    boolean existsByHabitIdAndUserIdAndEntryDate(String habitId, String userId, LocalDate entryDate);
 
     List<HabitEntity> findByStatusAndRescheduledTimeBetween(
             HabitStatus status, LocalDateTime start, LocalDateTime end);

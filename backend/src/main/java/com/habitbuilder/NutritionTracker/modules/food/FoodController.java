@@ -80,6 +80,12 @@ public class FoodController {
         return ResponseEntity.ok(result);
     }
 
+    @DeleteMapping("/meals/entries/{id}")
+    public ResponseEntity<MealsResponse> deleteEntryById(@PathVariable String id) {
+        MealsResponse result = foodService.deleteEntryById(id);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/nutrition/weekly")
     public ResponseEntity<WeeklyNutritionReport> getWeeklyNutritionReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
