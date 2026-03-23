@@ -1,14 +1,13 @@
 diff --git a/node_modules/@notifee/react-native/android/build.gradle b/node_modules/@notifee/react-native/android/build.gradle
-index 7477b94..b78ef9f 100644
+index 7477b94..f9f179b 100644
 --- a/node_modules/@notifee/react-native/android/build.gradle
 +++ b/node_modules/@notifee/react-native/android/build.gradle
-@@ -96,7 +96,8 @@ dependencies {
+@@ -96,7 +96,7 @@ dependencies {
    if (findProject(':notifee_core')) {
      implementation findProject(':notifee_core')
    } else {
 -    implementation(group: 'app.notifee', name:'core', version: '+')
-+    // Use the AAR bundled with this package to avoid remote JitPack/network resolution failures.
-+    implementation files("$notifeeDir/android/libs/app/notifee/core/202108261754/core-202108261754.aar")
++    implementation(group: 'app.notifee', name:'core', version: '202108261754')
    }
  
    implementation("com.google.guava:guava:33.3.1-android") // https://github.com/google/guava
