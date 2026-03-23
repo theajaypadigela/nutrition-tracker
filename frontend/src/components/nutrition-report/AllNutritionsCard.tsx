@@ -66,7 +66,7 @@ const PRESET_RANGES = [
 const mapToDetailData = (item: AllNutrientSummary): NutrientDetailData => ({
   id: item.id,
   name: item.name,
-  amount: item.value,
+  amount: item.value ?? item.weeklyAvg ?? 0,
   unit: item.unit,
   target: item.customTarget ?? item.goal,
   pctDV: item.pctDV,
@@ -574,7 +574,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
                 id={index + 1}
                 name={item.name}
                 unit={item.unit}
-                value={item.value}
+                value={item.value ?? item.weeklyAvg ?? 0}
                 goal={item.customTarget ?? item.goal}
                 type={item.category}
                 flag={item.flag}

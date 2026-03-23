@@ -155,7 +155,7 @@ const FoodLogScreen = () => {
   const handleDeleteFood = async (mealType: string, itemId: string) => {
     try {
       const response = await request({
-        url: `/food/${selectedDate}/meals/entries/${itemId}`,
+        url: `/food/meals/entries/${itemId}`,
         method: 'DELETE',
       });
 

@@ -10,7 +10,9 @@ interface MicroNutrientCardProps {
 }
 
 const MicroNutrientCard: React.FC<MicroNutrientCardProps> = ({ item }) => {
-  const percentage = Math.round((item.current / item.goal) * 100);
+  const safeCurrent = Number.isFinite(item.current) ? item.current : 0;
+  const safeGoal = Number.isFinite(item.goal) && item.goal > 0 ? item.goal : 1;
+  const percentage = Math.round((safeCurrent / safeGoal) * 100);
 
   return (
     <View
@@ -54,7 +56,7 @@ const MicroNutrientCard: React.FC<MicroNutrientCardProps> = ({ item }) => {
         </Text>
         <HStack className="items-end gap-1">
           <Text className="text-3xl font-bold text-gray-900">
-            {item.current}
+            {safeCurrent}
           </Text>
           <Text className="text-sm text-gray-500 mb-1">{item.unit}</Text>
         </HStack>

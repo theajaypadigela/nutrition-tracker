@@ -10,7 +10,10 @@ interface MacroNutrientCardProps {
 }
 
 const MacroNutrientCard: React.FC<MacroNutrientCardProps> = ({ macro }) => {
-  const percentage = Math.round((macro.current / macro.goal) * 100);
+  const safeCurrent = Number.isFinite(macro.current) ? macro.current : 0;
+  const safeGoal = Number.isFinite(macro.goal) && macro.goal > 0 ? macro.goal : 1;
+  const percentage = Math.round((safeCurrent / safeGoal) * 100);
+  const progressWidth = Math.max(0, Math.min(percentage, 140));
 
   return (
     <VStack
@@ -23,9 +26,9 @@ const MacroNutrientCard: React.FC<MacroNutrientCardProps> = ({ macro }) => {
         </Text>
         <HStack className="items-end gap-1">
           <Text
-            className={`text-2xl font-bold ${macro.textColor.replace('text-', 'text-')}-900`}
+            className={`text-2xl font-bold ${macro.textColor}`}
           >
-            {macro.current}
+            {safeCurrent}
           </Text>
           <Text className={`text-sm ${macro.textColor} mb-1`}>
             {macro.unit}
@@ -39,7 +42,7 @@ const MacroNutrientCard: React.FC<MacroNutrientCardProps> = ({ macro }) => {
         <View
           className={`h-full ${macro.progressColor} rounded-full`}
           style={{
-            width: `${percentage}%`,
+            width: `${progressWidth}%`,
           }}
         />
       </View>
