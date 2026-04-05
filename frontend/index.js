@@ -31,7 +31,7 @@ try {
 			React.createElement(
 				Text,
 				{ style: { color: '#111827', fontSize: 16, textAlign: 'center' } },
-				'App bootstrap failed. Check Metro logs for the root error.',
+				'App bootstrap failed. Check Metro logs for the error: ' + String(error.message),
 			),
 		);
 }

@@ -1,0 +1,1 @@
+"const fs = require('fs'); const path = 'C:/Nutrition Tracker/nutrition-tracker/frontend/index.js'; let content = fs.readFileSync(path, 'utf8'); content = content.replace('App bootstrap failed. Check Metro logs for the root error.', 'App bootstrap failed.\\nError: \\\' + (error.message || \\\'\\\') + \\\'\\n\\\' + (error.stack || \\\'\\\')'); fs.writeFileSync(path, content);"  
