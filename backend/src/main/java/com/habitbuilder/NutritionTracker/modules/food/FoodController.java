@@ -41,7 +41,7 @@ public class FoodController {
     public ResponseEntity<List<FoodEntryResponse>> addEntries(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PathVariable String mealType,
-            @RequestBody List<AddFoodEntryRequest> request) {
+            @RequestBody List<@Valid AddFoodEntryRequest> request) {
         List<FoodEntryResponse> result = foodService.addFoodEntries(date, mealType, request);
         return ResponseEntity.ok(result);
     }
@@ -168,7 +168,7 @@ class AddFoodEntryRequest {
 
     @NotNull(message = "Quantity is required")
     @Positive(message = "Quantity must be positive")
-    private double quantity;
+    private Double quantity;
 
     @NotBlank(message = "Unit is required")
     private String unit;
@@ -254,6 +254,7 @@ class UpdateFoodEntryRequest {
 
     private String name;
 
+    @Positive(message = "Quantity must be positive")
     private Double quantity;
 
     private String unit;

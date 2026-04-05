@@ -24,6 +24,10 @@ public class VoiceMealSession {
 
     private String rawTranscript;
 
+    private String payloadSnapshot;
+
+    private String failureReason;
+
     private SessionStatus status = SessionStatus.PENDING;
 
     private LocalDateTime createdAt;

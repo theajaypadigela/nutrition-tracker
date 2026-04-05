@@ -32,6 +32,7 @@ public class FoodService {
     // Cache for AI insights - key: userId_startDate_endDate, value: cached insights
     private final Map<String, CachedInsights> insightsCache = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MINUTES = 60; // Cache for 1 hour
+    private static final List<String> CANONICAL_MEAL_ORDER = List.of("breakfast", "lunch", "snack", "dinner");
 
     private FoodLogRepository foodLogRepository;
     private FoodEntryRepository foodEntryRepository;
@@ -57,34 +58,27 @@ public class FoodService {
     }
 
     public List<FoodEntryResponse> addFoodEntries(LocalDate date, String mealType, List<AddFoodEntryRequest> request) {
+        if (date == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date is required");
+        }
+        if (request == null || request.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one food entry is required");
+        }
 
+        String normalizedMealType = normalizeMealType(mealType, false);
         String userId = getCurrentUserId();
         FoodLog foodLog = getOrCreateFoodLog(userId, date);
 
         List<FoodEntryResponse> responses = new ArrayList<>();
 
         for (AddFoodEntryRequest req : request) {
-            FoodEntry entry = new FoodEntry();
-            entry.setFoodLogId(foodLog.getId());
-            entry.setName(req.getName());
-            entry.setQuantity(req.getQuantity());
-            entry.setUnit(req.getUnit());
-            entry.setMealType(mealType);
+            if (req == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food entry payload cannot be null");
+            }
 
-            FoodEntry savedEntry = foodEntryRepository.save(entry);
-
-            // Trigger async nutrition enrichment (single API call + DB save)
-            nutritionEnrichmentService.enrichFoodEntry(savedEntry);
-
-            FoodEntryResponse res = new FoodEntryResponse();
-            res.setId(savedEntry.getId());
-            res.setName(savedEntry.getName());
-            res.setQuantity(savedEntry.getQuantity());
-            res.setUnit(savedEntry.getUnit());
-            res.setMealType(savedEntry.getMealType());
-            res.setNutritionResponse("Nutrition enrichment in progress");
-
-            responses.add(res);
+            ValidatedFoodInput input = validateFoodInput(req.getName(), req.getQuantity(), req.getUnit());
+            FoodEntry savedEntry = saveFoodEntry(foodLog.getId(), normalizedMealType, input);
+            responses.add(toFoodEntryResponse(savedEntry));
         }
 
         return responses;
@@ -96,39 +90,40 @@ public class FoodService {
      */
     public void addFoodEntryForUser(String userId, LocalDate date, String mealType,
             String name, double quantity, String unit) {
+        if (userId == null || userId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User id is required");
+        }
+        if (date == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date is required");
+        }
+
+        String normalizedMealType = normalizeMealType(mealType, true);
+        ValidatedFoodInput input = validateFoodInput(name, quantity, unit);
         FoodLog foodLog = getOrCreateFoodLog(userId, date);
-
-        FoodEntry entry = new FoodEntry();
-        entry.setFoodLogId(foodLog.getId());
-        entry.setName(name);
-        entry.setQuantity(quantity);
-        entry.setUnit(unit);
-        entry.setMealType(mealType);
-
-        FoodEntry savedEntry = foodEntryRepository.save(entry);
-        nutritionEnrichmentService.enrichFoodEntry(savedEntry);
+        saveFoodEntry(foodLog.getId(), normalizedMealType, input);
     }
 
     public MealsResponse getDayLogAsMeals(LocalDate date) {
+        if (date == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date is required");
+        }
+
         String userId = getCurrentUserId();
         Optional<FoodLog> logOpt = foodLogRepository.findByUserIdAndLogDate(userId, date);
 
         if (logOpt.isEmpty()) {
-            return MealsResponse.builder()
-                    .meals(new HashMap<>())
-                    .totals(new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
-                    .build();
+            return buildEmptyMealsResponse();
         }
 
         FoodLog log = logOpt.get();
         List<FoodEntry> entries = foodEntryRepository.findByFoodLogId(log.getId());
-        Map<String, List<FoodItemResponse>> mealsMap = new HashMap<>();
-        NutritionTotals totals = new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        Map<String, List<FoodItemResponse>> mealsMap = createCanonicalMealsMap();
+        NutritionTotals totals = emptyNutritionTotals();
+        Map<String, NutritionDetails> nutritionLookup = buildNutritionLookup(entries);
 
         for (FoodEntry entry : entries) {
-            FoodItemResponse item = buildFoodItemResponse(entry);
+            FoodItemResponse item = buildFoodItemResponse(entry, nutritionLookup.get(entry.getId()));
 
-            // Accumulate totals
             if (item.getCalories() != null)
                 totals.setCalories(totals.getCalories() + item.getCalories());
             if (item.getProtein() != null)
@@ -144,7 +139,8 @@ public class FoodService {
             if (item.getSodium() != null)
                 totals.setSodium(totals.getSodium() + item.getSodium());
 
-            mealsMap.computeIfAbsent(entry.getMealType(), k -> new ArrayList<>()).add(item);
+            String normalizedMealType = normalizeMealType(entry.getMealType(), true);
+            mealsMap.get(normalizedMealType).add(item);
         }
 
         return MealsResponse.builder()
@@ -154,8 +150,13 @@ public class FoodService {
     }
 
     public List<DayLogResponse> getDayLogs(LocalDate from, LocalDate to) {
-        if (from == null || to == null)
-            return null;
+        if (from == null || to == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "From and to dates are required");
+        }
+        if (from.isAfter(to)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "From date must be on or before to date");
+        }
+
         String userId = getCurrentUserId();
         List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, from, to);
 
@@ -173,8 +174,15 @@ public class FoodService {
     }
 
     public MealsResponse updateEntry(LocalDate date, String id, UpdateFoodEntryRequest request) {
-        if (id == null)
-            return null;
+        if (date == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date is required");
+        }
+        if (id == null || id.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food entry id is required");
+        }
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Update payload is required");
+        }
 
         String userId = getCurrentUserId();
         Optional<FoodEntry> entryOpt = foodEntryRepository.findById(id);
@@ -193,27 +201,29 @@ public class FoodService {
                     "Entry does not match the specified date and user");
         }
 
-        if (request.getName() != null) {
-            entry.setName(request.getName());
-        }
-        if (request.getQuantity() != null) {
-            entry.setQuantity(request.getQuantity());
-        }
-        if (request.getUnit() != null) {
-            entry.setUnit(request.getUnit());
-        }
+        ValidatedFoodInput validatedInput = validateFoodInput(
+                request.getName() != null ? request.getName() : entry.getName(),
+                request.getQuantity() != null ? request.getQuantity() : entry.getQuantity(),
+                request.getUnit() != null ? request.getUnit() : entry.getUnit());
+
+        entry.setName(validatedInput.name());
+        entry.setQuantity(validatedInput.quantity());
+        entry.setUnit(validatedInput.unit());
 
         FoodEntry savedEntry = foodEntryRepository.save(entry);
 
-        // Re-enrich nutrition data when food entry is updated
         nutritionEnrichmentService.enrichFoodEntry(savedEntry);
 
         return getDayLogAsMeals(date);
     }
 
     public MealsResponse deleteEntry(LocalDate date, String id) {
-        if (id == null)
-            return null;
+        if (date == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date is required");
+        }
+        if (id == null || id.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food entry id is required");
+        }
 
         String userId = getCurrentUserId();
         Optional<FoodEntry> entryOpt = foodEntryRepository.findById(id);
@@ -283,8 +293,136 @@ public class FoodService {
                 });
     }
 
+    private FoodEntry saveFoodEntry(String foodLogId, String mealType, ValidatedFoodInput input) {
+        FoodEntry entry = new FoodEntry();
+        entry.setFoodLogId(foodLogId);
+        entry.setName(input.name());
+        entry.setQuantity(input.quantity());
+        entry.setUnit(input.unit());
+        entry.setMealType(mealType);
+
+        FoodEntry savedEntry = foodEntryRepository.save(entry);
+        nutritionEnrichmentService.enrichFoodEntry(savedEntry);
+        return savedEntry;
+    }
+
+    private FoodEntryResponse toFoodEntryResponse(FoodEntry entry) {
+        FoodEntryResponse res = new FoodEntryResponse();
+        res.setId(entry.getId());
+        res.setName(entry.getName());
+        res.setQuantity(entry.getQuantity());
+        res.setUnit(entry.getUnit());
+        res.setMealType(entry.getMealType());
+        res.setNutritionResponse("Nutrition enrichment in progress");
+        return res;
+    }
+
+    private MealsResponse buildEmptyMealsResponse() {
+        return MealsResponse.builder()
+                .meals(createCanonicalMealsMap())
+                .totals(emptyNutritionTotals())
+                .build();
+    }
+
+    private NutritionTotals emptyNutritionTotals() {
+        return new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    }
+
+    private Map<String, List<FoodItemResponse>> createCanonicalMealsMap() {
+        Map<String, List<FoodItemResponse>> mealsMap = new LinkedHashMap<>();
+        CANONICAL_MEAL_ORDER.forEach(mealType -> mealsMap.put(mealType, new ArrayList<>()));
+        return mealsMap;
+    }
+
+    private Map<String, List<FoodEntryResponse>> createCanonicalMealEntriesMap() {
+        Map<String, List<FoodEntryResponse>> mealMap = new LinkedHashMap<>();
+        CANONICAL_MEAL_ORDER.forEach(mealType -> mealMap.put(mealType, new ArrayList<>()));
+        return mealMap;
+    }
+
+    private Map<String, NutritionDetails> buildNutritionLookup(List<FoodEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return Map.of();
+        }
+
+        List<String> entryIds = entries.stream()
+                .map(FoodEntry::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (entryIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return nutritionDetailsRepository.findByFoodEntryIdIn(entryIds).stream()
+                .collect(Collectors.toMap(NutritionDetails::getFoodEntryId, nd -> nd, (left, right) -> left));
+    }
+
+    private ValidatedFoodInput validateFoodInput(String name, Double quantity, String unit) {
+        String normalizedName = name == null ? "" : name.trim();
+        if (normalizedName.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food name is required");
+        }
+
+        if (quantity == null || !Double.isFinite(quantity) || quantity <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity must be a positive number");
+        }
+
+        String normalizedUnit = unit == null ? "" : unit.trim();
+        if (normalizedUnit.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unit is required");
+        }
+
+        return new ValidatedFoodInput(normalizedName, quantity, normalizedUnit);
+    }
+
+    private String normalizeMealType(String mealType, boolean fallbackToSnack) {
+        String normalized = mealType == null ? ""
+                : mealType.trim().toLowerCase(Locale.ROOT).replace('_', ' ').replace('-', ' ').replaceAll("\\s+", " ");
+
+        switch (normalized) {
+            case "breakfast":
+            case "break fast":
+            case "morning meal":
+                return "breakfast";
+            case "lunch":
+            case "midday meal":
+                return "lunch";
+            case "snack":
+            case "snacks":
+                return "snack";
+            case "dinner":
+            case "supper":
+            case "evening meal":
+                return "dinner";
+            default:
+                break;
+        }
+
+        if (normalized.contains("breakfast") || normalized.contains("break fast")) {
+            return "breakfast";
+        }
+        if (normalized.contains("lunch")) {
+            return "lunch";
+        }
+        if (normalized.contains("snack")) {
+            return "snack";
+        }
+        if (normalized.contains("dinner") || normalized.contains("supper")) {
+            return "dinner";
+        }
+
+        if (fallbackToSnack) {
+            logger.warn("Normalizing unexpected meal type '{}' to snack", mealType);
+            return "snack";
+        }
+
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Invalid meal type. Use breakfast, lunch, snack, or dinner");
+    }
+
     private List<MealEntriesResponse> groupEntriesByMealType(List<FoodEntry> entries) {
-        Map<String, List<FoodEntryResponse>> mealMap = new HashMap<>();
+        Map<String, List<FoodEntryResponse>> mealMap = createCanonicalMealEntriesMap();
 
         for (FoodEntry entry : entries) {
             FoodEntryResponse res = new FoodEntryResponse();
@@ -292,29 +430,24 @@ public class FoodService {
             res.setName(entry.getName());
             res.setQuantity(entry.getQuantity());
             res.setUnit(entry.getUnit());
-            res.setMealType(entry.getMealType());
+            res.setMealType(normalizeMealType(entry.getMealType(), true));
 
-            mealMap.computeIfAbsent(entry.getMealType(), k -> new ArrayList<>()).add(res);
+            mealMap.get(res.getMealType()).add(res);
         }
 
         List<MealEntriesResponse> meals = new ArrayList<>();
-        for (Map.Entry<String, List<FoodEntryResponse>> meal : mealMap.entrySet()) {
-            meals.add(new MealEntriesResponse(meal.getKey(), meal.getValue()));
-        }
+        CANONICAL_MEAL_ORDER.forEach(mealType -> meals.add(new MealEntriesResponse(mealType, mealMap.get(mealType))));
         return meals;
     }
 
-    private FoodItemResponse buildFoodItemResponse(FoodEntry entry) {
+    private FoodItemResponse buildFoodItemResponse(FoodEntry entry, NutritionDetails nutrition) {
         FoodItemResponse.FoodItemResponseBuilder builder = FoodItemResponse.builder()
                 .id(entry.getId())
                 .name(entry.getName())
                 .quantity(String.valueOf(entry.getQuantity()))
                 .servingSize(entry.getUnit());
 
-        // Add nutrition data if available
-        Optional<NutritionDetails> ndOpt = nutritionDetailsRepository.findByFoodEntryId(entry.getId());
-        if (ndOpt.isPresent()) {
-            var nutrition = ndOpt.get();
+        if (nutrition != null) {
             logger.debug("Nutrition details found for entry '{}': status={}, calories={}",
                     entry.getName(), nutrition.getEnrichmentStatus(), nutrition.getCalories());
 
@@ -333,7 +466,7 @@ public class FoodService {
             if (nutrition.getSodiumMg() != null)
                 builder.sodium(nutrition.getSodiumMg().doubleValue());
         } else {
-            logger.warn("No nutrition details found for food entry: {} (ID: {})",
+            logger.debug("Nutrition details not available yet for food entry: {} (ID: {})",
                     entry.getName(), entry.getId());
         }
 
@@ -868,6 +1001,9 @@ public class FoodService {
                     .message("Start logging your meals to get personalized insights!").build());
         }
         return fallback;
+    }
+
+    private record ValidatedFoodInput(String name, double quantity, String unit) {
     }
 
     // Inner class for caching insights

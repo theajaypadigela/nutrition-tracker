@@ -34,6 +34,9 @@ public class VoiceLogService {
     private static final Logger logger = LoggerFactory.getLogger(VoiceLogService.class);
     private static final long TRANSCRIPT_IDEMPOTENCY_WINDOW_MILLIS = 120_000;
 
+    public record MealTranscriptParseResult(int entriesLogged, boolean duplicateTranscript) {
+    }
+
     private final FoodService foodService;
     private final UserRepository userRepository;
     private final VoiceMealSessionRepository sessionRepo;
@@ -72,43 +75,66 @@ public class VoiceLogService {
     public void processVoiceMealLog(Map<String, Object> params,
             List<VapiWebhookRequest.TranscriptEntry> transcript,
             Map<String, Object> callMetadata) {
-        VoiceMealLogRequest req = objectMapper.convertValue(params, VoiceMealLogRequest.class);
-        LocalDate logDate = LocalDate.parse(req.getDate());
-
-        String userId = resolveUserFromCallMetadata(callMetadata);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found for voice log: " + userId));
-
-        // Save session record for audit
         VoiceMealSession session = new VoiceMealSession();
-        session.setUserId(user.getId());
-        session.setLogDate(logDate);
-        session.setRawTranscript(transcriptToString(transcript));
         session.setStatus(VoiceMealSession.SessionStatus.PENDING);
         session.setCreatedAt(LocalDateTime.now());
+        session.setRawTranscript(transcriptToString(transcript));
+        session.setPayloadSnapshot(buildWebhookPayloadSnapshot(params, callMetadata));
         sessionRepo.save(session);
 
         try {
-            // Delegate to existing FoodService for each meal type
-            req.getMeals().forEach((mealType, entries) -> {
+            VoiceMealLogRequest req = objectMapper.convertValue(params, VoiceMealLogRequest.class);
+            String userId = resolveUserFromCallMetadata(callMetadata);
+            session.setUserId(userId);
+
+            LocalDate logDate = parseRequestedLogDate(req.getDate());
+            session.setLogDate(logDate);
+
+            userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found for voice log: " + userId));
+
+            Map<String, List<VoiceMealLogRequest.MealEntryDto>> meals = req.getMeals();
+            if (meals == null || meals.isEmpty()) {
+                throw new RuntimeException("Webhook payload did not contain any meals");
+            }
+
+            sessionRepo.save(session);
+
+            final int[] totalEntries = { 0 };
+            meals.forEach((mealType, entries) -> {
+                if (entries == null || entries.isEmpty()) {
+                    return;
+                }
+
                 entries.forEach(entry -> {
+                    if (entry == null) {
+                        return;
+                    }
+
                     foodService.addFoodEntryForUser(
                             userId, logDate, mealType,
                             entry.getFoodName(),
                             entry.getQuantity() != null ? entry.getQuantity() : 1.0,
                             entry.getUnit() != null ? entry.getUnit() : "serving");
+                    totalEntries[0]++;
                 });
             });
 
+            if (totalEntries[0] == 0) {
+                throw new RuntimeException("Webhook payload did not contain any valid meal entries");
+            }
+
             session.setStatus(VoiceMealSession.SessionStatus.COMPLETED);
             session.setCompletedAt(LocalDateTime.now());
+            session.setFailureReason(null);
             sessionRepo.save(session);
 
             logger.info("Voice meal log completed for user {} on {}", userId, logDate);
         } catch (Exception e) {
             session.setStatus(VoiceMealSession.SessionStatus.FAILED);
+            session.setFailureReason(e.getMessage());
             sessionRepo.save(session);
-            logger.error("Voice meal log failed for user {}: {}", userId, e.getMessage(), e);
+            logger.error("Voice meal log failed for session {}: {}", session.getId(), e.getMessage(), e);
             throw e;
         }
     }
@@ -148,6 +174,29 @@ public class VoiceLogService {
         throw new RuntimeException("Cannot resolve user from Vapi webhook — userId missing from call metadata");
     }
 
+    private LocalDate parseRequestedLogDate(String requestedDate) {
+        if (requestedDate == null || requestedDate.isBlank()) {
+            throw new RuntimeException("Voice log date is required");
+        }
+
+        try {
+            return LocalDate.parse(requestedDate.trim());
+        } catch (Exception e) {
+            throw new RuntimeException("Voice log date must be in YYYY-MM-DD format", e);
+        }
+    }
+
+    private String buildWebhookPayloadSnapshot(Map<String, Object> params, Map<String, Object> callMetadata) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "params", params != null ? params : Map.of(),
+                    "callMetadata", callMetadata != null ? callMetadata : Map.of()));
+        } catch (Exception e) {
+            logger.warn("Failed to serialize webhook payload snapshot: {}", e.getMessage());
+            return "{\"serialization\":\"failed\"}";
+        }
+    }
+
     private String transcriptToString(List<VapiWebhookRequest.TranscriptEntry> transcript) {
         if (transcript == null || transcript.isEmpty()) {
             return "";
@@ -165,30 +214,29 @@ public class VoiceLogService {
      * Not @Transactional so each addFoodEntryForUser call auto-commits,
      * allowing the @Async nutrition enrichment to see the committed rows.
      */
-    public int parseTranscriptAndLogMeals(String userId, String transcript) {
+    public MealTranscriptParseResult parseTranscriptAndLogMeals(String userId, LocalDate logDate, String transcript) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
         String normalizedTranscript = transcript == null ? "" : transcript.trim();
-        String idempotencyKey = userId + ":" + sha256(normalizedTranscript);
+        LocalDate effectiveLogDate = logDate != null ? logDate : LocalDate.now();
+        String idempotencyKey = userId + ":" + effectiveLogDate + ":" + sha256(normalizedTranscript);
         long now = System.currentTimeMillis();
         cleanupOldIdempotencyKeys(now);
 
         Long previous = recentTranscriptParses.putIfAbsent(idempotencyKey, now);
         if (previous != null && now - previous < TRANSCRIPT_IDEMPOTENCY_WINDOW_MILLIS) {
             logger.warn("Skipping duplicate transcript parse request for user {} within idempotency window", userId);
-            return 0;
+            return new MealTranscriptParseResult(0, true);
         }
         if (previous != null) {
             recentTranscriptParses.put(idempotencyKey, now);
         }
 
-        LocalDate logDate = LocalDate.now();
-
         // Save session record for audit
         VoiceMealSession session = new VoiceMealSession();
         session.setUserId(user.getId());
-        session.setLogDate(logDate);
+        session.setLogDate(effectiveLogDate);
         session.setRawTranscript(transcript);
         session.setStatus(VoiceMealSession.SessionStatus.PENDING);
         session.setCreatedAt(LocalDateTime.now());
@@ -212,7 +260,7 @@ public class VoiceLogService {
                     String unit = mealNode.path("unit").asText("serving");
 
                     if (!foodName.isEmpty()) {
-                        foodService.addFoodEntryForUser(userId, logDate, mealType,
+                        foodService.addFoodEntryForUser(userId, effectiveLogDate, mealType,
                                 foodName, quantity, unit);
                         totalEntries++;
                     }
@@ -221,14 +269,16 @@ public class VoiceLogService {
 
             session.setStatus(VoiceMealSession.SessionStatus.COMPLETED);
             session.setCompletedAt(LocalDateTime.now());
+            session.setFailureReason(null);
             sessionRepo.save(session);
 
             logger.info("Parsed and logged {} meal entries from transcript for user {} on {}",
-                    totalEntries, userId, logDate);
-            return totalEntries;
+                    totalEntries, userId, effectiveLogDate);
+            return new MealTranscriptParseResult(totalEntries, false);
         } catch (Exception e) {
             recentTranscriptParses.remove(idempotencyKey);
             session.setStatus(VoiceMealSession.SessionStatus.FAILED);
+            session.setFailureReason(e.getMessage());
             sessionRepo.save(session);
             logger.error("Failed to parse transcript for user {}: {}", userId, e.getMessage(), e);
             throw new RuntimeException("Failed to parse meals from conversation: " + e.getMessage(), e);
@@ -238,7 +288,7 @@ public class VoiceLogService {
     private String buildTranscriptParsingPrompt(String transcript) {
         return String.format(
                 """
-                        You are a nutrition assistant. Analyze the following conversation transcript between a user and an AI assistant where the user describes the meals they ate today.
+                        You are a nutrition assistant. Analyze the following transcript lines spoken by a user describing the meals they ate today.
 
                         Extract ALL food items mentioned by the user. For each food item, determine:
                         - name: the food name
@@ -255,7 +305,7 @@ public class VoiceLogService {
 
                         If no food items were mentioned, return: { "meals": [] }
 
-                        Conversation transcript:
+                        User transcript:
                         %s
                         """,
                 transcript);

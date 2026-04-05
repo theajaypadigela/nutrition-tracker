@@ -1,6 +1,7 @@
 package com.habitbuilder.NutritionTracker.modules.voice;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
+import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptParseRequestDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretRequestDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
@@ -14,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
@@ -67,7 +69,8 @@ public class VoiceLogController {
             }
         } catch (Exception e) {
             logger.error("Error processing Vapi webhook: {}", e.getMessage(), e);
-            // Still return 200 to prevent Vapi retries for application errors
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(Map.of("result", "failed", "recoverable", true));
         }
 
         // Must return 200 quickly — Vapi will retry on non-2xx
@@ -96,19 +99,20 @@ public class VoiceLogController {
      */
     @PostMapping("/voice-log/parse-transcript")
     public ResponseEntity<Map<String, Object>> parseTranscriptAndLog(
-            @RequestBody Map<String, String> body) {
+            @RequestBody MealTranscriptParseRequestDTO body) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String transcript = body.get("transcript");
+        String transcript = body.getTranscript();
         if (transcript == null || transcript.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Transcript is required"));
         }
 
         String normalizedTranscript = transcript.trim();
+        LocalDate logDate = body.getLogDate() != null ? body.getLogDate() : LocalDate.now();
         String loweredTranscript = normalizedTranscript.toLowerCase();
         boolean hasDelayIntent = loweredTranscript.contains("call me in")
                 || loweredTranscript.contains("remind me in")
@@ -119,11 +123,13 @@ public class VoiceLogController {
                 user.getId(), normalizedTranscript.length(), hasDelayIntent);
 
         try {
-            int entriesLogged = voiceLogService.parseTranscriptAndLogMeals(
-                    user.getId(), normalizedTranscript);
+            VoiceLogService.MealTranscriptParseResult result = voiceLogService.parseTranscriptAndLogMeals(
+                    user.getId(), logDate, normalizedTranscript);
             return ResponseEntity.ok(Map.of(
                     "status", "success",
-                    "entriesLogged", entriesLogged));
+                    "entriesLogged", result.entriesLogged(),
+                    "duplicateTranscript", result.duplicateTranscript(),
+                    "logDate", logDate));
         } catch (Exception e) {
             logger.error("Failed to parse transcript for user {}: {}", user.getId(), e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
