@@ -5,15 +5,15 @@ import { logoutHandler } from '../services/authService';
 
 export const CUSTOM_BASE_URL_KEY = 'custom_base_url';
 
-export const DEFAULT_BASE_URL =
-  Platform.OS === 'android'
-    ? 'http://3.109.239.9:5000/'
-    : 'http://3.109.239.9:5000/';
-
 // export const DEFAULT_BASE_URL =
 //   Platform.OS === 'android'
-//     ? 'http://localhost:5000/'
-//     : 'http://localhost:5000/';
+//     ? 'http://3.109.239.9:5000/'
+//     : 'http://3.109.239.9:5000/';
+
+export const DEFAULT_BASE_URL =
+  Platform.OS === 'android'
+    ? 'http://localhost:5000/'
+    : 'http://localhost:5000/';
 
 const apiClient = axios.create({
   baseURL: DEFAULT_BASE_URL,
@@ -25,7 +25,10 @@ apiClient.interceptors.request.use(async config => {
   // Dynamically read custom base URL so it reflects runtime changes
   const customBaseURL = await AsyncStorage.getItem(CUSTOM_BASE_URL_KEY);
   if (customBaseURL) {
-    config.baseURL = customBaseURL;
+    const trimmed = customBaseURL.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      config.baseURL = trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+    }
   }
 
   const token = await AsyncStorage.getItem('token');
