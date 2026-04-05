@@ -26,7 +26,9 @@ export default function useApi<T = any>(): UseApiReturn<T> {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cancelTokenSourceRef = useRef<CancelTokenSource | null>(null);
+  const pendingRequestCountRef = useRef(0);
+  const cancelTokenSourcesRef = useRef<Set<CancelTokenSource>>(new Set());
+  const isMountedRef = useRef(true);
 
   const request = useCallback(
     async ({
@@ -36,15 +38,14 @@ export default function useApi<T = any>(): UseApiReturn<T> {
       params = {},
       headers = {},
     }: UseApiOptions): Promise<T> => {
-      setLoading(true);
-      setError(null);
-
-      if (cancelTokenSourceRef.current) {
-        cancelTokenSourceRef.current.cancel('New request initiated');
+      pendingRequestCountRef.current += 1;
+      if (isMountedRef.current) {
+        setLoading(true);
+        setError(null);
       }
 
-      // Create new cancel token
-      cancelTokenSourceRef.current = axios.CancelToken.source();
+      const cancelTokenSource = axios.CancelToken.source();
+      cancelTokenSourcesRef.current.add(cancelTokenSource);
 
       try {
         const config: AxiosRequestConfig = {
@@ -53,15 +54,16 @@ export default function useApi<T = any>(): UseApiReturn<T> {
           data: requestData,
           params,
           headers,
-          cancelToken: cancelTokenSourceRef.current.token,
+          cancelToken: cancelTokenSource.token,
         };
 
         const response = await apiClient.request<T>(config);
-        setData(response.data);
+        if (isMountedRef.current) {
+          setData(response.data);
+        }
         return response.data;
       } catch (err) {
         if (axios.isCancel(err)) {
-          // Request was cancelled, don't set error
           throw err;
         }
 
@@ -71,10 +73,20 @@ export default function useApi<T = any>(): UseApiReturn<T> {
           axiosError.message ||
           'An unexpected error occurred';
 
-        setError(errorMessage);
+        if (isMountedRef.current) {
+          setError(errorMessage);
+        }
         throw err;
       } finally {
-        setLoading(false);
+        cancelTokenSourcesRef.current.delete(cancelTokenSource);
+        pendingRequestCountRef.current = Math.max(
+          0,
+          pendingRequestCountRef.current - 1,
+        );
+
+        if (isMountedRef.current) {
+          setLoading(pendingRequestCountRef.current > 0);
+        }
       }
     },
     [],
@@ -82,10 +94,11 @@ export default function useApi<T = any>(): UseApiReturn<T> {
 
   useEffect(() => {
     return () => {
-      // Cancel any pending requests on unmount
-      if (cancelTokenSourceRef.current) {
-        cancelTokenSourceRef.current.cancel('Component unmounted');
-      }
+      isMountedRef.current = false;
+      cancelTokenSourcesRef.current.forEach(source =>
+        source.cancel('Component unmounted'),
+      );
+      cancelTokenSourcesRef.current.clear();
     };
   }, []);
 

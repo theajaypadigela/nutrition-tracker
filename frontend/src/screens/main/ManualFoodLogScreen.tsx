@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, UtensilsCrossed, CheckCircle } from 'lucide-react-native';
+import { CheckCircle } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
 import { Input, InputField } from '../../components/ui/input';
 import { Button, ButtonText } from '../../components/ui/button';
 import { Divider } from '../../components/ui/divider';
+import AppBar from '../../components/AppBar';
 import {
   Select,
   SelectItem,
@@ -30,6 +29,7 @@ import {
 import { ChevronDownIcon } from 'lucide-react-native';
 import useApi from '../../hooks/useApi';
 import { MealType, MealsResponse } from '../../types/types';
+import { getTodayLocalDate } from '../../utils/date';
 
 const MEAL_TYPES: { label: string; value: MealType }[] = [
   { label: 'Breakfast', value: 'breakfast' },
@@ -58,7 +58,6 @@ interface FormErrors {
 }
 
 const ManualFoodLogScreen = () => {
-  const navigation = useNavigation();
   const { request, loading } = useApi<MealsResponse>();
 
   const [mealType, setMealType] = useState<MealType | ''>('');
@@ -74,12 +73,15 @@ const ManualFoodLogScreen = () => {
   const [submitError, setSubmitError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {
@@ -123,7 +125,7 @@ const ManualFoodLogScreen = () => {
     setSubmitError('');
 
     try {
-      const date = getTodayDate();
+      const date = getTodayLocalDate();
       await request({
         url: `/food/${date}/meals/${mealType}/entries`,
         method: 'POST',
@@ -144,7 +146,10 @@ const ManualFoodLogScreen = () => {
       setUnit('');
       setErrors({ mealType: '', foodName: '', quantity: '', unit: '' });
 
-      setTimeout(() => setIsSuccess(false), 3000);
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+      successTimerRef.current = setTimeout(() => setIsSuccess(false), 3000);
     } catch (err) {
       setSubmitError('Failed to log food entry. Please try again.');
       console.error('Error adding food entry:', err);
@@ -165,6 +170,10 @@ const ManualFoodLogScreen = () => {
     setUnit('');
     setSubmitError('');
     setIsSuccess(false);
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
     setErrors({ mealType: '', foodName: '', quantity: '', unit: '' });
     setRefreshing(false);
   };
@@ -174,24 +183,13 @@ const ManualFoodLogScreen = () => {
       className="flex-1"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View className="flex-1 bg-gray-50">
-        {/* Header */}
-        <View className="bg-white px-6 pt-14 pb-4 border-b border-gray-200">
-          <HStack className="items-center gap-3">
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              className="w-9 h-9 items-center justify-center rounded-full bg-gray-100"
-            >
-              <ArrowLeft size={20} stroke="#374151" />
-            </TouchableOpacity>
-            <HStack className="items-center gap-2">
-              <View className="w-8 h-8 bg-emerald-100 rounded-lg items-center justify-center">
-                <UtensilsCrossed size={18} stroke="#10B981" />
-              </View>
-              <Text className="text-xl font-bold text-gray-900">Log Food</Text>
-            </HStack>
-          </HStack>
-        </View>
+      <View className="flex-1">
+        <AppBar
+          title="Log Food"
+          subtitle="Manual entry"
+          variant="secondary"
+          showBackButton
+        />
 
         <ScrollView
           className="flex-1"
@@ -393,7 +391,7 @@ const ManualFoodLogScreen = () => {
                         setUnit(text);
                         clearError('unit');
                       }}
-                      placeholder="e.g. slice, portion, can…"
+                      placeholder="e.g. slice, portion, can"
                       autoCapitalize="none"
                     />
                   </Input>
@@ -405,8 +403,8 @@ const ManualFoodLogScreen = () => {
             <View className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
               <HStack className="items-center gap-2">
                 <Text className="text-xs text-blue-600">
-                  📅 This entry will be logged for today:{' '}
-                  <Text className="font-semibold">{getTodayDate()}</Text>
+                  This entry will be logged for today:{' '}
+                  <Text className="font-semibold">{getTodayLocalDate()}</Text>
                 </Text>
               </HStack>
             </View>
@@ -420,7 +418,9 @@ const ManualFoodLogScreen = () => {
               isDisabled={loading}
             >
               <ButtonText className="text-white font-semibold text-base">
-                {loading ? 'Adding Entry…' : 'Add Food Entry'}
+                <Text className="text-white font-semibold text-base">
+                  {loading ? 'Adding Entry...' : 'Add Food Entry'}
+                </Text>
               </ButtonText>
             </Button>
           </VStack>

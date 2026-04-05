@@ -39,15 +39,18 @@ import {
   TopFoodSource,
 } from './types';
 import useApi from '../../hooks/useApi';
+import {
+  addDaysToLocalDate,
+  formatLocalDate,
+  parseLocalDateString,
+} from '../../utils/date';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const toISO = (d: Date) => d.toISOString().split('T')[0];
-
 const formatDateShort = (iso: string) => {
-  const d = new Date(iso + 'T00:00:00');
+  const d = parseLocalDateString(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
@@ -196,11 +199,9 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
   // Date range
   const [rangeDays, setRangeDays] = useState(7);
   const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 6);
-    return toISO(d);
+    return formatLocalDate(addDaysToLocalDate(new Date(), -6));
   });
-  const [endDate, setEndDate] = useState(() => toISO(new Date()));
+  const [endDate, setEndDate] = useState(() => formatLocalDate(new Date()));
   const [showRangePicker, setShowRangePicker] = useState(false);
   const [customStartInput, setCustomStartInput] = useState('');
   const [customEndInput, setCustomEndInput] = useState('');
@@ -253,10 +254,9 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
       return;
     }
     const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - (days - 1));
-    setStartDate(toISO(start));
-    setEndDate(toISO(end));
+    const start = addDaysToLocalDate(end, -(days - 1));
+    setStartDate(formatLocalDate(start));
+    setEndDate(formatLocalDate(end));
     setRangeDays(days);
     setShowRangePicker(false);
   };
@@ -392,7 +392,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
   const dateRangeLabel =
     rangeDays > 0
       ? `Last ${rangeDays}d`
-      : `${formatDateShort(startDate)} – ${formatDateShort(endDate)}`;
+      : `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (

@@ -23,7 +23,9 @@ import NutritionDisplay from '../../components/food-log/NutritionDisplay';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Plus, Mic, Clock } from 'lucide-react-native';
-import { loadMealRescheduleTime, clearMealRescheduleTime } from '../../services/mealScheduler';
+import { loadMealRescheduleTime } from '../../services/mealScheduler';
+import { getTodayLocalDate } from '../../utils/date';
+import { createEmptyMeals, normalizeMeals } from '../../utils/meals';
 
 // Use a local type to avoid a circular import with FoodStackNavigator
 type FoodLogNavigationProp = StackNavigationProp<
@@ -49,22 +51,11 @@ const FoodLogScreen = () => {
 
   const { data, request } = useApi<MealsResponse>();
 
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
-
-  const [selectedDate] = useState(getTodayDate());
+  const [selectedDate] = useState(getTodayLocalDate());
   const [refreshing, setRefreshing] = useState(false);
   const [mealRescheduleTime, setMealRescheduleTime] = useState<number | null>(null);
 
-  const [meals, setMeals] = useState<Meals>({
-    breakfast: [],
-    lunch: [],
-    snack: [],
-    dinner: [],
-  });
+  const [meals, setMeals] = useState<Meals>(createEmptyMeals());
 
   const [nutritionTotals, setNutritionTotals] = useState<NutritionTotals>({
     calories: 0,
@@ -105,14 +96,12 @@ const FoodLogScreen = () => {
 
   useEffect(() => {
     if (data?.meals) {
-      setMeals(data.meals);
-      console.log('Fetched meals:', data.meals, 'for date:', selectedDate);
+      setMeals(normalizeMeals(data.meals));
     }
     if (data?.totals) {
       setNutritionTotals(data.totals);
-      console.log('Nutrition totals:', data.totals);
     }
-  }, [data, selectedDate]);
+  }, [data]);
 
   const handleEditFood = async (item: FoodItem) => {
     setSelectedFood(item);
@@ -137,31 +126,27 @@ const FoodLogScreen = () => {
         },
       });
 
-      // Refresh data from backend response
       if (response?.meals) {
-        setMeals(response.meals);
+        setMeals(normalizeMeals(response.meals));
       }
       if (response?.totals) {
         setNutritionTotals(response.totals);
       }
-
-      setShowDrawer(false);
-      setSelectedFood(null);
     } catch (err) {
       console.error('Error saving food:', err);
+      throw err;
     }
   };
 
-  const handleDeleteFood = async (mealType: string, itemId: string) => {
+  const handleDeleteFood = async (_mealType: string, itemId: string) => {
     try {
       const response = await request({
         url: `/food/meals/entries/${itemId}`,
         method: 'DELETE',
       });
 
-      // Refresh data from backend response
       if (response?.meals) {
-        setMeals(response.meals);
+        setMeals(normalizeMeals(response.meals));
       }
       if (response?.totals) {
         setNutritionTotals(response.totals);
@@ -173,7 +158,7 @@ const FoodLogScreen = () => {
 
   return (
     <View className="flex-1">
-      <AppBar title="Food Log" />
+      <AppBar title="Food Log" showProfileShortcut />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}

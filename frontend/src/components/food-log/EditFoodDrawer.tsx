@@ -21,7 +21,11 @@ import { FoodItem, FoodErrors } from './types';
 interface EditFoodDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (foodName: string, quantity: string, servingSize: string) => void;
+  onSave: (
+    foodName: string,
+    quantity: string,
+    servingSize: string,
+  ) => Promise<void>;
   initialData: FoodItem | null;
 }
 
@@ -34,6 +38,8 @@ export const EditFoodDrawer: React.FC<EditFoodDrawerProps> = ({
   const [foodName, setFoodName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [servingSize, setServingSize] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [errors, setErrors] = useState<FoodErrors>({
     foodName: '',
     quantity: '',
@@ -45,11 +51,12 @@ export const EditFoodDrawer: React.FC<EditFoodDrawerProps> = ({
       setFoodName(initialData.name);
       setQuantity(initialData.quantity);
       setServingSize(initialData.servingSize);
+      setSaveError('');
     } else if (isOpen) {
-      // Reset if opening without data (though currently used only for edit)
       setFoodName('');
       setQuantity('');
       setServingSize('');
+      setSaveError('');
     }
   }, [isOpen, initialData]);
 
@@ -93,12 +100,22 @@ export const EditFoodDrawer: React.FC<EditFoodDrawerProps> = ({
     return isValid;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) {
       return;
     }
-    onSave(foodName, quantity, servingSize);
-    handleClose();
+
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      await onSave(foodName, quantity, servingSize);
+      handleClose();
+    } catch {
+      setSaveError('Could not save your changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClose = () => {
@@ -110,6 +127,7 @@ export const EditFoodDrawer: React.FC<EditFoodDrawerProps> = ({
       quantity: '',
       servingSize: '',
     });
+    setSaveError('');
     onClose();
   };
 
@@ -231,10 +249,15 @@ export const EditFoodDrawer: React.FC<EditFoodDrawerProps> = ({
             {/* Helper text */}
             <View className="bg-green-50 p-4 rounded-xl border border-green-200">
               <Text className="text-xs text-green-800">
-                💡 Tip: Make sure all fields are filled correctly. Quantity
-                should be a positive number.
+                Tip: Make sure all fields are filled correctly. Quantity should
+                be a positive number.
               </Text>
             </View>
+            {saveError ? (
+              <View className="bg-red-50 p-4 rounded-xl border border-red-200">
+                <Text className="text-xs text-red-700">{saveError}</Text>
+              </View>
+            ) : null}
           </VStack>
         </DrawerBody>
 
@@ -253,11 +276,14 @@ export const EditFoodDrawer: React.FC<EditFoodDrawerProps> = ({
             <Button
               variant="solid"
               size="lg"
-              onPress={handleSave}
+              onPress={() => {
+                void handleSave();
+              }}
+              isDisabled={isSaving}
               className="flex-1 rounded-xl bg-green-600"
             >
               <ButtonText className="text-white font-semibold">
-                Save Changes
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </ButtonText>
             </Button>
           </HStack>

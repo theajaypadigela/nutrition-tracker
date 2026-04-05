@@ -21,6 +21,7 @@ import {
 import AppBar from '../../components/AppBar';
 import useApi from '../../hooks/useApi';
 import { WeeklyNutritionReport } from '../../types/types';
+import { addDaysToLocalDate, formatLocalDate } from '../../utils/date';
 
 interface InsightApiResponse {
   variant: 'positive' | 'negative' | 'neutral';
@@ -46,12 +47,11 @@ const NutritionReportScreen = () => {
   // Get date range for the past 7 days
   const getDateRange = () => {
     const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 6); // Last 7 days
+    const startDate = addDaysToLocalDate(endDate, -6);
 
     return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: formatLocalDate(startDate),
+      endDate: formatLocalDate(endDate),
     };
   };
 
@@ -276,7 +276,7 @@ const NutritionReportScreen = () => {
 
   return (
     <View className="flex-1">
-      <AppBar title="Nutrition Report" />
+      <AppBar title="Nutrition Report" showProfileShortcut />
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#0284c7" />

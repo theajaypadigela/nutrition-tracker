@@ -8,6 +8,7 @@ import apiClient from '../../api/client';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
 import { APP_ENV } from '../../config/env';
 import { MealVoiceInterpretationResponse } from '../../types/types';
+import { getTodayLocalDate } from '../../utils/date';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
@@ -22,6 +23,7 @@ export default function VoiceMealLogScreen() {
     {
       breakfast: 'Breakfast',
       lunch: 'Lunch',
+      snack: 'Snack',
       snacks: 'Snacks',
       dinner: 'Dinner',
     }[mealSlotId ?? ''] ?? 'Meals';
@@ -32,6 +34,7 @@ export default function VoiceMealLogScreen() {
   const [followUpMessage, setFollowUpMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
+  const userTranscriptRef = useRef<string[]>([]);
   const isParsingTranscriptRef = useRef(false);
   const lastParsedTranscriptRef = useRef<{ transcript: string; at: number } | null>(null);
 
@@ -91,8 +94,10 @@ export default function VoiceMealLogScreen() {
         const line = `${prefix}${msg.transcript}`;
         setTranscript(prev => [...prev, line]);
         transcriptRef.current = [...transcriptRef.current, line];
+        if (msg.role !== 'assistant' && typeof msg.transcript === 'string') {
+          userTranscriptRef.current = [...userTranscriptRef.current, msg.transcript];
+        }
       }
-
     });
 
     vapi.on('volume-level', (volume: number) => {
@@ -139,6 +144,7 @@ export default function VoiceMealLogScreen() {
     setStatus('requesting');
     setTranscript([]);
     transcriptRef.current = [];
+    userTranscriptRef.current = [];
     setEntriesLogged(0);
     setFollowUpMessage('');
 
@@ -202,35 +208,41 @@ export default function VoiceMealLogScreen() {
     }
   }, []);
 
+  const getFoodLogSnapshot = useCallback(async (logDate: string) => {
+    try {
+      const response = await apiClient.get(`/food/${logDate}`);
+      const meals = response.data?.meals || {};
+      const items = Object.values(meals).flat() as any[];
+
+      return {
+        totalCount: items.length,
+        enrichedCount: items.filter((item: any) => item.calories != null).length,
+      };
+    } catch (err) {
+      console.warn('[VoiceMealLog] Could not read food log snapshot:', err);
+      return {
+        totalCount: 0,
+        enrichedCount: 0,
+      };
+    }
+  }, []);
+
   // Poll for nutrition data to ensure enrichment has completed
   const waitForNutritionEnrichment = useCallback(
-    async (expectedNewEntries: number) => {
-      const today = new Date().toISOString().split('T')[0];
+    async (
+      expectedNewEntries: number,
+      logDate: string,
+      baseline: { totalCount: number; enrichedCount: number },
+    ) => {
       const maxAttempts = 12;
       const delayMs = 1500;
-
-      // Track baseline counts so we only wait for entries from this voice session.
-      let initialEnrichedCount = 0;
-      let initialTotalCount = 0;
-      try {
-        const initialRes = await apiClient.get(`/food/${today}`);
-        const meals = initialRes.data?.meals || {};
-        const initialItems = Object.values(meals).flat() as any[];
-        initialTotalCount = initialItems.length;
-        initialEnrichedCount = Object.values(meals)
-          .flat()
-          .filter((item: any) => item.calories != null).length;
-      } catch {
-        // Ignore initial check errors
-      }
-
-      const targetTotalCount = initialTotalCount + expectedNewEntries;
-      const targetEnrichedCount = initialEnrichedCount + expectedNewEntries;
+      const targetTotalCount = baseline.totalCount + expectedNewEntries;
+      const targetEnrichedCount = baseline.enrichedCount + expectedNewEntries;
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
           await new Promise(resolve => setTimeout(resolve, delayMs));
-          const res = await apiClient.get(`/food/${today}`);
+          const res = await apiClient.get(`/food/${logDate}`);
           const meals = res.data?.meals || {};
           const currentItems = Object.values(meals).flat() as any[];
           const currentTotalCount = currentItems.length;
@@ -263,13 +275,16 @@ export default function VoiceMealLogScreen() {
   );
 
   const parseMealsFromTranscript = useCallback(async () => {
-    const lines = transcriptRef.current;
-    if (lines.length === 0) {
+    const userLines = userTranscriptRef.current
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (userLines.length === 0) {
       setStatus('completed');
       return;
     }
 
-    const fullTranscript = lines.join('\n').trim();
+    const fullTranscript = userLines.join('\n').trim();
     if (!fullTranscript) {
       setStatus('completed');
       return;
@@ -315,22 +330,27 @@ export default function VoiceMealLogScreen() {
       });
 
       let count = 0;
+      let duplicateTranscript = false;
       if (shouldLogMeals) {
+        const logDate = getTodayLocalDate();
+        const baseline = await getFoodLogSnapshot(logDate);
+
         console.log('[VoiceMealLog] Sending transcript to backend for meal logging');
         const response = await apiClient.post('/food/voice-log/parse-transcript', {
           transcript: fullTranscript,
+          logDate,
         });
         count = response.data?.entriesLogged ?? 0;
+        duplicateTranscript = response.data?.duplicateTranscript === true;
+
+        if (count > 0) {
+          console.log('[VoiceMealLog] Waiting for nutrition enrichment...');
+          await waitForNutritionEnrichment(count, logDate, baseline);
+        }
       }
 
       setEntriesLogged(count);
       console.log('[VoiceMealLog] Logged', count, 'meal entries');
-
-      // Wait for nutrition enrichment to complete (poll for a few seconds)
-      if (count > 0) {
-        console.log('[VoiceMealLog] Waiting for nutrition enrichment...');
-        await waitForNutritionEnrichment(count);
-      }
 
       if (delayMinutes != null && delayMinutes > 0) {
         const scheduled = await scheduleMealReschedule(delayMinutes);
@@ -352,6 +372,10 @@ export default function VoiceMealLogScreen() {
             { delayMinutes },
           );
         }
+      } else if (duplicateTranscript) {
+        setFollowUpMessage(
+          'This conversation was already logged recently, so no duplicate meals were added.',
+        );
       } else if (count === 0) {
         setFollowUpMessage('No meals were logged in this call.');
       }
@@ -364,7 +388,7 @@ export default function VoiceMealLogScreen() {
     } finally {
       isParsingTranscriptRef.current = false;
     }
-  }, [mealSlotId, waitForNutritionEnrichment]);
+  }, [getFoodLogSnapshot, mealSlotId, waitForNutritionEnrichment]);
 
   const getStatusText = () => {
     switch (status) {
