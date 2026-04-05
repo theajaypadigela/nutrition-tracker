@@ -12,6 +12,7 @@ import MealScheduleScreen from '../screens/main/MealScheduleScreen';
 import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealScheduleScreen';
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
 import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
+import ProfileScreen from '../screens/main/ProfileScreen';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -31,6 +32,7 @@ export type RootStackParamList = {
   };
   MealSchedule: undefined;
   OnboardingMealSchedule: undefined;
+  Profile: undefined;
   VoiceMealLog: { mealSlotId?: string; autoStart?: boolean };
   VoiceHabit: {
     habitId?: string;
@@ -70,6 +72,7 @@ const AuthenticatedNavigator = () => {
         name="OnboardingMealSchedule"
         component={OnboardingMealScheduleScreen}
       />
+      <RootStack.Screen name="Profile" component={ProfileScreen} />
       <RootStack.Screen
         name="VoiceMealLog"
         component={VoiceMealLogScreen}

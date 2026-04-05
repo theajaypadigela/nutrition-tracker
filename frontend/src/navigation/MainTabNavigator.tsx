@@ -4,7 +4,6 @@ import DashBoardScreen from '../screens/main/DashBoardScreen';
 import HabitScreen from '../screens/main/HabitScreen';
 import HabitCreationScreen from '../screens/main/HabitCreationScreen';
 import NutritionReportScreen from '../screens/main/NutritionReportScreen';
-import ProfileScreen from '../screens/main/ProfileScreen';
 import BottomNavigation from '../components/BottomNavigation';
 import { FoodStackNavigator } from './FoodStackNavigator';
 
@@ -14,7 +13,6 @@ export type MainTabParamList = {
   HabitCreation: undefined;
   Food: undefined;
   Reports: undefined;
-  Profile: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -32,6 +30,7 @@ const getDeepestRouteName = (route: any): string => {
 const CustomTabBar = (props: any) => {
   const currentRoute = props.state.routes[props.state.index];
   const currentRouteName = getDeepestRouteName(currentRoute);
+  const activeTabName = currentRoute?.name ?? '';
 
   if (TAB_BAR_HIDDEN_ROUTES.has(currentRouteName)) {
     return null;
@@ -39,7 +38,7 @@ const CustomTabBar = (props: any) => {
 
   return (
     <BottomNavigation
-      activeTab={currentRouteName}
+      activeTab={activeTabName}
       onTabChange={tab => {
         props.navigation.navigate(tab);
       }}
@@ -85,11 +84,6 @@ export const MainTabNavigator = () => {
         name="Reports"
         component={NutritionReportScreen}
         options={{ title: 'Nutrition Report' }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
   );

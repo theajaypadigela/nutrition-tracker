@@ -9,21 +9,19 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
-  ArrowLeft,
   Clock,
   Bell,
   Phone,
   Type,
   Repeat,
-  Sparkles,
 } from 'lucide-react-native';
 import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
 import { Text } from '../../components/ui/text';
-import { Divider } from '../../components/ui/divider';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import useApi from '../../hooks/useApi';
 import { scheduleHabitReminder } from '../../services/habitScheduler';
+import AppBar from '../../components/AppBar';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 type ReminderType = 'notification' | 'call' | 'none';
@@ -190,25 +188,13 @@ const HabitCreationScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <HStack className="justify-between items-center w-full px-6 pb-4">
-        <HStack className="items-center gap-3">
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
-          >
-            <ArrowLeft size={20} color="#374151" />
-          </TouchableOpacity>
-          <Text size="2xl" className="font-bold text-gray-900">
-            New Habit
-          </Text>
-        </HStack>
-        <View className="w-10 h-10 rounded-full bg-emerald-50 items-center justify-center">
-          <Sparkles size={20} color="#10B981" />
-        </View>
-      </HStack>
-      <Divider className="h-[2px] bg-gray-200" />
+    <View className="flex-1">
+      <AppBar
+        title="New Habit"
+        subtitle="Build your routine"
+        variant="secondary"
+        showBackButton
+      />
 
       <ScrollView
         className="flex-1"

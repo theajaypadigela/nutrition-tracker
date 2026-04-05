@@ -9,7 +9,7 @@ export interface User {
 
 // Navigation
 
-export type TabName = 'Home' | 'Habits' | 'Food' | 'Reports' | 'Profile';
+export type TabName = 'Home' | 'Habits' | 'Food' | 'Reports';
 
 // Habits
 

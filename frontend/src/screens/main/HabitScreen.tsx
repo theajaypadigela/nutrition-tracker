@@ -129,7 +129,7 @@ const HabitScreen = () => {
 
   return (
     <View className="flex-1">
-      <AppBar title="Habits" />
+      <AppBar title="Habits" showProfileShortcut />
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}

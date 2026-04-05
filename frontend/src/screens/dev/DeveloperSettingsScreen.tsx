@@ -3,13 +3,10 @@ import {
   View,
   ScrollView,
   Alert,
-  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Settings, Wifi, Trash2, ArrowLeft, Check } from 'lucide-react-native';
+import { Settings, Wifi, Trash2, Check } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
@@ -17,15 +14,9 @@ import { Input, InputField } from '../../components/ui/input';
 import { Button, ButtonText } from '../../components/ui/button';
 import { Divider } from '../../components/ui/divider';
 import { CUSTOM_BASE_URL_KEY, DEFAULT_BASE_URL } from '../../api/client';
-import { AuthStackParamList } from '../../navigation/AuthNavigator';
-
-type DeveloperSettingsNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList,
-  'DeveloperSettings'
->;
+import AppBar from '../../components/AppBar';
 
 const DeveloperSettingsScreen = () => {
-  const navigation = useNavigation<DeveloperSettingsNavigationProp>();
   const [baseURL, setBaseURL] = useState('');
   const [savedURL, setSavedURL] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -107,26 +98,13 @@ const DeveloperSettingsScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white px-6 pt-14 pb-4 border-b border-gray-200">
-        <HStack className="items-center gap-3">
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="w-9 h-9 items-center justify-center rounded-full bg-gray-100"
-          >
-            <ArrowLeft size={20} stroke="#374151" />
-          </TouchableOpacity>
-          <View className="flex-row items-center gap-2">
-            <View className="w-8 h-8 bg-amber-100 rounded-lg items-center justify-center">
-              <Settings size={18} stroke="#D97706" />
-            </View>
-            <Text className="text-xl font-bold text-gray-900">
-              Developer Settings
-            </Text>
-          </View>
-        </HStack>
-      </View>
+    <View className="flex-1">
+      <AppBar
+        title="Developer Settings"
+        subtitle="Environment and API"
+        variant="secondary"
+        showBackButton
+      />
 
       <ScrollView
         className="flex-1"
@@ -222,7 +200,9 @@ const DeveloperSettingsScreen = () => {
                 <HStack className="items-center gap-2">
                   {isSaved ? <Check size={16} stroke="white" /> : null}
                   <ButtonText className="text-white font-medium">
-                    {isSaved ? 'Saved!' : 'Save Base URL'}
+                    <Text className="text-white font-medium">
+                      {isSaved ? 'Saved!' : 'Save Base URL'}
+                    </Text>
                   </ButtonText>
                 </HStack>
               </Button>
@@ -237,7 +217,9 @@ const DeveloperSettingsScreen = () => {
                   <HStack className="items-center gap-2">
                     <Trash2 size={16} stroke="#EF4444" />
                     <ButtonText className="text-red-500 font-medium">
-                      Clear Custom URL
+                      <Text className="text-red-500 font-medium">
+                        Clear Custom URL
+                      </Text>
                     </ButtonText>
                   </HStack>
                 </Button>

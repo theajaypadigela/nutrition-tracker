@@ -85,10 +85,10 @@ const ProfileScreen = () => {
 
   return (
     <View className="flex-1">
-      <AppBar title="Profile" />
+      <AppBar title="Profile" variant="secondary" showBackButton />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }

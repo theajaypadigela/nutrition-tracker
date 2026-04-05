@@ -322,7 +322,7 @@ function App() {
   return (
     <GluestackUIProvider>
       <AuthProvider>
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView className="flex-1 bg-white">
           <AppNavigator />
           <IncomingCallBanner
             payload={callBannerPayload}
