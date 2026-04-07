@@ -8,17 +8,14 @@ This is a new [**React Native**](https://reactnative.dev) project, bootstrapped 
 
 ### Environment setup
 
-Create a local `.env` file in the `frontend` folder before running the app:
+Create a local `.env` file in the `frontend` folder if needed:
 
 ```sh
 cp .env.example .env
 ```
 
-Required variables:
-
-- `VAPI_PUBLIC_KEY`
-- `VAPI_HABIT_ASSISTANT_ID`
-- `VAPI_MEAL_ASSISTANT_ID`
+Vapi credentials are not stored in the frontend.
+The app fetches short-lived session configuration from authenticated backend endpoints.
 
 First, you will need to run **Metro**, the JavaScript build tool for React Native.
 

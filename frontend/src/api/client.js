@@ -5,6 +5,8 @@ import { logoutHandler } from '../services/authService';
 
 export const CUSTOM_BASE_URL_KEY = 'custom_base_url';
 
+const ALLOWED_HTTP_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
+
 // export const DEFAULT_BASE_URL =
 //   Platform.OS === 'android'
 //     ? 'http://3.109.239.9:5000/'
@@ -14,6 +16,36 @@ export const DEFAULT_BASE_URL =
   Platform.OS === 'android'
     ? 'http://localhost:5000/'
     : 'http://localhost:5000/';
+
+function withTrailingSlash(url) {
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
+function isSecureOrLocalhostUrl(url) {
+  try {
+    const parsed = new URL(withTrailingSlash(url));
+    if (parsed.protocol === 'https:') {
+      return true;
+    }
+    if (parsed.protocol !== 'http:') {
+      return false;
+    }
+
+    return ALLOWED_HTTP_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+function throwIfInsecureBaseUrl(url) {
+  if (!url || isSecureOrLocalhostUrl(url)) {
+    return;
+  }
+
+  throw new Error(
+    'Insecure API base URL blocked. Use HTTPS for non-local backend URLs.',
+  );
+}
 
 const apiClient = axios.create({
   baseURL: DEFAULT_BASE_URL,
@@ -27,8 +59,16 @@ apiClient.interceptors.request.use(async config => {
   if (customBaseURL) {
     const trimmed = customBaseURL.trim();
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      config.baseURL = trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+      throwIfInsecureBaseUrl(trimmed);
+      config.baseURL = withTrailingSlash(trimmed);
     }
+  }
+
+  throwIfInsecureBaseUrl(config.baseURL);
+
+  const requestUrl = typeof config.url === 'string' ? config.url.trim() : '';
+  if (requestUrl.startsWith('http://') || requestUrl.startsWith('https://')) {
+    throwIfInsecureBaseUrl(requestUrl);
   }
 
   const token = await AsyncStorage.getItem('token');

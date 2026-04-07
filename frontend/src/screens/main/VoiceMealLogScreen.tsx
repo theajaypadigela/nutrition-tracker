@@ -6,7 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
-import { APP_ENV } from '../../config/env';
+import { initializeVapiClient } from '../../services/vapiSessionService';
 import { MealVoiceInterpretationResponse } from '../../types/types';
 import { getTodayLocalDate } from '../../utils/date';
 import VoiceSessionScreen, {
@@ -38,18 +38,22 @@ export default function VoiceMealLogScreen() {
   const isParsingTranscriptRef = useRef(false);
   const lastParsedTranscriptRef = useRef<{ transcript: string; at: number } | null>(null);
 
-  // Wire up Vapi events
-  useEffect(() => {
-    if (!APP_ENV.VAPI_PUBLIC_KEY) {
-      console.error('[Vapi] Missing VAPI_PUBLIC_KEY env variable');
-      setStatus('error');
+  const disposeVapiInstance = () => {
+    const current = vapiRef.current;
+    if (!current) {
       return;
     }
 
-    // Create a fresh Vapi instance for this screen
-    const vapi = new Vapi(APP_ENV.VAPI_PUBLIC_KEY);
-    vapiRef.current = vapi;
+    current.removeAllListeners();
+    try {
+      current.stop();
+    } catch {
+      // Ignore cleanup errors
+    }
+    vapiRef.current = null;
+  };
 
+  const registerVapiListeners = (vapi: Vapi) => {
     vapi.on('call-start', () => {
       console.log('[Vapi] Call started');
       setStatus('active');
@@ -106,15 +110,12 @@ export default function VoiceMealLogScreen() {
         console.log('[Vapi] Volume level:', volume.toFixed(3));
       }
     });
+  };
 
+  // Cleanup Vapi instance when leaving the screen.
+  useEffect(() => {
     return () => {
-      vapi.removeAllListeners();
-      try {
-        vapi.stop();
-      } catch {
-        // Ignore cleanup errors
-      }
-      vapiRef.current = null;
+      disposeVapiInstance();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -158,31 +159,14 @@ export default function VoiceMealLogScreen() {
       return;
     }
 
-    const vapi = vapiRef.current;
-    if (!vapi) {
-      console.error('[Vapi] No Vapi instance available');
-      setStatus('error');
-      return;
-    }
-
     try {
-      if (!APP_ENV.VAPI_MEAL_ASSISTANT_ID) {
-        console.error('[Vapi] Missing VAPI_MEAL_ASSISTANT_ID env variable');
-        Alert.alert(
-          'Configuration Error',
-          'Missing VAPI_MEAL_ASSISTANT_ID. Check your .env setup.',
-        );
-        setStatus('error');
-        return;
-      }
+      disposeVapiInstance();
+      const { vapi, assistantId } = await initializeVapiClient('meal');
+      registerVapiListeners(vapi);
+      vapiRef.current = vapi;
 
-      console.log(
-        
-        '[Vapi] Starting call with assistant:',
-        APP_ENV.VAPI_MEAL_ASSISTANT_ID,
-      );
-      await vapi.start(APP_ENV.VAPI_MEAL_ASSISTANT_ID, {
-        metadata: { userId: user?.id ?? '' },
+      console.log('[Vapi] Starting call with backend-issued session config');
+      await vapi.start(assistantId, {
         variableValues: {
           name: user?.name ?? 'User',
         },
@@ -194,7 +178,7 @@ export default function VoiceMealLogScreen() {
       setStatus('error');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestMicPermission, user?.id]);
+  }, [requestMicPermission, user?.name]);
 
   const stopVoiceLog = useCallback(() => {
     const vapi = vapiRef.current;
@@ -241,7 +225,9 @@ export default function VoiceMealLogScreen() {
 
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+          await new Promise<void>(resolve =>
+            setTimeout(() => resolve(undefined), delayMs),
+          );
           const res = await apiClient.get(`/food/${logDate}`);
           const meals = res.data?.meals || {};
           const currentItems = Object.values(meals).flat() as any[];

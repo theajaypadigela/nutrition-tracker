@@ -11,7 +11,7 @@ import {
   HabitVoiceResult,
 } from '../../types/types';
 import { scheduleHabitReschedule } from '../../services/habitScheduler';
-import { APP_ENV } from '../../config/env';
+import { initializeVapiClient } from '../../services/vapiSessionService';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
@@ -164,17 +164,22 @@ export default function VoiceHabitScreen() {
       ? 'Habit Check-in'
       : slotHabits[0]?.name ?? habitName;
 
-  // Wire up Vapi events
-  useEffect(() => {
-    if (!APP_ENV.VAPI_PUBLIC_KEY) {
-      console.error('[VapiHabit] Missing VAPI_PUBLIC_KEY env variable');
-      setStatus('error');
+  const disposeVapiInstance = () => {
+    const current = vapiRef.current;
+    if (!current) {
       return;
     }
 
-    const vapi = new Vapi(APP_ENV.VAPI_PUBLIC_KEY);
-    vapiRef.current = vapi;
+    current.removeAllListeners();
+    try {
+      current.stop();
+    } catch {
+      // Ignore cleanup errors
+    }
+    vapiRef.current = null;
+  };
 
+  const registerVapiListeners = (vapi: Vapi) => {
     vapi.on('call-start', () => {
       console.log('[VapiHabit] Call started');
       setStatus('active');
@@ -219,15 +224,12 @@ export default function VoiceHabitScreen() {
         transcriptRef.current = [...transcriptRef.current, line];
       }
     });
+  };
 
+  // Cleanup Vapi instance when leaving the screen.
+  useEffect(() => {
     return () => {
-      vapi.removeAllListeners();
-      try {
-        vapi.stop();
-      } catch {
-        // Ignore cleanup errors
-      }
-      vapiRef.current = null;
+      disposeVapiInstance();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -269,13 +271,6 @@ export default function VoiceHabitScreen() {
       return;
     }
 
-    const vapi = vapiRef.current;
-    if (!vapi) {
-      console.error('[VapiHabit] No Vapi instance available');
-      setStatus('error');
-      return;
-    }
-
     // Build habit names list from all pending habits in this time slot
     const habits = slotHabitsRef.current;
     const allHabitNames =
@@ -284,21 +279,12 @@ export default function VoiceHabitScreen() {
         : habitName;
 
     try {
-      if (!APP_ENV.VAPI_HABIT_ASSISTANT_ID) {
-        console.error(
-          '[VapiHabit] Missing VAPI_HABIT_ASSISTANT_ID env variable',
-        );
-        Alert.alert(
-          'Configuration Error',
-          'Missing VAPI_HABIT_ASSISTANT_ID. Check your .env setup.',
-        );
-        setStatus('error');
-        return;
-      }
+      disposeVapiInstance();
+      const { vapi, assistantId } = await initializeVapiClient('habit');
+      registerVapiListeners(vapi);
+      vapiRef.current = vapi;
 
-
-      await vapi.start(APP_ENV.VAPI_HABIT_ASSISTANT_ID, {
-        metadata: { userId: user?.id ?? '' },
+      await vapi.start(assistantId, {
         variableValues: {
           name: user?.name ?? 'User',
           habit: allHabitNames,
@@ -313,7 +299,7 @@ export default function VoiceHabitScreen() {
       setStatus('error');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestMicPermission, user?.id, user?.name, habitName, habitTime]);
+  }, [requestMicPermission, user?.name, habitName, habitTime]);
 
   const stopVoiceCall = useCallback(() => {
     const vapi = vapiRef.current;

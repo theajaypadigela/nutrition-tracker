@@ -4,11 +4,13 @@ import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptParseRequestDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretRequestDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
+import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiSessionConfigResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -78,8 +80,44 @@ public class VoiceLogController {
     }
 
     /**
-     * Token endpoint — returns a short-lived Vapi web call token.
-     * Requires JWT authentication so we know which user is starting the call.
+     * Session config endpoint — returns short-lived, safe client config for
+     * initializing a Vapi call.
+     * Requires JWT authentication so the issued token is scoped to the current
+     * user.
+     */
+    @GetMapping("/voice/session")
+    public ResponseEntity<?> getVapiSessionConfig(
+            @RequestParam(value = "purpose", defaultValue = "meal") String purpose) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            VoiceLogService.VapiSessionConfig config = voiceLogService
+                    .createVapiSessionConfig(user.getId(), purpose);
+
+                return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .body(new VapiSessionConfigResponseDTO(
+                    config.token(),
+                    config.assistantId(),
+                    config.purpose()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            logger.error("Vapi session configuration error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Voice service configuration is invalid"));
+        } catch (Exception e) {
+            logger.error("Failed to initialize Vapi session: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", "Failed to initialize voice session"));
+        }
+    }
+
+    /**
+     * Backward-compatible token endpoint.
      */
     @GetMapping("/voice/token")
     public ResponseEntity<Map<String, String>> getVapiCallToken() {
@@ -89,7 +127,9 @@ public class VoiceLogController {
         }
 
         String token = voiceLogService.generateVapiToken(user.getId());
-        return ResponseEntity.ok(Map.of("token", token));
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .body(Map.of("token", token));
     }
 
     /**

@@ -13,9 +13,7 @@ import com.habitbuilder.NutritionTracker.modules.voice.dto.VoiceMealLogRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -23,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -37,19 +36,24 @@ public class VoiceLogService {
     public record MealTranscriptParseResult(int entriesLogged, boolean duplicateTranscript) {
     }
 
+    public record VapiSessionConfig(String token, String assistantId, String purpose) {
+    }
+
     private final FoodService foodService;
     private final UserRepository userRepository;
     private final VoiceMealSessionRepository sessionRepo;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
     private final GeminiService geminiService;
     private final ConcurrentHashMap<String, Long> recentTranscriptParses = new ConcurrentHashMap<>();
 
-    @Value("${vapi.private-key}")
-    private String vapiPrivateKey;
+    @Value("${vapi.public-key:}")
+    private String vapiPublicKey;
 
-    @Value("${vapi.assistant-id}")
-    private String vapiAssistantId;
+    @Value("${vapi.meal-assistant-id:${vapi.assistant-id:}}")
+    private String vapiMealAssistantId;
+
+    @Value("${vapi.habit-assistant-id:${vapi.assistant-id:}}")
+    private String vapiHabitAssistantId;
 
         private static final Pattern RESCHEDULE_MINUTES_PATTERN = Pattern
             .compile("(?:in|after)\\s+(\\d{1,3})\\s*(?:minutes?|mins?|m)\\b", Pattern.CASE_INSENSITIVE);
@@ -63,7 +67,6 @@ public class VoiceLogService {
         this.userRepository = userRepository;
         this.sessionRepo = sessionRepo;
         this.objectMapper = objectMapper;
-        this.restTemplate = new RestTemplate();
         this.geminiService = geminiService;
     }
 
@@ -140,31 +143,72 @@ public class VoiceLogService {
     }
 
     /**
-     * Generates a short-lived Vapi web call token scoped to the given user.
-     * The userId is embedded in metadata so the webhook can identify the user.
+     * Builds the client-side Vapi session config for the authenticated user and
+     * purpose. The token returned here is the Vapi API token used to initialize
+     * the React Native SDK instance.
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public String generateVapiToken(String userId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(vapiPrivateKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        Map<String, Object> body = Map.of(
-                "assistantId", vapiAssistantId,
-                "assistantOverrides", Map.of(
-                        "metadata", Map.of("userId", userId)));
-
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://api.vapi.ai/call/web",
-                new HttpEntity<>(body, headers),
-                Map.class);
-
-        Map responseBody = response.getBody();
-        if (responseBody == null || !responseBody.containsKey("token")) {
-            throw new RuntimeException("Failed to obtain Vapi call token");
+    public VapiSessionConfig createVapiSessionConfig(String userId, String purpose) {
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("User id is required to create Vapi session");
         }
 
-        return (String) responseBody.get("token");
+        String normalizedPurpose = normalizePurpose(purpose);
+        String assistantId = resolveAssistantIdForPurpose(normalizedPurpose);
+        String clientToken = resolveClientToken();
+
+        return new VapiSessionConfig(clientToken, assistantId, normalizedPurpose);
+    }
+
+    private String resolveClientToken() {
+        String publicKey = sanitizeApiKey(vapiPublicKey);
+        if (!publicKey.isBlank()) {
+            return publicKey;
+        }
+
+        throw new IllegalStateException("Vapi public key is not configured");
+    }
+
+    private String sanitizeApiKey(String rawKey) {
+        if (rawKey == null) {
+            return "";
+        }
+
+        String key = rawKey.trim();
+        if (key.startsWith("Bearer ")) {
+            key = key.substring("Bearer ".length()).trim();
+        }
+        if ((key.startsWith("\"") && key.endsWith("\"")) || (key.startsWith("'") && key.endsWith("'"))) {
+            key = key.substring(1, key.length() - 1).trim();
+        }
+
+        return key;
+    }
+
+    /**
+     * Backward-compatible helper used by older callers that only require token.
+     */
+    public String generateVapiToken(String userId) {
+        return createVapiSessionConfig(userId, "meal").token();
+    }
+
+    private String normalizePurpose(String purpose) {
+        if (purpose == null || purpose.isBlank()) {
+            return "meal";
+        }
+
+        String normalized = purpose.trim().toLowerCase(Locale.ROOT);
+        if (!"meal".equals(normalized) && !"habit".equals(normalized)) {
+            throw new IllegalArgumentException("Unsupported voice purpose: " + purpose);
+        }
+        return normalized;
+    }
+
+    private String resolveAssistantIdForPurpose(String purpose) {
+        String assistantId = "habit".equals(purpose) ? vapiHabitAssistantId : vapiMealAssistantId;
+        if (assistantId == null || assistantId.isBlank()) {
+            throw new IllegalStateException("Vapi assistant id is not configured for purpose: " + purpose);
+        }
+        return assistantId;
     }
 
     private String resolveUserFromCallMetadata(Map<String, Object> callMetadata) {

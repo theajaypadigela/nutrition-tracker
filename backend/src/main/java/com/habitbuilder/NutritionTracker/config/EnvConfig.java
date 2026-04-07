@@ -64,6 +64,8 @@ public class EnvConfig implements EnvironmentPostProcessor {
                 "VAPI_PRIVATE_KEY",
                 "VAPI_PUBLIC_KEY",
                 "VAPI_ASSISTANT_ID",
+                "VAPI_MEAL_ASSISTANT_ID",
+                "VAPI_HABIT_ASSISTANT_ID",
                 "VAPI_WEBHOOK_SECRET",
                 "MONGODB_URI",
                 "SECURITY_LOG_LEVEL"
