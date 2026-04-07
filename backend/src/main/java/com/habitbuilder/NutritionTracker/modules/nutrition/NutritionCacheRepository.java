@@ -7,5 +7,7 @@ import java.util.Optional;
 
 @Repository
 public interface NutritionCacheRepository extends MongoRepository<NutritionCache, String> {
-    Optional<NutritionCache> findByEntryHash(String entryHash);
+    Optional<NutritionCache> findByNormalizedFoodName(String normalizedFoodName);
+
+    Optional<NutritionCache> findByFoodNameIgnoreCase(String foodName);
 }

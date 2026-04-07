@@ -2,6 +2,8 @@ package com.habitbuilder.NutritionTracker.modules.nutrition;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -38,11 +40,23 @@ public class NutritionDetails {
 
     private BigDecimal sodiumMg;
 
+    private Map<String, NutrientValue> nutrients = new LinkedHashMap<>();
+
+    private String baseUnit;
+
+    private BigDecimal baseQuantity;
+
+    private String source;
+
+    private String lookupSource;
+
     private String enrichmentStatus = "pending";
 
     private String enrichmentError;
 
     private String apiResponse;
+
+    private Instant cachedAt;
 
     private Instant enrichedAt;
 

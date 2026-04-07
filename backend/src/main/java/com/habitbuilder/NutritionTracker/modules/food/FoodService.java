@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientValue;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetails;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetailsRepository;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionEnrichmentService;
@@ -465,6 +466,7 @@ public class FoodService {
                 builder.sugar(nutrition.getSugarG().doubleValue());
             if (nutrition.getSodiumMg() != null)
                 builder.sodium(nutrition.getSodiumMg().doubleValue());
+            builder.nutrients(resolveStoredNutrients(nutrition));
         } else {
             logger.debug("Nutrition details not available yet for food entry: {} (ID: {})",
                     entry.getName(), entry.getId());
@@ -712,22 +714,65 @@ public class FoodService {
     /** Build nutrient key->value map from a NutritionDetails record */
     private Map<String, Double> buildNutrientValues(
             com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetails nd) {
-        Map<String, Double> m = new HashMap<>();
-        if (nd.getCalories() != null)
-            m.put("calories", nd.getCalories().doubleValue());
-        if (nd.getProteinG() != null)
-            m.put("protein", nd.getProteinG().doubleValue());
-        if (nd.getCarbsG() != null)
-            m.put("carbs", nd.getCarbsG().doubleValue());
-        if (nd.getFatsG() != null)
-            m.put("fat", nd.getFatsG().doubleValue());
-        if (nd.getFiberG() != null)
-            m.put("fiber", nd.getFiberG().doubleValue());
-        if (nd.getSugarG() != null)
-            m.put("sugar", nd.getSugarG().doubleValue());
-        if (nd.getSodiumMg() != null)
-            m.put("sodium", nd.getSodiumMg().doubleValue());
-        return m;
+        Map<String, Double> nutrientValues = new HashMap<>();
+        resolveStoredNutrients(nd).forEach((key, nutrient) -> {
+            if (key == null || key.isBlank() || nutrient == null || nutrient.getAmount() == null) {
+                return;
+            }
+            nutrientValues.put(key, nutrient.getAmount().doubleValue());
+        });
+        return nutrientValues;
+    }
+
+    private Map<String, NutrientValue> resolveStoredNutrients(NutritionDetails nutrition) {
+        Map<String, NutrientValue> resolvedNutrients = copyNutrients(nutrition.getNutrients());
+        addLegacyStoredNutrient(resolvedNutrients, "calories", "Calories", "kcal", nutrition.getCalories());
+        addLegacyStoredNutrient(resolvedNutrients, "protein", "Protein", "g", nutrition.getProteinG());
+        addLegacyStoredNutrient(resolvedNutrients, "carbs", "Carbohydrates", "g", nutrition.getCarbsG());
+        addLegacyStoredNutrient(resolvedNutrients, "fat", "Total Fat", "g", nutrition.getFatsG());
+        addLegacyStoredNutrient(resolvedNutrients, "fiber", "Fiber", "g", nutrition.getFiberG());
+        addLegacyStoredNutrient(resolvedNutrients, "sugar", "Sugar", "g", nutrition.getSugarG());
+        addLegacyStoredNutrient(resolvedNutrients, "sodium", "Sodium", "mg", nutrition.getSodiumMg());
+        return resolvedNutrients;
+    }
+
+    private void addLegacyStoredNutrient(
+            Map<String, NutrientValue> nutrients,
+            String key,
+            String name,
+            String unit,
+            java.math.BigDecimal amount) {
+        if (amount == null || nutrients.containsKey(key)) {
+            return;
+        }
+
+        nutrients.put(key, NutrientValue.builder()
+                .name(name)
+                .amount(amount)
+                .unit(unit)
+                .build());
+    }
+
+    private Map<String, NutrientValue> copyNutrients(Map<String, NutrientValue> nutrients) {
+        Map<String, NutrientValue> copiedNutrients = new LinkedHashMap<>();
+        if (nutrients == null || nutrients.isEmpty()) {
+            return copiedNutrients;
+        }
+
+        nutrients.forEach((key, nutrient) -> {
+            if (key == null || key.isBlank() || nutrient == null) {
+                return;
+            }
+
+            copiedNutrients.put(key, NutrientValue.builder()
+                    .name(nutrient.getName())
+                    .amount(nutrient.getAmount())
+                    .unit(nutrient.getUnit())
+                    .nutrientNumber(nutrient.getNutrientNumber())
+                    .build());
+        });
+
+        return copiedNutrients;
     }
 
     /**

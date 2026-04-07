@@ -59,6 +59,9 @@ public class EnvConfig implements EnvironmentPostProcessor {
             Map<String, Object> envMap = new HashMap<>();
             String[] keys = {
                 "GEMINI_API_KEY",
+                "SPOONACULAR_API_KEY",
+                "SPOONACULAR_API_TIMEOUT",
+                "USDA_API_KEY",
                 "JWT_SECRET",
                 "JWT_ACCESS_EXPIRATION",
                 "VAPI_PRIVATE_KEY",

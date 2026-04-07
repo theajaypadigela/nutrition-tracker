@@ -1,6 +1,8 @@
 package com.habitbuilder.NutritionTracker.modules.nutrition;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,4 +21,7 @@ public class NutritionResponse {
     private BigDecimal fiberG;
     private BigDecimal sugarG;
     private BigDecimal sodiumMg;
+
+    @Builder.Default
+    private Map<String, NutrientValue> nutrients = new LinkedHashMap<>();
 }

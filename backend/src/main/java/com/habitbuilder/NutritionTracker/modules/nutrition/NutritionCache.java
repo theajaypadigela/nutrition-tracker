@@ -1,9 +1,12 @@
 package com.habitbuilder.NutritionTracker.modules.nutrition;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import lombok.Getter;
@@ -17,10 +20,34 @@ import lombok.Setter;
 public class NutritionCache {
 
     @Id
-    private String entryHash;
+    private String id;
 
-    private String payload;
+    @Indexed(unique = true)
+    private String normalizedFoodName;
 
-    @CreatedDate
-    private Instant createdAt;
+    private String foodName;
+
+    private String baseUnit;
+
+    private BigDecimal baseQuantity;
+
+    private BigDecimal calories;
+
+    private BigDecimal proteinG;
+
+    private BigDecimal carbsG;
+
+    private BigDecimal fatsG;
+
+    private BigDecimal fiberG;
+
+    private BigDecimal sugarG;
+
+    private BigDecimal sodiumMg;
+
+    private Map<String, NutrientValue> nutrients = new LinkedHashMap<>();
+
+    private String source;
+
+    private Instant cachedAt;
 }

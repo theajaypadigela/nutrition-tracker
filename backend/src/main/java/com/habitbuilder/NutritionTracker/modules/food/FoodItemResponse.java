@@ -1,5 +1,9 @@
 package com.habitbuilder.NutritionTracker.modules.food;
 
+import java.util.Map;
+
+import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientValue;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,4 +25,5 @@ public class FoodItemResponse {
     private Double fiber;
     private Double sugar;
     private Double sodium;
+    private Map<String, NutrientValue> nutrients;
 }
