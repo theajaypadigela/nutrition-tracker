@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "jsx": "react-native",
-    "module": "commonjs",
+    "module": "esnext",
     "target": "esnext",
     "lib": [
       "esnext"
@@ -14,9 +14,8 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
