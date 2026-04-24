@@ -43,6 +43,26 @@ npm run android
 yarn android
 ```
 
+Android note:
+
+- `npm run android` now auto-configures `adb reverse` for `tcp:5000` and `tcp:8081` before and after install.
+- This removes the recurring manual step after reconnecting a device over USB/Wi-Fi.
+
+If you need to apply port forwarding without reinstalling the app:
+
+```sh
+npm run adb:reverse
+```
+
+If reverse is still unstable after a fresh Wi-Fi reconnect, recover once with:
+
+```sh
+adb kill-server
+adb start-server
+adb connect <device-ip:port>
+npm run adb:reverse
+```
+
 ### iOS
 
 For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).

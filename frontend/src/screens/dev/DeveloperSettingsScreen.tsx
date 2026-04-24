@@ -185,7 +185,7 @@ const DeveloperSettingsScreen = () => {
                 />
               </Input>
               <Text className="text-xs text-gray-400">
-                Example: http://192.168.1.100:8080/
+                Example: http://192.168.1.100:5000/
               </Text>
             </VStack>
 
@@ -236,16 +236,24 @@ const DeveloperSettingsScreen = () => {
             <VStack className="gap-2">
               <HStack className="justify-between">
                 <Text className="text-xs text-gray-500">
-                  Android (Emulator)
+                  Android (Auto in Dev)
                 </Text>
                 <Text className="text-xs font-mono text-gray-700">
-                  http://10.0.2.2:8080/
+                  metro-host:5000, then localhost, then 10.0.2.2
+                </Text>
+              </HStack>
+              <HStack className="justify-between">
+                <Text className="text-xs text-gray-500">
+                  Android (ADB Reverse)
+                </Text>
+                <Text className="text-xs font-mono text-gray-700">
+                  adb reverse tcp:5000 tcp:5000
                 </Text>
               </HStack>
               <HStack className="justify-between">
                 <Text className="text-xs text-gray-500">iOS (Simulator)</Text>
                 <Text className="text-xs font-mono text-gray-700">
-                  http://localhost:8080/
+                  http://localhost:5000/
                 </Text>
               </HStack>
             </VStack>
