@@ -1,6 +1,7 @@
 package com.habitbuilder.NutritionTracker.modules.voice;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
+import com.habitbuilder.NutritionTracker.modules.nutrition.AiProviderException;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptParseRequestDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretRequestDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
@@ -171,10 +172,33 @@ public class VoiceLogController {
                     "duplicateTranscript", result.duplicateTranscript(),
                     "logDate", logDate));
         } catch (Exception e) {
-            logger.error("Failed to parse transcript for user {}: {}", user.getId(), e.getMessage());
+            AiProviderException aiProviderException = findAiProviderException(e);
+            if (aiProviderException != null && aiProviderException.isRetryable()) {
+                logger.warn(
+                        "Failed to parse transcript for user {} due to transient AI failure from provider {} (statusCode={}): {}",
+                        user.getId(),
+                        aiProviderException.getProvider(),
+                        aiProviderException.getStatusCode(),
+                        aiProviderException.getMessage());
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of("error", "AI service is temporarily busy. Please try again in a few seconds."));
+            }
+
+            logger.error("Failed to parse transcript for user {}: {}", user.getId(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to process meals from conversation"));
         }
+    }
+
+    private AiProviderException findAiProviderException(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof AiProviderException aiProviderException) {
+                return aiProviderException;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     @PostMapping("/voice-log/interpret-transcript")

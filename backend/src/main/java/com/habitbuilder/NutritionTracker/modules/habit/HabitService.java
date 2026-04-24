@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,17 +33,17 @@ public class HabitService {
 
     private HabitRepository habitRepository;
     private HabitEntityRepository habitEntityRepository;
-    private GeminiService geminiService;
+    private AiTextService aiTextService;
     private ObjectMapper objectMapper;
 
     HabitService(
             HabitRepository habitRepository,
             HabitEntityRepository habitEntityRepository,
-            GeminiService geminiService,
+            AiTextService aiTextService,
             ObjectMapper objectMapper) {
         this.habitRepository = habitRepository;
         this.habitEntityRepository = habitEntityRepository;
-        this.geminiService = geminiService;
+        this.aiTextService = aiTextService;
         this.objectMapper = objectMapper;
     }
 
@@ -307,7 +307,7 @@ public class HabitService {
                 """.formatted(habitName, habitTime, transcript);
 
         try {
-            String modelText = geminiService.callRawPrompt(prompt);
+            String modelText = aiTextService.callRawPrompt(prompt);
             String jsonText = extractJson(modelText);
             JsonNode root = objectMapper.readTree(jsonText);
 
@@ -315,7 +315,7 @@ public class HabitService {
             Integer rescheduleMinutes = root.path("rescheduleMinutes").isNumber()
                     ? root.path("rescheduleMinutes").asInt()
                     : null;
-            String rationale = root.path("rationale").asText("classified_by_gemini");
+            String rationale = root.path("rationale").asText("classified_by_ai");
 
             if ("rescheduled".equals(habitStatus) && (rescheduleMinutes == null || rescheduleMinutes <= 0)) {
                 rescheduleMinutes = inferRescheduleMinutes(request.getTranscriptLines());
@@ -330,7 +330,7 @@ public class HabitService {
                     response.getHabitStatus(), response.getRescheduleMinutes(), response.getRationale());
             return response;
         } catch (Exception e) {
-            log.warn("Gemini transcript interpretation failed, falling back to regex inference: {}", e.getMessage());
+            log.warn("AI transcript interpretation failed, falling back to regex inference: {}", e.getMessage());
 
             Integer fallbackMinutes = inferRescheduleMinutes(request.getTranscriptLines());
             if (fallbackMinutes != null && fallbackMinutes > 0) {

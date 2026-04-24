@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 import com.habitbuilder.NutritionTracker.modules.food.FoodService;
-import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VoiceMealLogRequest;
@@ -43,7 +43,7 @@ public class VoiceLogService {
     private final UserRepository userRepository;
     private final VoiceMealSessionRepository sessionRepo;
     private final ObjectMapper objectMapper;
-    private final GeminiService geminiService;
+    private final AiTextService aiTextService;
     private final ConcurrentHashMap<String, Long> recentTranscriptParses = new ConcurrentHashMap<>();
 
     @Value("${vapi.public-key:}")
@@ -62,12 +62,12 @@ public class VoiceLogService {
             UserRepository userRepository,
             VoiceMealSessionRepository sessionRepo,
             ObjectMapper objectMapper,
-            GeminiService geminiService) {
+            AiTextService aiTextService) {
         this.foodService = foodService;
         this.userRepository = userRepository;
         this.sessionRepo = sessionRepo;
         this.objectMapper = objectMapper;
-        this.geminiService = geminiService;
+        this.aiTextService = aiTextService;
     }
 
     /**
@@ -288,7 +288,7 @@ public class VoiceLogService {
 
         try {
             String prompt = buildTranscriptParsingPrompt(normalizedTranscript);
-            String content = geminiService.callRawPrompt(prompt);
+            String content = aiTextService.callRawPrompt(prompt);
             String json = extractJson(content);
 
             JsonNode root = objectMapper.readTree(json);
@@ -411,7 +411,7 @@ public class VoiceLogService {
                 transcript);
 
         try {
-            String modelText = geminiService.callRawPrompt(prompt);
+            String modelText = aiTextService.callRawPrompt(prompt);
             String json = extractJson(modelText);
             JsonNode root = objectMapper.readTree(json);
 
@@ -428,7 +428,7 @@ public class VoiceLogService {
 
             response.setShouldLogMeals(shouldLogMeals);
             response.setRescheduleMinutes(rescheduleMinutes);
-            response.setRationale(root.path("rationale").asText("classified_by_gemini"));
+            response.setRationale(root.path("rationale").asText("classified_by_ai"));
             return response;
         } catch (Exception e) {
             logger.warn("Meal transcript interpretation failed, using fallback: {}", e.getMessage());

@@ -25,7 +25,7 @@ Set these values before packaging:
 - `spring.data.mongodb.uri`
 - `jwt.secret`
 - `cors.allowed-origins`
-- Optional API keys (`gemini.api.key`, `vapi.*`)
+- Optional AI and voice settings (`ai.provider`, `gemini.api.*`, `groq.api.*`, `vapi.*`)
 
 ## 3) Create a systemd service
 

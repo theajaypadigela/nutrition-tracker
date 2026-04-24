@@ -1,23 +1,20 @@
 package com.habitbuilder.NutritionTracker.modules.nutrition;
 
-public class GeminiApiException extends RuntimeException {
-    private final String rawResponse;
+public class GeminiApiException extends AiProviderException {
 
     public GeminiApiException(String message, String rawResponse) {
-        super(message);
-        this.rawResponse = rawResponse;
+        this(message, rawResponse, null, -1, false);
     }
 
     public GeminiApiException(String message, String rawResponse, Throwable cause) {
-        super(message, cause);
-        this.rawResponse = rawResponse;
+        this(message, rawResponse, cause, -1, false);
     }
 
-    public String getRawResponse() {
-        return rawResponse;
+    public GeminiApiException(String message, String rawResponse, int statusCode, boolean retryable) {
+        this(message, rawResponse, null, statusCode, retryable);
     }
 
-    public String getFullDetails() {
-        return "Message: " + getMessage() + " | Raw Response: " + rawResponse;
+    public GeminiApiException(String message, String rawResponse, Throwable cause, int statusCode, boolean retryable) {
+        super("gemini", message, rawResponse, cause, statusCode, retryable);
     }
 }

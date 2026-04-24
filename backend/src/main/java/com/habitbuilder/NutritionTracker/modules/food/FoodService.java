@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
-import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientValue;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetails;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionDetailsRepository;
@@ -39,21 +39,21 @@ public class FoodService {
     private FoodEntryRepository foodEntryRepository;
     private NutritionDetailsRepository nutritionDetailsRepository;
     private NutritionEnrichmentService nutritionEnrichmentService;
-    private GeminiService geminiService;
+    private AiTextService aiTextService;
     private ObjectMapper objectMapper;
     private UserNutrientPreferenceRepository preferenceRepository;
 
     FoodService(FoodLogRepository foodLogRepository, FoodEntryRepository foodEntryRepository,
             NutritionDetailsRepository nutritionDetailsRepository,
             NutritionEnrichmentService nutritionEnrichmentService,
-            GeminiService geminiService,
+            AiTextService aiTextService,
             ObjectMapper objectMapper,
             UserNutrientPreferenceRepository preferenceRepository) {
         this.foodLogRepository = foodLogRepository;
         this.foodEntryRepository = foodEntryRepository;
         this.nutritionDetailsRepository = nutritionDetailsRepository;
         this.nutritionEnrichmentService = nutritionEnrichmentService;
-        this.geminiService = geminiService;
+        this.aiTextService = aiTextService;
         this.objectMapper = objectMapper;
         this.preferenceRepository = preferenceRepository;
     }
@@ -776,7 +776,7 @@ public class FoodService {
     }
 
     /**
-     * Call GeminiService to get personalised RDI goals based on user's age and
+     * Call the configured AI service to get personalised RDI goals based on user's age and
      * gender.
      */
     private Map<String, Double> fetchRdiGoals(User user) {
@@ -809,7 +809,7 @@ public class FoodService {
                 user.getAge(), user.getGender());
 
         try {
-            String text = callGeminiRaw(prompt);
+            String text = callAiRaw(prompt);
             // Extract JSON
             int start = text.indexOf('{');
             int end = text.lastIndexOf('}');
@@ -830,8 +830,8 @@ public class FoodService {
         }
     }
 
-    private String callGeminiRaw(String prompt) {
-        return geminiService.callRawPrompt(prompt);
+    private String callAiRaw(String prompt) {
+        return aiTextService.callRawPrompt(prompt);
     }
 
     /** Static metadata for all tracked nutrients */
@@ -990,7 +990,7 @@ public class FoodService {
                 avoidedSection.length() > 0 ? "Foods to avoid:\n" + avoidedSection : "");
 
         try {
-            String text = callGeminiRaw(prompt);
+            String text = callAiRaw(prompt);
 
             // Extract JSON array
             int start = text.indexOf('[');

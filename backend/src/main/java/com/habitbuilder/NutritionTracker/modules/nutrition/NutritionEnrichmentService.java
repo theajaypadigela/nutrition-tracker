@@ -49,7 +49,7 @@ public class NutritionEnrichmentService {
     private static final BigDecimal MILLILITERS_PER_TEASPOON = BigDecimal.valueOf(5);
     private static final BigDecimal MILLILITERS_PER_FLUID_OUNCE = new BigDecimal("29.5735295625");
 
-    private final GeminiService geminiService;
+    private final AiTextService aiTextService;
     private final NutritionDetailsRepository nutritionDetailsRepository;
     private final NutritionCacheRepository nutritionCacheRepository;
     private final ObjectMapper objectMapper;
@@ -60,7 +60,7 @@ public class NutritionEnrichmentService {
     private final long usdaApiTimeout;
 
     public NutritionEnrichmentService(
-            GeminiService geminiService,
+            AiTextService aiTextService,
             NutritionDetailsRepository nutritionDetailsRepository,
             NutritionCacheRepository nutritionCacheRepository,
             ObjectMapper objectMapper,
@@ -69,7 +69,7 @@ public class NutritionEnrichmentService {
             @Value("${spoonacular.api.timeout:20000}") long spoonacularApiTimeout,
             @Value("${usda.api.key:}") String usdaApiKey,
             @Value("${usda.api.timeout:20000}") long usdaApiTimeout) {
-        this.geminiService = geminiService;
+        this.aiTextService = aiTextService;
         this.nutritionDetailsRepository = nutritionDetailsRepository;
         this.nutritionCacheRepository = nutritionCacheRepository;
         this.objectMapper = objectMapper;
@@ -108,7 +108,7 @@ public class NutritionEnrichmentService {
 
             logger.info("Successfully enriched nutrition for food entry: {} using {}",
                     foodEntry.getName(), resolvedNutrition.lookupSource());
-        } catch (GeminiApiException e) {
+        } catch (AiProviderException e) {
             logger.error("AI nutrition fallback failed for food entry {}: {} - Raw response: {}",
                     foodEntry.getName(), e.getMessage(), e.getRawResponse());
             handleEnrichmentError(nutritionDetails, e.getFullDetails());
@@ -244,7 +244,7 @@ public class NutritionEnrichmentService {
 
     private ResolvedNutritionData fetchNutritionFromAi(String foodName, String normalizedFoodName) {
         String prompt = buildAiNutritionPrompt(foodName);
-        String rawResponse = geminiService.callRawPrompt(prompt);
+        String rawResponse = aiTextService.callRawPrompt(prompt);
 
         try {
             String jsonPayload = extractJsonObject(rawResponse);
@@ -255,7 +255,8 @@ public class NutritionEnrichmentService {
             logger.info("AI hit for '{}', cached with base unit {}", foodName, savedCacheEntry.getBaseUnit());
             return new ResolvedNutritionData(savedCacheEntry, "ai-hit", jsonPayload);
         } catch (Exception e) {
-            throw new GeminiApiException("Failed to parse AI nutrition response: " + e.getMessage(), rawResponse, e);
+            throw new AiProviderException("nutrition-ai", "Failed to parse AI nutrition response: " + e.getMessage(),
+                    rawResponse, e);
         }
     }
 
