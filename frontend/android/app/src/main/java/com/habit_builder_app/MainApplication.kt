@@ -18,6 +18,7 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           add(NotifeePackage())
           add(SoundPackage())
+          add(SystemRingtonePackage())
         },
     )
   }
