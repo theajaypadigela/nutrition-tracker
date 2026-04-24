@@ -13,6 +13,17 @@ import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
 
+const VOICE_INTERPRET_TIMEOUT_MS = 60000;
+const VOICE_PARSE_TIMEOUT_MS = 120000;
+
+function toDebugJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
@@ -34,9 +45,10 @@ export default function VoiceMealLogScreen() {
   const [followUpMessage, setFollowUpMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
-  const userTranscriptRef = useRef<string[]>([]);
   const isParsingTranscriptRef = useRef(false);
   const lastParsedTranscriptRef = useRef<{ transcript: string; at: number } | null>(null);
+  const lastVapiMessageRef = useRef<any | null>(null);
+  const structuredVapiOutputRef = useRef<any | null>(null);
 
   const disposeVapiInstance = () => {
     const current = vapiRef.current;
@@ -68,6 +80,21 @@ export default function VoiceMealLogScreen() {
 
     vapi.on('call-end', () => {
       console.log('[Vapi] Call ended');
+
+      if (structuredVapiOutputRef.current) {
+        console.log(
+          '[Vapi] Structured output captured at call end:',
+          toDebugJson(structuredVapiOutputRef.current),
+        );
+      } else if (lastVapiMessageRef.current) {
+        console.log(
+          '[Vapi] No explicit structured payload captured. Last Vapi message:',
+          toDebugJson(lastVapiMessageRef.current),
+        );
+      } else {
+        console.log('[Vapi] No Vapi messages were captured before call end');
+      }
+
       parseMealsFromTranscript();
     });
 
@@ -87,20 +114,30 @@ export default function VoiceMealLogScreen() {
     });
 
     vapi.on('message', (msg: any) => {
+      lastVapiMessageRef.current = msg;
+
       console.log(
         '[Vapi] Message received:',
         msg?.type,
         msg?.role,
         msg?.transcriptType,
       );
+
+      if (
+        msg?.type === 'function-call' ||
+        msg?.type === 'tool-calls' ||
+        msg?.type === 'tool-calls-result' ||
+        msg?.message?.type === 'function-call'
+      ) {
+        structuredVapiOutputRef.current = msg;
+        console.log('[Vapi] Structured payload candidate:', toDebugJson(msg));
+      }
+
       if (msg.type === 'transcript' && msg.transcriptType === 'final') {
         const prefix = msg.role === 'assistant' ? 'Assistant: ' : 'You: ';
         const line = `${prefix}${msg.transcript}`;
         setTranscript(prev => [...prev, line]);
         transcriptRef.current = [...transcriptRef.current, line];
-        if (msg.role !== 'assistant' && typeof msg.transcript === 'string') {
-          userTranscriptRef.current = [...userTranscriptRef.current, msg.transcript];
-        }
       }
     });
 
@@ -145,7 +182,8 @@ export default function VoiceMealLogScreen() {
     setStatus('requesting');
     setTranscript([]);
     transcriptRef.current = [];
-    userTranscriptRef.current = [];
+    lastVapiMessageRef.current = null;
+    structuredVapiOutputRef.current = null;
     setEntriesLogged(0);
     setFollowUpMessage('');
 
@@ -261,16 +299,16 @@ export default function VoiceMealLogScreen() {
   );
 
   const parseMealsFromTranscript = useCallback(async () => {
-    const userLines = userTranscriptRef.current
+    const conversationLines = transcriptRef.current
       .map(line => line.trim())
       .filter(Boolean);
 
-    if (userLines.length === 0) {
+    if (conversationLines.length === 0) {
       setStatus('completed');
       return;
     }
 
-    const fullTranscript = userLines.join('\n').trim();
+    const fullTranscript = conversationLines.join('\n').trim();
     if (!fullTranscript) {
       setStatus('completed');
       return;
@@ -304,6 +342,9 @@ export default function VoiceMealLogScreen() {
           transcript: fullTranscript,
           mealSlotId,
         },
+        {
+          timeout: VOICE_INTERPRET_TIMEOUT_MS,
+        },
       );
 
       const shouldLogMeals = interpretation.data?.shouldLogMeals === true;
@@ -325,6 +366,8 @@ export default function VoiceMealLogScreen() {
         const response = await apiClient.post('/food/voice-log/parse-transcript', {
           transcript: fullTranscript,
           logDate,
+        }, {
+          timeout: VOICE_PARSE_TIMEOUT_MS,
         });
         count = response.data?.entriesLogged ?? 0;
         duplicateTranscript = response.data?.duplicateTranscript === true;
@@ -370,6 +413,13 @@ export default function VoiceMealLogScreen() {
       lastParsedTranscriptRef.current = { transcript: fullTranscript, at: Date.now() };
     } catch (err) {
       console.error('[VoiceMealLog] Failed to parse transcript:', err);
+      const apiError =
+        typeof (err as any)?.response?.data?.error === 'string'
+          ? (err as any).response.data.error.trim()
+          : '';
+      setFollowUpMessage(
+        apiError || 'Something went wrong while processing your meals. Please try again.',
+      );
       setStatus('error');
     } finally {
       isParsingTranscriptRef.current = false;
@@ -395,7 +445,7 @@ export default function VoiceMealLogScreen() {
           ? `${entriesLogged} meal${entriesLogged > 1 ? 's' : ''} logged successfully!`
           : 'Call completed';
       case 'error':
-        return 'Something went wrong. Please try again.';
+        return followUpMessage || 'Something went wrong. Please try again.';
       default:
         return '';
     }

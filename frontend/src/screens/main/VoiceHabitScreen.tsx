@@ -16,6 +16,14 @@ import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
 
+function toDebugJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 
 /** Uses backend Gemini interpretation to infer completion/reschedule intent. */
 async function interpretVoiceTranscriptWithBackend(
@@ -97,6 +105,7 @@ export default function VoiceHabitScreen() {
   const [resultMessage, setResultMessage] = useState('');
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
+  const structuredVapiOutputRef = useRef<any | null>(null);
 
   // All pending habits for this time slot (fetched from backend)
   const [slotHabits, setSlotHabits] = useState<Habit[]>([]);
@@ -191,7 +200,12 @@ export default function VoiceHabitScreen() {
     });
 
     vapi.on('call-end', () => {
-      console.log('[VapiHabit] Call ended');
+      if (structuredVapiOutputRef.current) {
+        console.log(
+          '[VapiHabit] Structured output captured at call end:',
+          toDebugJson(structuredVapiOutputRef.current),
+        );
+      }
       processHabitResult();
     });
 
@@ -209,13 +223,14 @@ export default function VoiceHabitScreen() {
     });
 
     vapi.on('message', (msg: any) => {
-      console.log('[VapiHabit] Full VAPI message:', JSON.stringify(msg, null, 2));
-      console.log(
-        '[VapiHabit] Message:',
-        msg?.type,
-        msg?.role,
-        msg?.transcriptType,
-      );
+      if (
+        msg?.type === 'function-call' ||
+        msg?.type === 'tool-calls' ||
+        msg?.type === 'tool-calls-result' ||
+        msg?.message?.type === 'function-call'
+      ) {
+        structuredVapiOutputRef.current = msg;
+      }
 
       if (msg.type === 'transcript' && msg.transcriptType === 'final') {
         const prefix = msg.role === 'assistant' ? 'Assistant: ' : 'You: ';
@@ -259,6 +274,7 @@ export default function VoiceHabitScreen() {
     setStatus('requesting');
     setTranscript([]);
     transcriptRef.current = [];
+    structuredVapiOutputRef.current = null;
     setResultMessage('');
 
     const hasPermission = await requestMicPermission();
@@ -315,11 +331,8 @@ export default function VoiceHabitScreen() {
     setStatus('processing');
 
     const habits = slotHabitsRef.current;
-    console.log('[VapiHabit] processHabitResult -> habits count:', habits.length);
-    console.log('[VapiHabit] processHabitResult -> transcript lines:', transcriptRef.current);
 
     if (habits.length === 0) {
-      console.log('[VapiHabit] No habits to process.');
       setResultMessage('Call completed');
       setStatus('completed');
       return;
@@ -333,13 +346,11 @@ export default function VoiceHabitScreen() {
         habits.map(h => h.name).join(', '),
         habitTime,
       );
-      console.log('[VapiHabit] Interpreted transcript via backend:', result);
     } catch (err) {
       console.error('[VapiHabit] Backend transcript interpretation failed:', err);
     }
 
     if (!result) {
-      console.log('[VapiHabit] No structured result captured from call.');
       setResultMessage('Call completed');
       setStatus('completed');
       return;
@@ -349,26 +360,16 @@ export default function VoiceHabitScreen() {
     const delayMinutes = result.reschedule_minutes ?? null;
 
     try {
-      console.log('[VapiHabit] Processing result for all habits:', {
-        habitCount: habits.length,
-        habit_status: habitStatus,
-        resolved_delay_minutes: delayMinutes,
-      });
-
       // Apply the voice result to ALL habits in the time slot
       for (const habit of habits) {
         try {
-          const response = await apiClient.post('/habit/voice-result', {
+          await apiClient.post('/habit/voice-result', {
             habitId: habit.id,
             habitName: habit.name,
             habitStatus,
             rescheduleMinutes: delayMinutes,
             completedAt: result.completed_at,
           });
-          console.log(
-            `[VapiHabit] Processed habit "${habit.name}":`,
-            response.data,
-          );
         } catch (err) {
           console.error(
             `[VapiHabit] Failed to process habit "${habit.name}":`,
@@ -404,10 +405,6 @@ export default function VoiceHabitScreen() {
           if (!scheduled) {
             setResultMessage(
               'Could not schedule follow-up because it would fall on the next day.',
-            );
-            console.log(
-              '[VapiHabit] Skipped habit follow-up scheduling due to current-day rule.',
-              { mins },
             );
           }
         }
