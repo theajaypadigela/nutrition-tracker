@@ -18,8 +18,6 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,9 +44,6 @@ public class HabitService {
         this.aiTextService = aiTextService;
         this.objectMapper = objectMapper;
     }
-
-    private static final Pattern RESCHEDULE_MINUTES_PATTERN = Pattern
-            .compile("(?:in|after)\\s+(\\d{1,3})\\s*(?:minutes?|mins?|m)\\b", Pattern.CASE_INSENSITIVE);
 
     public Habit addHabit(HabitDTO habitDto) {
         User currentUser = getCurrentUser();
@@ -178,9 +173,11 @@ public class HabitService {
         if (habitEntity.getStatus() == HabitStatus.COMPLETED) {
             habitEntity.setStatus(HabitStatus.PENDING);
             habitEntity.setCompletionTime(null);
+            habitEntity.setRescheduledTime(null);
         } else {
             habitEntity.setStatus(HabitStatus.COMPLETED);
             habitEntity.setCompletionTime(java.time.LocalTime.now().toString());
+            habitEntity.setRescheduledTime(null);
         }
         habitEntityRepository.save(habitEntity);
     }
@@ -240,12 +237,17 @@ public class HabitService {
             habitEntity.setRescheduledTime(null);
         } else if ("rescheduled".equals(status)) {
             habitEntity.setStatus(HabitStatus.RESCHEDULED);
-            if (result.getRescheduleMinutes() != null) {
+            habitEntity.setCompletionTime(null);
+            if (result.getRescheduleMinutes() != null && result.getRescheduleMinutes() > 0) {
                 habitEntity.setRescheduledTime(
                         LocalDateTime.now().plusMinutes(result.getRescheduleMinutes()));
+            } else {
+                habitEntity.setRescheduledTime(null);
             }
         } else {
             habitEntity.setStatus(HabitStatus.MISSED);
+            habitEntity.setCompletionTime(null);
+            habitEntity.setRescheduledTime(null);
         }
 
         habitEntityRepository.save(habitEntity);
@@ -293,10 +295,14 @@ public class HabitService {
 
                 Rules:
                 1) Choose completed when the user confirms they already did/finished/completed the habit.
-                2) Choose rescheduled when the user asks to be reminded later OR confirms a later time proposed by assistant.
-                3) If unsure, choose not_completed.
+                2) Choose rescheduled when the user asks to be called, reminded, pinged, or checked again later.
+                   Examples: "call me in 10 minutes", "remind me after 15 mins", "check again in one hour",
+                   "not now, later", or the user confirming a later time proposed by the assistant.
+                3) A reschedule request means the habit is not missed; it should be followed up later.
                 4) If status is rescheduled, provide rescheduleMinutes when inferable from transcript, else null.
-                5) Never include markdown or extra text.
+                5) If the user only declines without asking for a later call, choose not_completed.
+                6) If unsure, choose not_completed.
+                7) Never include markdown or extra text.
 
                 Context:
                 habitName: %s
@@ -317,8 +323,8 @@ public class HabitService {
                     : null;
             String rationale = root.path("rationale").asText("classified_by_ai");
 
-            if ("rescheduled".equals(habitStatus) && (rescheduleMinutes == null || rescheduleMinutes <= 0)) {
-                rescheduleMinutes = inferRescheduleMinutes(request.getTranscriptLines());
+            if (rescheduleMinutes != null && rescheduleMinutes <= 0) {
+                rescheduleMinutes = null;
             }
 
             response.setHabitStatus(habitStatus);
@@ -330,16 +336,8 @@ public class HabitService {
                     response.getHabitStatus(), response.getRescheduleMinutes(), response.getRationale());
             return response;
         } catch (Exception e) {
-            log.warn("AI transcript interpretation failed, falling back to regex inference: {}", e.getMessage());
-
-            Integer fallbackMinutes = inferRescheduleMinutes(request.getTranscriptLines());
-            if (fallbackMinutes != null && fallbackMinutes > 0) {
-                response.setHabitStatus("rescheduled");
-                response.setRescheduleMinutes(fallbackMinutes);
-                response.setRationale("fallback_reschedule_minutes_detected");
-            } else {
-                response.setRationale("fallback_not_completed");
-            }
+            log.warn("AI transcript interpretation failed: {}", e.getMessage());
+            response.setRationale("ai_interpretation_failed");
             return response;
         }
     }
@@ -367,30 +365,6 @@ public class HabitService {
         }
 
         return cleaned;
-    }
-
-    private Integer inferRescheduleMinutes(List<String> lines) {
-        if (lines == null) {
-            return null;
-        }
-
-        for (String line : lines) {
-            if (line == null) {
-                continue;
-            }
-            Matcher matcher = RESCHEDULE_MINUTES_PATTERN.matcher(line);
-            if (matcher.find()) {
-                try {
-                    int parsed = Integer.parseInt(matcher.group(1));
-                    if (parsed > 0) {
-                        return parsed;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // Ignore malformed minute captures.
-                }
-            }
-        }
-        return null;
     }
 
     private String normalizeHabitStatus(String raw) {

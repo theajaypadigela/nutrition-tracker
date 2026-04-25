@@ -154,14 +154,9 @@ public class VoiceLogController {
 
         String normalizedTranscript = transcript.trim();
         LocalDate logDate = body.getLogDate() != null ? body.getLogDate() : LocalDate.now();
-        String loweredTranscript = normalizedTranscript.toLowerCase();
-        boolean hasDelayIntent = loweredTranscript.contains("call me in")
-                || loweredTranscript.contains("remind me in")
-                || loweredTranscript.contains("in 5 min")
-                || loweredTranscript.matches(".*\\b(in|after)\\s+\\d{1,3}\\s*(minutes?|mins?|m)\\b.*");
 
-        logger.info("Received meal transcript parse request: userId={}, chars={}, delayIntentDetected={}",
-                user.getId(), normalizedTranscript.length(), hasDelayIntent);
+        logger.info("Received meal transcript parse request: userId={}, chars={}",
+                user.getId(), normalizedTranscript.length());
 
         try {
             VoiceLogService.MealTranscriptParseResult result = voiceLogService.parseTranscriptAndLogMeals(

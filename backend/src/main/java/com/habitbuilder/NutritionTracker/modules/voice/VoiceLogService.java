@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class VoiceLogService {
@@ -54,9 +52,6 @@ public class VoiceLogService {
 
     @Value("${vapi.habit-assistant-id:${vapi.assistant-id:}}")
     private String vapiHabitAssistantId;
-
-        private static final Pattern RESCHEDULE_MINUTES_PATTERN = Pattern
-            .compile("(?:in|after)\\s+(\\d{1,3})\\s*(?:minutes?|mins?|m)\\b", Pattern.CASE_INSENSITIVE);
 
     public VoiceLogService(FoodService foodService,
             UserRepository userRepository,
@@ -302,10 +297,16 @@ public class VoiceLogService {
                     String foodName = mealNode.path("name").asText("");
                     double quantity = mealNode.path("quantity").asDouble(1.0);
                     String unit = mealNode.path("unit").asText("serving");
+                    Double standardQuantity = mealNode.path("standardQuantity").isNumber()
+                            ? mealNode.path("standardQuantity").asDouble()
+                            : null;
+                    String standardUnit = mealNode.path("standardUnit").isTextual()
+                            ? mealNode.path("standardUnit").asText(null)
+                            : null;
 
                     if (!foodName.isEmpty()) {
                         foodService.addFoodEntryForUser(userId, effectiveLogDate, mealType,
-                                foodName, quantity, unit);
+                                foodName, quantity, unit, standardQuantity, standardUnit);
                         totalEntries++;
                     }
                 }
@@ -336,14 +337,23 @@ public class VoiceLogService {
 
                         Extract ALL food items mentioned by the user. For each food item, determine:
                         - name: the food name
-                        - quantity: numeric amount (default 1 if not mentioned)
-                        - unit: the unit of measurement (e.g., "serving", "cup", "piece", "bowl", "plate", "g", "ml"). Default to "serving" if not mentioned.
+                        - quantity: numeric amount as spoken by the user (default 1 if not mentioned)
+                        - unit: the unit as spoken by the user (e.g., "serving", "cup", "piece", "bowl", "plate", "g", "ml"). Default to "serving" if not mentioned.
                         - mealType: one of "breakfast", "lunch", "snack", "dinner". Infer from context or time-of-day clues. If unclear, use "snack".
+                        - standardQuantity: if the unit is non-standard or vague (e.g., bowl, plate, piece, handful, glass, scoop, serving), estimate the equivalent weight in grams (for solids) or volume in ml (for liquids). Set to null if the unit is already a standard measurement like g, kg, oz, ml, l, tbsp, tsp, cup.
+                        - standardUnit: "g" when standardQuantity is a weight, "ml" when it is a volume. Set to null when standardQuantity is null.
+
+                        Examples:
+                        - "2 bowls of rice" → quantity=2, unit="bowl", standardQuantity=350, standardUnit="g"
+                        - "1 plate of chicken curry" → quantity=1, unit="plate", standardQuantity=400, standardUnit="g"
+                        - "3 pieces of bread" → quantity=3, unit="piece", standardQuantity=90, standardUnit="g"
+                        - "200g of oats" → quantity=200, unit="g", standardQuantity=null, standardUnit=null
+                        - "1 cup of milk" → quantity=1, unit="cup", standardQuantity=240, standardUnit="ml"
 
                         IMPORTANT: Respond ONLY with valid JSON, no markdown, no explanation:
                         {
                           "meals": [
-                            { "name": "food name", "quantity": 1, "unit": "serving", "mealType": "breakfast" }
+                            { "name": "food name", "quantity": 1, "unit": "serving", "mealType": "breakfast", "standardQuantity": 150, "standardUnit": "g" }
                           ]
                         }
 
@@ -422,39 +432,17 @@ public class VoiceLogService {
             if (rescheduleMinutes != null && rescheduleMinutes <= 0) {
                 rescheduleMinutes = null;
             }
-            if (rescheduleMinutes == null) {
-                rescheduleMinutes = inferRescheduleMinutes(transcript);
-            }
 
             response.setShouldLogMeals(shouldLogMeals);
             response.setRescheduleMinutes(rescheduleMinutes);
             response.setRationale(root.path("rationale").asText("classified_by_ai"));
             return response;
         } catch (Exception e) {
-            logger.warn("Meal transcript interpretation failed, using fallback: {}", e.getMessage());
-            Integer fallbackMinutes = inferRescheduleMinutes(transcript);
-            response.setShouldLogMeals(fallbackMinutes == null);
-            response.setRescheduleMinutes(fallbackMinutes);
-            response.setRationale(fallbackMinutes != null ? "fallback_delay_detected" : "fallback_log_meals");
+            logger.warn("Meal transcript interpretation failed: {}", e.getMessage());
+            response.setShouldLogMeals(false);
+            response.setRescheduleMinutes(null);
+            response.setRationale("ai_interpretation_failed");
             return response;
-        }
-    }
-
-    private Integer inferRescheduleMinutes(String transcript) {
-        if (transcript == null || transcript.isBlank()) {
-            return null;
-        }
-
-        Matcher matcher = RESCHEDULE_MINUTES_PATTERN.matcher(transcript);
-        if (!matcher.find()) {
-            return null;
-        }
-
-        try {
-            int parsed = Integer.parseInt(matcher.group(1));
-            return parsed > 0 ? parsed : null;
-        } catch (NumberFormatException ignored) {
-            return null;
         }
     }
 
