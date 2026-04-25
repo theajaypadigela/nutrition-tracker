@@ -1,0 +1,176 @@
+import React from 'react';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../../ui/text';
+import {
+  WeeklyNutrient,
+  statusOf,
+  statusLabel,
+  statusColorMap,
+  helperText,
+  fmtNum,
+  tokens,
+} from './tokens';
+
+interface Props {
+  nutrient: WeeklyNutrient;
+  valueMode: 'absolute' | 'percent';
+  onPress: () => void;
+}
+
+const TICK_FRACTION = 100 / 130;
+
+const NutrientRow: React.FC<Props> = ({ nutrient, valueMode, onPress }) => {
+  const status = statusOf(nutrient);
+  const colors = statusColorMap[status];
+  const pct = nutrient.goal > 0 ? nutrient.amount / nutrient.goal : 0;
+  const fillFraction = Math.min(pct, 1.3) / 1.3;
+  const pctRounded = Math.round(pct * 100);
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={styles.topRow}>
+        <View style={styles.left}>
+          <Text style={styles.name} numberOfLines={1}>
+            {nutrient.name}
+          </Text>
+          <View style={styles.metaRow}>
+            <View
+              style={[styles.statusPill, { backgroundColor: colors.bg }]}
+            >
+              <Text style={[styles.statusText, { color: colors.fg }]}>
+                {statusLabel(nutrient)}
+              </Text>
+            </View>
+            <Text style={styles.helper} numberOfLines={1}>
+              {helperText(nutrient.dir)}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.right}>
+          <Text style={styles.bigValue}>
+            {valueMode === 'absolute'
+              ? fmtNum(nutrient.amount, nutrient.unit)
+              : `${pctRounded}%`}
+          </Text>
+          <Text style={styles.subValue}>
+            {valueMode === 'absolute'
+              ? `of ${fmtNum(nutrient.goal, nutrient.unit)}`
+              : 'of goal'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.barTrack}>
+        <View
+          style={[
+            styles.barFill,
+            {
+              width: `${fillFraction * 100}%`,
+              backgroundColor: colors.fg,
+            },
+          ]}
+        />
+        <View
+          style={[styles.tick, { left: `${TICK_FRACTION * 100}%` }]}
+          pointerEvents="none"
+        />
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: tokens.surface,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#0f1e28',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 0,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: tokens.lineSoft,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  left: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  name: {
+    color: tokens.ink,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+    flexWrap: 'wrap',
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  helper: {
+    color: tokens.inkMuted,
+    fontSize: 11,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  right: {
+    alignItems: 'flex-end',
+  },
+  bigValue: {
+    color: tokens.ink,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  subValue: {
+    color: tokens.inkMuted,
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  barTrack: {
+    height: 8,
+    backgroundColor: tokens.lineSoft,
+    borderRadius: 999,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  tick: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    marginLeft: -1,
+    backgroundColor: tokens.ink,
+    opacity: 0.55,
+  },
+});
+
+export default NutrientRow;

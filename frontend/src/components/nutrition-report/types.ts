@@ -7,6 +7,7 @@ import { ReactNode } from 'react';
 export interface NutrientData {
   current: number;
   goal: number;
+  weeklyGoal?: number;
 }
 
 // ============================================================
@@ -17,6 +18,7 @@ export interface MacroNutrient {
   label: string;
   current: number;
   goal: number;
+  weeklyGoal?: number;
   unit: string;
   icon: ReactNode;
   color: string;
@@ -32,6 +34,7 @@ export interface MicroNutrient {
   label: string;
   current: number;
   goal: number;
+  weeklyGoal?: number;
   unit: string;
   icon: ReactNode;
   iconBg: string;

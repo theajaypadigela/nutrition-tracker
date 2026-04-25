@@ -5,27 +5,38 @@ import { VStack } from '../ui/vstack';
 import { Text } from '../ui/text';
 
 interface CaloriesSummaryCardProps {
-  weeklyAvgCalories: number;
-  dailyCalorieGoal: number;
+  caloriesSoFar: number;
+  proratedGoal: number;
+  weeklyGoal: number;
+  daysElapsed: number;
 }
 
 const CaloriesSummaryCard: React.FC<CaloriesSummaryCardProps> = ({
-  weeklyAvgCalories,
-  dailyCalorieGoal,
+  caloriesSoFar,
+  proratedGoal,
+  weeklyGoal,
+  daysElapsed,
 }) => {
-  const percentage = Math.round((weeklyAvgCalories / dailyCalorieGoal) * 100);
+  const safeProratedGoal = proratedGoal > 0 ? proratedGoal : 1;
+  const percentage = Math.round((caloriesSoFar / safeProratedGoal) * 100);
+  const progressWidth = Math.max(0, Math.min(percentage, 100));
 
   return (
     <VStack className="bg-emerald-600 rounded-2xl p-6 gap-3">
-      <Text
-        size="sm"
-        className="text-white opacity-90 font-medium uppercase tracking-wide"
-      >
-        Weekly Average
-      </Text>
+      <HStack className="justify-between items-center">
+        <Text
+          size="sm"
+          className="text-white opacity-90 font-medium uppercase tracking-wide"
+        >
+          This Week so far
+        </Text>
+        <Text size="xs" className="text-white opacity-80">
+          Day {daysElapsed} of 7
+        </Text>
+      </HStack>
       <HStack className="items-end gap-2">
         <Text className="text-5xl font-bold text-white">
-          {weeklyAvgCalories.toLocaleString()}
+          {caloriesSoFar.toLocaleString()}
         </Text>
         <Text className="text-2xl text-white opacity-80 mb-2">kcal</Text>
       </HStack>
@@ -34,12 +45,17 @@ const CaloriesSummaryCard: React.FC<CaloriesSummaryCardProps> = ({
           <View
             className="h-full bg-white rounded-full"
             style={{
-              width: `${percentage}%`,
+              width: `${progressWidth}%`,
             }}
           />
         </View>
-        <Text className="text-white text-sm">{percentage}% of goal</Text>
+        <Text className="text-white text-sm">
+          {percentage}% of {proratedGoal.toLocaleString()}
+        </Text>
       </HStack>
+      <Text size="xs" className="text-white opacity-80">
+        Weekly target: {weeklyGoal.toLocaleString()} kcal
+      </Text>
     </VStack>
   );
 };

@@ -61,9 +61,15 @@ const MicroNutrientCard: React.FC<MicroNutrientCardProps> = ({ item }) => {
           <Text className="text-sm text-gray-500 mb-1">{item.unit}</Text>
         </HStack>
         <Text className="text-xs text-gray-400">
-          Goal: {item.goal}
+          Goal so far: {item.goal}
           {item.unit}
         </Text>
+        {item.weeklyGoal ? (
+          <Text className="text-[10px] text-gray-400">
+            Weekly target: {item.weeklyGoal}
+            {item.unit}
+          </Text>
+        ) : null}
       </VStack>
 
       <View

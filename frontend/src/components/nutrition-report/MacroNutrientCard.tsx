@@ -48,8 +48,14 @@ const MacroNutrientCard: React.FC<MacroNutrientCardProps> = ({ macro }) => {
       </View>
       <Text className={`text-xs ${macro.textColor}`}>
         {percentage}% of {macro.goal}
-        {macro.unit}
+        {macro.unit} so far
       </Text>
+      {macro.weeklyGoal ? (
+        <Text className={`text-[10px] ${macro.textColor} opacity-70`}>
+          Weekly target: {macro.weeklyGoal}
+          {macro.unit}
+        </Text>
+      ) : null}
     </VStack>
   );
 };

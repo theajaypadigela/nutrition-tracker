@@ -4,6 +4,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  StyleSheet,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import {
@@ -49,6 +50,56 @@ const MEAL_SLOTS = [
   { key: 'dinner', label: 'Dinner' },
 ] as const;
 const MEAL_SLOT_ORDER = ['breakfast', 'lunch', 'snack', 'dinner'] as const;
+const EMPTY_HABITS: Habit[] = [];
+const EMPTY_FOOD_TOTALS = {
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+} as const;
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  emptyCalendarDay: {
+    width: 40,
+    height: 40,
+  },
+  calendarDayBase: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 0,
+    borderColor: 'transparent',
+    opacity: 1,
+  },
+  calendarDaySelected: {
+    backgroundColor: '#059669',
+  },
+  calendarDayToday: {
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+  },
+  calendarDayDisabled: {
+    opacity: 0.45,
+  },
+  calendarDayText: {
+    fontSize: 14,
+  },
+  calendarDayDot: {
+    marginTop: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#10B981',
+  },
+  calendar: {
+    borderRadius: 20,
+    paddingBottom: 8,
+  },
+});
 
 const DashBoardScreen = () => {
   const navigation = useNavigation<any>();
@@ -101,7 +152,7 @@ const DashBoardScreen = () => {
     return Object.values(normalizedMeals).flat();
   }, [normalizedMeals]);
 
-  const habits: Habit[] = dashboardData?.habits || [];
+  const habits: Habit[] = dashboardData?.habits ?? EMPTY_HABITS;
 
   const completedHabits = habits.filter(h => h.completed).length;
   const totalHabits = habits.length;
@@ -115,12 +166,7 @@ const DashBoardScreen = () => {
     [habits],
   );
 
-  const foodTotals = dashboardData?.foodSummary?.totals || {
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-  };
+  const foodTotals = dashboardData?.foodSummary?.totals ?? EMPTY_FOOD_TOTALS;
   const dailyMacroSummaryItems = React.useMemo(
     () => [
       { label: 'Calories', value: `${Math.round(foodTotals.calories)}`, green: true },
@@ -245,6 +291,51 @@ const DashBoardScreen = () => {
 
   const selectedDateLabel = selectedDate ? formatDate(selectedDate) : 'Selected day';
   const isSelectedDateToday = selectedDate === todayKey;
+  const canLogFoodForSelectedDate = isSelectedDateToday;
+
+  const renderCalendarDay = ({ date, state, marking }: any) => {
+    if (!date) {
+      return <View style={styles.emptyCalendarDay} />;
+    }
+
+    const isSelected = date.dateString === selectedDate;
+    const isToday = date.dateString === todayKey;
+    const isDisabled = state === 'disabled';
+    const showDot = !isSelected && (isToday || Boolean(marking?.marked));
+
+    return (
+      <TouchableOpacity
+        onPress={() => handleDayPress(date)}
+        activeOpacity={0.85}
+        className="items-center justify-center"
+        style={[
+          styles.calendarDayBase,
+          isSelected ? styles.calendarDaySelected : null,
+          isToday && !isSelected ? styles.calendarDayToday : null,
+          isDisabled ? styles.calendarDayDisabled : null,
+        ]}
+      >
+        <Text
+          className={
+            isSelected
+              ? 'text-white font-bold'
+              : isDisabled
+                ? 'text-gray-400 font-medium'
+                : 'text-gray-900 font-semibold'
+          }
+          style={styles.calendarDayText}
+        >
+          {date.day}
+        </Text>
+
+        {showDot ? <View style={styles.calendarDayDot} /> : null}
+      </TouchableOpacity>
+    );
+  };
+
+  const handleLogFoodPress = () => {
+    navigation.navigate('Food' as any, { screen: 'FoodLog' } as any);
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -252,7 +343,7 @@ const DashBoardScreen = () => {
       <ScrollView
         className="bg-white"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
@@ -291,6 +382,7 @@ const DashBoardScreen = () => {
               markingType="dot"
               markedDates={calendarMarkedDates}
               onMonthChange={handleMonthChange}
+              dayComponent={renderCalendarDay}
               renderArrow={direction =>
                 direction === 'left' ? (
                   <ChevronLeft size={18} color="#059669" strokeWidth={2.4} />
@@ -298,59 +390,7 @@ const DashBoardScreen = () => {
                   <ChevronRight size={18} color="#059669" strokeWidth={2.4} />
                 )
               }
-              dayComponent={({ date, state, marking }: any) => {
-                if (!date) {
-                  return <View style={{ width: 40, height: 40 }} />;
-                }
-
-                const isSelected = date.dateString === selectedDate;
-                const isToday = date.dateString === todayKey;
-                const isDisabled = state === 'disabled';
-                const showDot = !isSelected && (isToday || Boolean(marking?.marked));
-
-                return (
-                  <TouchableOpacity
-                    onPress={() => handleDayPress(date)}
-                    activeOpacity={0.85}
-                    className="items-center justify-center"
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: isSelected ? '#059669' : '#FFFFFF',
-                      borderWidth: isToday && !isSelected ? 1.5 : 0,
-                      borderColor: isToday && !isSelected ? '#10B981' : 'transparent',
-                      opacity: isDisabled ? 0.45 : 1,
-                    }}
-                  >
-                    <Text
-                      className={
-                        isSelected
-                          ? 'text-white font-bold'
-                          : isDisabled
-                            ? 'text-gray-400 font-medium'
-                            : 'text-gray-900 font-semibold'
-                      }
-                      style={{ fontSize: 14 }}
-                    >
-                      {date.day}
-                    </Text>
-
-                    {showDot ? (
-                      <View
-                        style={{
-                          marginTop: 2,
-                          width: 4,
-                          height: 4,
-                          borderRadius: 2,
-                          backgroundColor: '#10B981',
-                        }}
-                      />
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              }}
-              style={{ borderRadius: 20, paddingBottom: 8 }}
+              style={styles.calendar}
               theme={{
                 calendarBackground: '#FFFFFF',
                 monthTextColor: '#111827',
@@ -523,15 +563,21 @@ const DashBoardScreen = () => {
                 <Text className="text-base font-semibold text-gray-900 mb-1">
                   No food logged
                 </Text>
-                <Text className="text-sm text-gray-600 mb-3">
-                  Add meals to see calories and macros for this date.
-                </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('FoodLog' as any)}
-                  className="self-start rounded-lg bg-blue-600 px-4 py-2"
+                <Text
+                  className={`text-sm text-gray-600 ${canLogFoodForSelectedDate ? 'mb-3' : ''}`}
                 >
-                  <Text className="text-white font-semibold">Log Food</Text>
-                </TouchableOpacity>
+                  {canLogFoodForSelectedDate
+                    ? 'Add meals to see calories and macros for this date.'
+                    : 'Food can only be logged for today.'}
+                </Text>
+                {canLogFoodForSelectedDate ? (
+                  <TouchableOpacity
+                    onPress={handleLogFoodPress}
+                    className="self-start rounded-lg bg-blue-600 px-4 py-2"
+                  >
+                    <Text className="text-white font-semibold">Log Food</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ) : (
               <>
@@ -593,10 +639,9 @@ const DashBoardScreen = () => {
                     return (
                       <TouchableOpacity
                       key={`logged-${slot.key}`}
-                      style={{ width: '48%' }}
                       activeOpacity={0.85}
                       onPress={() => toggleMeal(slot.key)}
-                      className={`rounded-xl bg-emerald-50 p-3 ${
+                      className={`w-[48%] rounded-xl bg-emerald-50 p-3 ${
                         isExpanded
                           ? 'border-[1.5px] border-emerald-500'
                           : 'border border-emerald-100'
@@ -697,8 +742,7 @@ const DashBoardScreen = () => {
                   {missingMealItems.map(slot => (
                     <View
                       key={`missing-${slot.key}`}
-                      style={{ width: '48%' }}
-                      className="rounded-xl bg-gray-50 border border-gray-100 p-3"
+                      className="w-[48%] rounded-xl bg-gray-50 border border-gray-100 p-3"
                     >
                       <HStack className="justify-between items-center mb-2">
                         <View className="w-[7px] h-[7px] rounded-full border border-red-300" />

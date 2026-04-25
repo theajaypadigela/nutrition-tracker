@@ -28,7 +28,7 @@ const MacroNutrientsSection: React.FC<MacroNutrientsSectionProps> = ({
         >
           Weekly Macros
         </Text>
-        <Text className="text-xs text-gray-500 font-medium">Daily Average</Text>
+        <Text className="text-xs text-gray-500 font-medium">Week so far</Text>
       </HStack>
 
       {/* 3-Column Grid Layout */}
