@@ -1,3 +1,3 @@
 declare module '@env' {
-  // Intentionally empty: frontend no longer reads Vapi credentials from env.
+  export const DEV_API_BASE_URL: string | undefined;
 }

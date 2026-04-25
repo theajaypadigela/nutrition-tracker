@@ -1,12 +1,18 @@
 import axios from 'axios';
 import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEV_API_BASE_URL } from '@env';
 import { logoutHandler } from '../services/authService';
 
-export const CUSTOM_BASE_URL_KEY = 'custom_base_url';
 const DEV_API_PORT = 5000;
+const LOOPBACK_HTTP_BASE_URL = `http://127.0.0.1:${DEV_API_PORT}/`;
 const LOCALHOST_HTTP_BASE_URL = `http://localhost:${DEV_API_PORT}/`;
 const ANDROID_EMULATOR_HTTP_BASE_URL = `http://10.0.2.2:${DEV_API_PORT}/`;
+
+const DEV_API_BASE_URL_OVERRIDE =
+  __DEV__ && typeof DEV_API_BASE_URL === 'string' && DEV_API_BASE_URL.trim()
+    ? DEV_API_BASE_URL.trim()
+    : null;
 
 const ALLOWED_HTTP_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
 
@@ -81,11 +87,19 @@ function buildAndroidDevBaseUrls() {
     }
   };
 
+  // An explicit DEV_API_BASE_URL from .env always wins — it's how users point
+  // the app at a LAN host when adb reverse isn't available (e.g. wireless adb).
+  if (DEV_API_BASE_URL_OVERRIDE) {
+    addUrl(DEV_API_BASE_URL_OVERRIDE);
+  }
+
   const metroHost = getMetroHost();
   if (metroHost && !ALLOWED_HTTP_HOSTS.has(metroHost.toLowerCase())) {
     addUrl(`http://${metroHost}:${DEV_API_PORT}/`);
   }
 
+  // Prefer explicit IPv4 loopback so adb reverse mappings are used reliably.
+  addUrl(LOOPBACK_HTTP_BASE_URL);
   addUrl(LOCALHOST_HTTP_BASE_URL);
   addUrl(ANDROID_EMULATOR_HTTP_BASE_URL);
 
@@ -100,14 +114,31 @@ if (Platform.OS === 'android' && __DEV__) {
 }
 
 function resolveDefaultBaseUrl() {
+  if (DEV_API_BASE_URL_OVERRIDE) {
+    return withTrailingSlash(DEV_API_BASE_URL_OVERRIDE);
+  }
+
   if (ANDROID_DEV_BASE_URLS.length > 0) {
     return ANDROID_DEV_BASE_URLS[0];
+  }
+
+  if (Platform.OS === 'android') {
+    return LOOPBACK_HTTP_BASE_URL;
+  }
+
+  // For iOS physical devices, use the Metro host IP so the device can reach
+  // the backend on the dev machine over the local network.
+  if (__DEV__) {
+    const metroHost = getMetroHost();
+    if (metroHost && !ALLOWED_HTTP_HOSTS.has(metroHost.toLowerCase())) {
+      return `http://${metroHost}:${DEV_API_PORT}/`;
+    }
   }
 
   return LOCALHOST_HTTP_BASE_URL;
 }
 
-export const DEFAULT_BASE_URL = resolveDefaultBaseUrl();
+const DEFAULT_BASE_URL = resolveDefaultBaseUrl();
 
 function isSecureOrLocalhostUrl(url) {
   try {
@@ -168,25 +199,7 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
-// Add request interceptor to include token in headers and dynamic base URL
 apiClient.interceptors.request.use(async config => {
-  // Dynamically read custom base URL so it reflects runtime changes
-  const customBaseURL = await AsyncStorage.getItem(CUSTOM_BASE_URL_KEY);
-  if (customBaseURL) {
-    const trimmed = customBaseURL.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      if (isSecureOrLocalhostUrl(trimmed)) {
-        config.baseURL = withTrailingSlash(trimmed);
-      } else {
-        // Prevent stale/invalid custom URL values from breaking all requests.
-        await AsyncStorage.removeItem(CUSTOM_BASE_URL_KEY);
-        console.warn(
-          'Blocked custom API base URL and reverted to default base URL.',
-        );
-      }
-    }
-  }
-
   throwIfInsecureBaseUrl(config.baseURL);
 
   const requestUrl = typeof config.url === 'string' ? config.url.trim() : '';
@@ -202,32 +215,10 @@ apiClient.interceptors.request.use(async config => {
   return config;
 });
 
-// Add response interceptor to handle 401 errors
 apiClient.interceptors.response.use(
   response => response,
   async error => {
     const originalConfig = error?.config;
-
-    if (originalConfig && !error.response && !originalConfig.__retriedWithDefaultBaseUrl) {
-      const customBaseURL = await AsyncStorage.getItem(CUSTOM_BASE_URL_KEY);
-      const configuredBaseURL =
-        typeof originalConfig.baseURL === 'string'
-          ? withTrailingSlash(originalConfig.baseURL.trim())
-          : '';
-      const normalisedCustomBaseURL = customBaseURL
-        ? withTrailingSlash(customBaseURL.trim())
-        : '';
-
-      if (configuredBaseURL && configuredBaseURL === normalisedCustomBaseURL) {
-        await AsyncStorage.removeItem(CUSTOM_BASE_URL_KEY);
-        originalConfig.__retriedWithDefaultBaseUrl = true;
-        originalConfig.baseURL = DEFAULT_BASE_URL;
-        console.warn(
-          'Custom API base URL failed. Retrying with default base URL.',
-        );
-        return apiClient(originalConfig);
-      }
-    }
 
     if (originalConfig && !error.response) {
       const nextAndroidDevBaseURL = getNextAndroidDevBaseUrl(

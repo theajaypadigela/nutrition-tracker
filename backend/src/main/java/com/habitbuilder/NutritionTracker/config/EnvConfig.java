@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import static java.util.Map.entry;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -52,6 +53,7 @@ public class EnvConfig implements EnvironmentPostProcessor {
             }
 
             Map<String, Object> envMap = new HashMap<>();
+            Map<String, String> springPropertyAliases = getSpringPropertyAliases();
             for (String key : getSupportedKeys()) {
                 String value = dotenv.get(key);
                 if (value == null) {
@@ -59,6 +61,11 @@ public class EnvConfig implements EnvironmentPostProcessor {
                 }
 
                 envMap.put(key, value);
+                String springKey = springPropertyAliases.get(key);
+                if (springKey != null && !springKey.isBlank()) {
+                    envMap.put(springKey, value);
+                    System.out.println("DEBUG: Mapped " + key + " -> " + springKey);
+                }
                 System.out.println("DEBUG: Loaded " + key + " = " + maskValue(key, value));
             }
 
@@ -93,6 +100,7 @@ public class EnvConfig implements EnvironmentPostProcessor {
 
     private String[] getSupportedKeys() {
         return new String[] {
+            "SERVER_PORT",
                 "AI_PROVIDER",
                 "GEMINI_API_KEY",
                 "GEMINI_MODEL",
@@ -121,6 +129,38 @@ public class EnvConfig implements EnvironmentPostProcessor {
                 "MONGODB_URI",
                 "SECURITY_LOG_LEVEL"
         };
+    }
+
+    private Map<String, String> getSpringPropertyAliases() {
+        return Map.ofEntries(
+                entry("SERVER_PORT", "server.port"),
+                entry("AI_PROVIDER", "ai.provider"),
+                entry("GEMINI_API_KEY", "gemini.api.key"),
+                entry("GEMINI_MODEL", "gemini.api.model"),
+                entry("GEMINI_API_TIMEOUT", "gemini.api.timeout"),
+                entry("GEMINI_API_RETRY_MAX_ATTEMPTS", "gemini.api.retry.max-attempts"),
+                entry("GEMINI_API_RETRY_INITIAL_BACKOFF_MS", "gemini.api.retry.initial-backoff-ms"),
+                entry("GEMINI_API_RETRY_MAX_BACKOFF_MS", "gemini.api.retry.max-backoff-ms"),
+                entry("GROQ_API_KEY", "groq.api.key"),
+                entry("GROQ_API_URL", "groq.api.url"),
+                entry("GROQ_MODEL", "groq.api.model"),
+                entry("GROQ_API_TIMEOUT", "groq.api.timeout"),
+                entry("GROQ_API_RETRY_MAX_ATTEMPTS", "groq.api.retry.max-attempts"),
+                entry("GROQ_API_RETRY_INITIAL_BACKOFF_MS", "groq.api.retry.initial-backoff-ms"),
+                entry("GROQ_API_RETRY_MAX_BACKOFF_MS", "groq.api.retry.max-backoff-ms"),
+                entry("SPOONACULAR_API_KEY", "spoonacular.api.key"),
+                entry("SPOONACULAR_API_TIMEOUT", "spoonacular.api.timeout"),
+                entry("USDA_API_KEY", "usda.api.key"),
+                entry("JWT_SECRET", "jwt.secret"),
+                entry("JWT_ACCESS_EXPIRATION", "jwt.access-expiration"),
+                entry("VAPI_PRIVATE_KEY", "vapi.private-key"),
+                entry("VAPI_PUBLIC_KEY", "vapi.public-key"),
+                entry("VAPI_ASSISTANT_ID", "vapi.assistant-id"),
+                entry("VAPI_MEAL_ASSISTANT_ID", "vapi.meal-assistant-id"),
+                entry("VAPI_HABIT_ASSISTANT_ID", "vapi.habit-assistant-id"),
+                entry("VAPI_WEBHOOK_SECRET", "vapi.webhook-secret"),
+                entry("MONGODB_URI", "spring.data.mongodb.uri"),
+                entry("SECURITY_LOG_LEVEL", "security.log.level"));
     }
 
     private String maskValue(String key, String value) {

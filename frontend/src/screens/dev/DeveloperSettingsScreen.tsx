@@ -239,7 +239,7 @@ const DeveloperSettingsScreen = () => {
                   Android (Auto in Dev)
                 </Text>
                 <Text className="text-xs font-mono text-gray-700">
-                  metro-host:5000, then localhost, then 10.0.2.2
+                  metro-host:5000, then 127.0.0.1, localhost, 10.0.2.2
                 </Text>
               </HStack>
               <HStack className="justify-between">
