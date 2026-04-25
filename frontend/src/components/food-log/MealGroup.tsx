@@ -121,119 +121,130 @@ export const MealGroup: React.FC<MealGroupProps> = ({
             paddingTop: 12,
           }}
         >
-          {items.map(item => (
-            <View
-              key={item.id}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                padding: 12,
-                borderRadius: 12,
-                backgroundColor: '#F9FAFB',
-                marginBottom: 8,
-              }}
-            >
-              {/* Food item details */}
-              <View style={{ flex: 1, minWidth: 0 }}>
-                {/* Name and AI Logged badge */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={{
-                      fontSize: 14,
-                      fontWeight: '600',
-                      color: '#111827',
-                    }}
-                  >
-                    {item.name}
-                  </Text>
+          {items.map(item => {
+            const hasMacros =
+              item.protein !== undefined ||
+              item.carbs !== undefined ||
+              item.fat !== undefined;
+
+            return (
+              <View
+                key={item.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 12,
+                  backgroundColor: '#F9FAFB',
+                  marginBottom: 8,
+                }}
+              >
+                {/* Food item details */}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {/* Name and AI Logged badge */}
                   <View
                     style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 9999,
-                      backgroundColor: '#DBEAFE',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 4,
                     }}
                   >
                     <Text
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
                       style={{
-                        fontSize: 10,
-                        color: '#3B82F6',
-                        fontWeight: '500',
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: '#111827',
                       }}
                     >
-                      AI Logged
+                      {item.name}
                     </Text>
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 9999,
+                        backgroundColor: '#DBEAFE',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: '#3B82F6',
+                          fontWeight: '500',
+                        }}
+                      >
+                        AI Logged
+                      </Text>
+                    </View>
                   </View>
+
+                  {/* Quantity and calories */}
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#6B7280',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {item.quantity} {item.servingSize}
+                    {item.calories && ` • ${item.calories} cal`}
+                  </Text>
+
+                  {/* Macros - only show if available */}
+                  {hasMacros && (
+                    <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                      {item.protein !== undefined && `P: ${item.protein}g`}
+                      {item.protein !== undefined &&
+                        item.carbs !== undefined &&
+                        ' • '}
+                      {item.carbs !== undefined && `C: ${item.carbs}g`}
+                      {item.carbs !== undefined &&
+                        item.fat !== undefined &&
+                        ' • '}
+                      {item.fat !== undefined && `F: ${item.fat}g`}
+                    </Text>
+                  )}
                 </View>
 
-                {/* Quantity and calories */}
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: '#6B7280',
-                    marginBottom: 4,
-                  }}
-                >
-                  {item.quantity} {item.servingSize}
-                  {item.calories && ` • ${item.calories} cal`}
-                </Text>
+                {/* Action buttons */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {/* Edit button */}
+                  <Pressable
+                    onPress={() => onEdit(item)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 18,
+                      backgroundColor: '#DBEAFE',
+                    }}
+                  >
+                    <Edit2 size={15} color="#3B82F6" />
+                  </Pressable>
 
-                {/* Macros - only show if available */}
-                {(item.protein || item.carbs || item.fat) && (
-                  <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-                    {item.protein !== undefined && `P: ${item.protein}g`}
-                    {item.protein !== undefined && item.carbs !== undefined && ' • '}
-                    {item.carbs !== undefined && `C: ${item.carbs}g`}
-                    {item.carbs !== undefined && item.fat !== undefined && ' • '}
-                    {item.fat !== undefined && `F: ${item.fat}g`}
-                  </Text>
-                )}
+                  {/* Delete button */}
+                  <Pressable
+                    onPress={() => onDelete(mealType, item.id)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 18,
+                      backgroundColor: '#FEE2E2',
+                    }}
+                  >
+                    <Trash2 size={15} color="#EF4444" />
+                  </Pressable>
+                </View>
               </View>
-
-              {/* Action buttons */}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {/* Edit button */}
-                <Pressable
-                  onPress={() => onEdit(item)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 18,
-                    backgroundColor: '#DBEAFE',
-                  }}
-                >
-                  <Edit2 size={15} color="#3B82F6" />
-                </Pressable>
-
-                {/* Delete button */}
-                <Pressable
-                  onPress={() => onDelete(mealType, item.id)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 18,
-                    backgroundColor: '#FEE2E2',
-                  }}
-                >
-                  <Trash2 size={15} color="#EF4444" />
-                </Pressable>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </View>

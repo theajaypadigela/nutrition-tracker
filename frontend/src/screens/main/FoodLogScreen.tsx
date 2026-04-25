@@ -167,7 +167,7 @@ const FoodLogScreen = () => {
         }
       >
         <VStack className="w-full p-6">
-          {mealRescheduleTime && (
+          {Boolean(mealRescheduleTime) && (
             <View className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 gap-2">
               <Clock size={16} color="#D97706" />
               <Text className="text-amber-700 text-sm flex-1">

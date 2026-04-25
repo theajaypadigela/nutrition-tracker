@@ -17,6 +17,7 @@ import {
   Plus,
   Bell,
   Phone,
+  Clock,
 } from 'lucide-react-native';
 import { Button } from '../../components/ui/button';
 import AppBar from '../../components/AppBar';
@@ -164,81 +165,102 @@ const HabitScreen = () => {
               </View>
             </VStack>
 
-            {habits.map(habit => (
-              <HStack
-                key={habit.id}
-                className="rounded-xl p-4 border-2 border-gray-200 flex items-center gap-4 bg-white"
-              >
-                <Button variant="link" onPress={() => toggleHabit(habit.id)}>
-                  {habit.completed ? (
-                    <CheckCircle size={24} color="#059669" />
-                  ) : (
-                    <Circle size={24} color="#9CA3AF" />
-                  )}
-                </Button>
-                <VStack className="flex-1">
-                  <Text
-                    className={`font-medium mb-0.5 ${habit.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}
-                  >
-                    {habit.name}
-                  </Text>
-                  <HStack className="items-center gap-2 mt-0.5">
-                    <Text size="xs" className="text-gray-500">
-                      {habit.reminderTime}
+            {habits.map(habit => {
+              const isRescheduled = habit.status === 'RESCHEDULED';
+              const rescheduledTime = habit.rescheduledTime
+                ? formatRescheduledTime(habit.rescheduledTime)
+                : '';
+
+              return (
+                <HStack
+                  key={habit.id}
+                  className="rounded-xl p-4 border-2 border-gray-200 flex items-center gap-4 bg-white"
+                >
+                  <Button variant="link" onPress={() => toggleHabit(habit.id)}>
+                    {habit.completed ? (
+                      <CheckCircle size={24} color="#059669" />
+                    ) : (
+                      <Circle size={24} color="#9CA3AF" />
+                    )}
+                  </Button>
+                  <VStack className="flex-1">
+                    <Text
+                      className={`font-medium mb-0.5 ${habit.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}
+                    >
+                      {habit.name}
                     </Text>
-                    <Text size="xs" className="text-gray-300">
-                      |
-                    </Text>
-                    <HStack className="items-center gap-1">
-                      {habit.reminderType === REMINDER_TYPE_CALL ? (
-                        <Phone size={10} color="#7C3AED" />
-                      ) : (
-                        <Bell size={10} color="#D97706" />
-                      )}
+                    <HStack className="items-center gap-2 mt-0.5">
+                      <Text size="xs" className="text-gray-500">
+                        {habit.reminderTime}
+                      </Text>
+                      <Text size="xs" className="text-gray-300">
+                        |
+                      </Text>
+                      <HStack className="items-center gap-1">
+                        {habit.reminderType === REMINDER_TYPE_CALL ? (
+                          <Phone size={10} color="#7C3AED" />
+                        ) : (
+                          <Bell size={10} color="#D97706" />
+                        )}
+                        <Text
+                          size="xs"
+                          className={
+                            habit.reminderType === REMINDER_TYPE_CALL
+                              ? 'text-purple-600'
+                              : 'text-amber-600'
+                          }
+                        >
+                          {habit.reminderType === REMINDER_TYPE_CALL ? 'Call' : 'Push'}
+                        </Text>
+                      </HStack>
+                      <Text size="xs" className="text-gray-300">
+                        |
+                      </Text>
                       <Text
                         size="xs"
                         className={
-                          habit.reminderType === REMINDER_TYPE_CALL
-                            ? 'text-purple-600'
-                            : 'text-amber-600'
+                          habit.status === 'COMPLETED'
+                            ? 'text-emerald-600 font-medium'
+                            : isRescheduled
+                              ? 'text-amber-600 font-medium'
+                              : habit.status === 'MISSED'
+                                ? 'text-red-500 font-medium'
+                                : 'text-gray-400'
                         }
                       >
-                        {habit.reminderType === REMINDER_TYPE_CALL ? 'Call' : 'Push'}
+                        {habit.status === 'COMPLETED'
+                          ? 'Completed'
+                          : isRescheduled
+                            ? 'Rescheduled'
+                            : habit.status === 'MISSED'
+                              ? 'Missed'
+                              : 'Pending'}
                       </Text>
                     </HStack>
-                    <Text size="xs" className="text-gray-300">
-                      |
-                    </Text>
-                    <Text
-                      size="xs"
-                      className={
-                        habit.status === 'COMPLETED'
-                          ? 'text-emerald-600 font-medium'
-                          : habit.status === 'RESCHEDULED'
-                            ? 'text-amber-600 font-medium'
-                            : habit.status === 'MISSED'
-                              ? 'text-red-500 font-medium'
-                              : 'text-gray-400'
-                      }
-                    >
-                      {habit.status === 'COMPLETED'
-                        ? 'Completed'
-                        : habit.status === 'RESCHEDULED'
-                          ? `Rescheduled${habit.rescheduledTime ? ` for ${formatRescheduledTime(habit.rescheduledTime)}` : ''}`
-                          : habit.status === 'MISSED'
-                            ? 'Missed'
-                            : 'Pending'}
-                    </Text>
-                  </HStack>
-                </VStack>
-                <Button
-                  onPress={() => deleteHabit(habit.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full ml-auto bg-red-50"
-                >
-                  <Trash2 size={16} color="#EF4444" />
-                </Button>
-              </HStack>
-            ))}
+                    {isRescheduled && (
+                      <HStack className="self-start max-w-full items-center gap-1 mt-2 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200">
+                        <Clock size={12} color="#D97706" />
+                        <Text
+                          size="xs"
+                          numberOfLines={2}
+                          className="text-amber-700 font-medium flex-shrink"
+                        >
+                          {rescheduledTime
+                            ? `Rescheduled for today at ${rescheduledTime}`
+                            : 'Rescheduled for later today'}
+                        </Text>
+                      </HStack>
+                    )}
+                  </VStack>
+                  <Button
+                    onPress={() => deleteHabit(habit.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full ml-auto bg-red-50"
+                  >
+                    <Trash2 size={16} color="#EF4444" />
+                  </Button>
+                </HStack>
+              );
+            })}
           </VStack>
         )}
       </ScrollView>

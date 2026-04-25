@@ -89,6 +89,19 @@ function timesMatch(a: string, b: string): boolean {
   return pa !== null && pb !== null && pa === pb;
 }
 
+function formatClockTime(date: Date): string {
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
+  return `${hours}:${mm} ${ampm}`;
+}
+
+function formatFollowUpTimeFromNow(delayMinutes: number): string {
+  return formatClockTime(new Date(Date.now() + delayMinutes * 60 * 1000));
+}
+
 export default function VoiceHabitScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
@@ -110,6 +123,7 @@ export default function VoiceHabitScreen() {
   // All pending habits for this time slot (fetched from backend)
   const [slotHabits, setSlotHabits] = useState<Habit[]>([]);
   const slotHabitsRef = useRef<Habit[]>([]);
+  const autoStartTriggeredRef = useRef(false);
 
   // Fetch all pending habits for the time slot
   useEffect(() => {
@@ -246,16 +260,7 @@ export default function VoiceHabitScreen() {
     return () => {
       disposeVapiInstance();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Auto-start
-  useEffect(() => {
-    if (autoStart && status === 'idle') {
-      startVoiceCall();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart]);
 
   const requestMicPermission = useCallback(async (): Promise<boolean> => {
     const perm =
@@ -287,8 +292,10 @@ export default function VoiceHabitScreen() {
       return;
     }
 
-    // Build habit names list from all pending habits in this time slot
+    // Build a primary habit name plus full list for multi-habit calls
     const habits = slotHabitsRef.current;
+    const primaryHabitName =
+      habits[0]?.name ?? (habitName.trim().length > 0 ? habitName : 'Habit');
     const allHabitNames =
       habits.length > 0
         ? habits.map(h => h.name).join(', ')
@@ -303,7 +310,8 @@ export default function VoiceHabitScreen() {
       await vapi.start(assistantId, {
         variableValues: {
           name: user?.name ?? 'User',
-          habit: allHabitNames,
+          habit: primaryHabitName,
+          habit_name: primaryHabitName,
           habits: allHabitNames,
           habit_time: habitTime,
         },
@@ -317,6 +325,23 @@ export default function VoiceHabitScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestMicPermission, user?.name, habitName, habitTime]);
 
+  // Auto-start only when we have resolved a concrete habit context.
+  useEffect(() => {
+    const hasRouteHabitName = habitName.trim().length > 0 && habitName !== 'Habit';
+    const hasFetchedHabitName = slotHabits.length > 0;
+
+    if (!autoStart || autoStartTriggeredRef.current || status !== 'idle') {
+      return;
+    }
+
+    if (!hasRouteHabitName && !hasFetchedHabitName) {
+      return;
+    }
+
+    autoStartTriggeredRef.current = true;
+    startVoiceCall();
+  }, [autoStart, status, habitName, slotHabits, startVoiceCall]);
+
   const stopVoiceCall = useCallback(() => {
     const vapi = vapiRef.current;
     if (!vapi) return;
@@ -326,6 +351,10 @@ export default function VoiceHabitScreen() {
       console.error('[VapiHabit] Failed to stop voice session:', err);
     }
   }, []);
+
+  const navigateToHabits = useCallback(() => {
+    (navigation as any).navigate('MainTabs', { screen: 'Habits' });
+  }, [navigation]);
 
   const processHabitResult = useCallback(async () => {
     setStatus('processing');
@@ -384,9 +413,14 @@ export default function VoiceHabitScreen() {
         setResultMessage(`${habitNames} marked as completed!`);
       } else if (habitStatus === 'rescheduled') {
         const mins = delayMinutes ?? 0;
-        setResultMessage(
-          `${habitNames} rescheduled. Will check again in ${mins} minutes.`,
-        );
+        if (mins > 0) {
+          const followUpTime = formatFollowUpTimeFromNow(mins);
+          setResultMessage(
+            `${habitNames} rescheduled. Will check again in ${mins} minute${mins === 1 ? '' : 's'} at ${followUpTime}.`,
+          );
+        } else {
+          setResultMessage(`${habitNames} rescheduled for later.`);
+        }
 
         // Schedule ONE consolidated follow-up notification
         if (mins > 0 && habits.length > 0) {
@@ -411,7 +445,7 @@ export default function VoiceHabitScreen() {
 
         // Auto-navigate back so the rescheduled habit immediately appears on screen
         setTimeout(() => {
-          navigation.navigate('MainTabs' as never);
+          navigateToHabits();
         }, 2000);
       } else {
         setResultMessage(`${habitNames} marked as missed.`);
@@ -422,7 +456,7 @@ export default function VoiceHabitScreen() {
       console.error('[VapiHabit] Failed to process result:', err);
       setStatus('error');
     }
-  }, [habitTime]);
+  }, [habitTime, navigateToHabits]);
 
   const getStatusText = () => {
     switch (status) {
@@ -454,7 +488,7 @@ export default function VoiceHabitScreen() {
       disablePrimary={status === 'requesting' || status === 'processing'}
       processingText="Processing your habit check-in..."
       doneButtonText="Back to Habits"
-      onDonePress={() => navigation.navigate('MainTabs' as never)}
+      onDonePress={navigateToHabits}
       onRetryPress={() => setStatus('idle')}
     />
   );
