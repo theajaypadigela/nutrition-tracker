@@ -30,6 +30,12 @@ public class FoodEntry {
 
     private String unit;
 
+    // Standard weight/volume equivalent for non-standard units (e.g. "bowl", "plate").
+    // When set, nutrition enrichment uses these values instead of quantity/unit.
+    private Double standardQuantity;
+
+    private String standardUnit;
+
     private String entryHash;
 
     @CreatedDate

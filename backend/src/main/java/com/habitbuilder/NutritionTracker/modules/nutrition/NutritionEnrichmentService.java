@@ -5,6 +5,7 @@ import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -15,8 +16,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import com.habitbuilder.NutritionTracker.modules.food.FoodEntryRepository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -48,10 +52,28 @@ public class NutritionEnrichmentService {
     private static final BigDecimal MILLILITERS_PER_TABLESPOON = BigDecimal.valueOf(15);
     private static final BigDecimal MILLILITERS_PER_TEASPOON = BigDecimal.valueOf(5);
     private static final BigDecimal MILLILITERS_PER_FLUID_OUNCE = new BigDecimal("29.5735295625");
+    private static final Set<String> NATURAL_SERVING_UNITS = Set.of(
+            "bowl",
+            "plate",
+            "portion",
+            "slice",
+            "scoop",
+            "handful",
+            "glass",
+            "cupful",
+            "packet",
+            "pack",
+            "pouch",
+            "can",
+            "bottle",
+            "box",
+            "spoon",
+            "ladle");
 
     private final AiTextService aiTextService;
     private final NutritionDetailsRepository nutritionDetailsRepository;
     private final NutritionCacheRepository nutritionCacheRepository;
+    private final FoodEntryRepository foodEntryRepository;
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
     private final String spoonacularApiKey;
@@ -63,6 +85,7 @@ public class NutritionEnrichmentService {
             AiTextService aiTextService,
             NutritionDetailsRepository nutritionDetailsRepository,
             NutritionCacheRepository nutritionCacheRepository,
+            FoodEntryRepository foodEntryRepository,
             ObjectMapper objectMapper,
             WebClient.Builder webClientBuilder,
             @Value("${spoonacular.api.key:}") String spoonacularApiKey,
@@ -72,6 +95,7 @@ public class NutritionEnrichmentService {
         this.aiTextService = aiTextService;
         this.nutritionDetailsRepository = nutritionDetailsRepository;
         this.nutritionCacheRepository = nutritionCacheRepository;
+        this.foodEntryRepository = foodEntryRepository;
         this.objectMapper = objectMapper;
         this.webClient = webClientBuilder
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(USDA_RESPONSE_BUFFER_BYTES))
@@ -80,6 +104,18 @@ public class NutritionEnrichmentService {
         this.spoonacularApiTimeout = spoonacularApiTimeout;
         this.usdaApiKey = usdaApiKey;
         this.usdaApiTimeout = usdaApiTimeout;
+    }
+
+    @Scheduled(fixedDelay = 300_000, initialDelay = 60_000) // every 5 min, first run after 1 min
+    public void retryPendingEnrichments() {
+        List<NutritionDetails> pending = nutritionDetailsRepository
+                .findByEnrichmentStatusAndRetryCountLessThan("pending", MAX_RETRY_COUNT);
+        if (pending.isEmpty()) return;
+
+        logger.info("Retrying nutrition enrichment for {} pending entries", pending.size());
+        for (NutritionDetails nd : pending) {
+            foodEntryRepository.findById(nd.getFoodEntryId()).ifPresent(this::enrichFoodEntry);
+        }
     }
 
     @Async
@@ -93,10 +129,20 @@ public class NutritionEnrichmentService {
 
         try {
             ResolvedNutritionData resolvedNutrition = getNutritionData(foodEntry.getName());
+            double effectiveQuantity = foodEntry.getStandardQuantity() != null && foodEntry.getStandardQuantity() > 0
+                    ? foodEntry.getStandardQuantity()
+                    : foodEntry.getQuantity();
+            String effectiveUnit = foodEntry.getStandardUnit() != null && !foodEntry.getStandardUnit().isBlank()
+                    ? foodEntry.getStandardUnit()
+                    : foodEntry.getUnit();
+            if (foodEntry.getStandardQuantity() != null) {
+                logger.info("Using standard unit for nutrition scaling: {} {} (display: {} {})",
+                        effectiveQuantity, effectiveUnit, foodEntry.getQuantity(), foodEntry.getUnit());
+            }
             NutritionResponse scaledResponse = scaleNutritionResponse(
                     resolvedNutrition.cacheEntry(),
-                    foodEntry.getQuantity(),
-                    foodEntry.getUnit());
+                    effectiveQuantity,
+                    effectiveUnit);
 
             nutritionDetails.setApiResponse(resolvedNutrition.apiPayload());
             updateNutritionDetails(nutritionDetails, scaledResponse, resolvedNutrition);
@@ -133,9 +179,9 @@ public class NutritionEnrichmentService {
     private ResolvedNutritionData getNutritionData(String foodName) {
         String normalizedFoodName = normalizeFoodName(foodName);
 
-        Optional<NutritionCache> cachedNutrition = nutritionCacheRepository.findByNormalizedFoodName(normalizedFoodName);
+        Optional<NutritionCache> cachedNutrition = nutritionCacheRepository.findFirstByNormalizedFoodName(normalizedFoodName);
         if (cachedNutrition.isEmpty() && foodName != null && !foodName.isBlank()) {
-            cachedNutrition = nutritionCacheRepository.findByFoodNameIgnoreCase(foodName.trim());
+            cachedNutrition = nutritionCacheRepository.findFirstByFoodNameIgnoreCase(foodName.trim());
         }
         if (cachedNutrition.isPresent()) {
             NutritionCache cachedEntry = cachedNutrition.get();
@@ -323,7 +369,7 @@ public class NutritionEnrichmentService {
         } catch (DuplicateKeyException e) {
             logger.info("Nutrition cache entry already exists for '{}', reusing cached value",
                     cacheEntry.getNormalizedFoodName());
-            NutritionCache existingCacheEntry = nutritionCacheRepository.findByNormalizedFoodName(
+            NutritionCache existingCacheEntry = nutritionCacheRepository.findFirstByNormalizedFoodName(
                     cacheEntry.getNormalizedFoodName()).orElseThrow(() -> e);
 
             if (shouldUpgradeCache(existingCacheEntry, cacheEntry)) {
@@ -390,6 +436,13 @@ public class NutritionEnrichmentService {
         if (!storedUnit.normalizedUnit().isBlank()
                 && storedUnit.normalizedUnit().equals(requestedUnit.normalizedUnit())) {
             return requestedQuantity.divide(storedBaseQuantity, SCALING_CONTEXT);
+        }
+
+        if (isNaturalServingUnit(requestedUnit)) {
+            logger.info(
+                    "Treating current unit '{}' as a serving count for food '{}' because it cannot be converted to stored unit '{}'",
+                    currentUnit, cacheEntry.getFoodName(), cacheEntry.getBaseUnit());
+            return requestedQuantity;
         }
 
         logger.warn("Could not safely convert current unit '{}' to stored unit '{}' for food '{}'; falling back to quantity ratio",
@@ -855,6 +908,21 @@ public class NutritionEnrichmentService {
             case "teaspoon", "teaspoons", "tsp" -> "tsp";
             case "piece", "pieces", "pc", "pcs", "item", "items", "whole", "wholes", "unit", "units" -> "piece";
             case "serving", "servings" -> "serving";
+            case "bowl", "bowls", "katori", "katoris" -> "bowl";
+            case "plate", "plates", "thali", "thalis" -> "plate";
+            case "portion", "portions" -> "portion";
+            case "slice", "slices" -> "slice";
+            case "scoop", "scoops" -> "scoop";
+            case "handful", "handfuls" -> "handful";
+            case "glass", "glasses" -> "glass";
+            case "cupful", "cupfuls" -> "cupful";
+            case "packet", "packets", "pack", "packs" -> "packet";
+            case "pouch", "pouches" -> "pouch";
+            case "can", "cans", "tin", "tins" -> "can";
+            case "bottle", "bottles" -> "bottle";
+            case "box", "boxes" -> "box";
+            case "spoon", "spoons", "spoonful", "spoonfuls" -> "spoon";
+            case "ladle", "ladles" -> "ladle";
             default -> normalized;
         };
     }
@@ -877,6 +945,15 @@ public class NutritionEnrichmentService {
             case "serving" -> new UnitDescriptor(UnitDimension.COUNT, "serving", BigDecimal.ONE);
             default -> null;
         };
+    }
+
+    private boolean isNaturalServingUnit(ParsedUnit requestedUnit) {
+        if (requestedUnit == null || requestedUnit.normalizedUnit().isBlank()) {
+            return false;
+        }
+
+        return requestedUnit.dimension() == UnitDimension.UNKNOWN
+                || NATURAL_SERVING_UNITS.contains(requestedUnit.normalizedUnit());
     }
 
     private BigDecimal getBigDecimal(JsonNode node, String field) {

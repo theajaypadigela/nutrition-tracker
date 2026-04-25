@@ -11,4 +11,6 @@ public interface NutritionDetailsRepository extends MongoRepository<NutritionDet
     Optional<NutritionDetails> findByFoodEntryId(String foodEntryId);
 
     List<NutritionDetails> findByFoodEntryIdIn(List<String> foodEntryIds);
+
+    List<NutritionDetails> findByEnrichmentStatusAndRetryCountLessThan(String enrichmentStatus, int maxRetryCount);
 }

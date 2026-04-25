@@ -4,7 +4,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+import org.springframework.data.mongodb.core.index.IndexOperations;
+import org.springframework.data.mongodb.core.index.IndexResolver;
+import org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexResolver;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+
+import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionCache;
+
+import jakarta.annotation.PostConstruct;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -12,6 +21,23 @@ import java.util.List;
 @Configuration
 @EnableMongoAuditing
 public class MongoConfig {
+
+    private final MongoTemplate mongoTemplate;
+    private final MongoMappingContext mongoMappingContext;
+
+    public MongoConfig(MongoTemplate mongoTemplate, MongoMappingContext mongoMappingContext) {
+        this.mongoTemplate = mongoTemplate;
+        this.mongoMappingContext = mongoMappingContext;
+    }
+
+    @PostConstruct
+    public void ensureIndexes() {
+        IndexResolver resolver = new MongoPersistentEntityIndexResolver(mongoMappingContext);
+        for (Class<?> entity : List.of(NutritionCache.class)) {
+            IndexOperations indexOps = mongoTemplate.indexOps(entity);
+            resolver.resolveIndexFor(entity).forEach(indexOps::ensureIndex);
+        }
+    }
 
     @Bean
     public MongoCustomConversions customConversions() {

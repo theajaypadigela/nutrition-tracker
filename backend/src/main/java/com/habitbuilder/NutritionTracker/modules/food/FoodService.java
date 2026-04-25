@@ -91,6 +91,16 @@ public class FoodService {
      */
     public void addFoodEntryForUser(String userId, LocalDate date, String mealType,
             String name, double quantity, String unit) {
+        addFoodEntryForUser(userId, date, mealType, name, quantity, unit, null, null);
+    }
+
+    /**
+     * Add a single food entry with an optional standard weight/volume equivalent.
+     * When standardQuantity/standardUnit are provided (e.g. 350g for "2 bowls"),
+     * nutrition enrichment uses those values for accurate scaling.
+     */
+    public void addFoodEntryForUser(String userId, LocalDate date, String mealType,
+            String name, double quantity, String unit, Double standardQuantity, String standardUnit) {
         if (userId == null || userId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User id is required");
         }
@@ -101,7 +111,7 @@ public class FoodService {
         String normalizedMealType = normalizeMealType(mealType, true);
         ValidatedFoodInput input = validateFoodInput(name, quantity, unit);
         FoodLog foodLog = getOrCreateFoodLog(userId, date);
-        saveFoodEntry(foodLog.getId(), normalizedMealType, input);
+        saveFoodEntry(foodLog.getId(), normalizedMealType, input, standardQuantity, standardUnit);
     }
 
     public MealsResponse getDayLogAsMeals(LocalDate date) {
@@ -295,12 +305,22 @@ public class FoodService {
     }
 
     private FoodEntry saveFoodEntry(String foodLogId, String mealType, ValidatedFoodInput input) {
+        return saveFoodEntry(foodLogId, mealType, input, null, null);
+    }
+
+    private FoodEntry saveFoodEntry(String foodLogId, String mealType, ValidatedFoodInput input,
+            Double standardQuantity, String standardUnit) {
         FoodEntry entry = new FoodEntry();
         entry.setFoodLogId(foodLogId);
         entry.setName(input.name());
         entry.setQuantity(input.quantity());
         entry.setUnit(input.unit());
         entry.setMealType(mealType);
+        if (standardQuantity != null && standardQuantity > 0
+                && standardUnit != null && !standardUnit.isBlank()) {
+            entry.setStandardQuantity(standardQuantity);
+            entry.setStandardUnit(standardUnit.trim().toLowerCase(Locale.ROOT));
+        }
 
         FoodEntry savedEntry = foodEntryRepository.save(entry);
         nutritionEnrichmentService.enrichFoodEntry(savedEntry);
