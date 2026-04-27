@@ -264,6 +264,10 @@ const DashBoardScreen = () => {
   };
 
   const handleDayPress = (day: DateData) => {
+    if (day.dateString > todayKey) {
+      return;
+    }
+
     setSelectedDate(day.dateString);
     setShowDrawer(day.dateString === todayKey);
   };
@@ -291,7 +295,8 @@ const DashBoardScreen = () => {
 
   const selectedDateLabel = selectedDate ? formatDate(selectedDate) : 'Selected day';
   const isSelectedDateToday = selectedDate === todayKey;
-  const canLogFoodForSelectedDate = isSelectedDateToday;
+  const isFutureSelectedDate = selectedDate > todayKey;
+  const canLogFoodForSelectedDate = !isFutureSelectedDate;
 
   const renderCalendarDay = ({ date, state, marking }: any) => {
     if (!date) {
@@ -305,8 +310,13 @@ const DashBoardScreen = () => {
 
     return (
       <TouchableOpacity
-        onPress={() => handleDayPress(date)}
-        activeOpacity={0.85}
+        onPress={() => {
+          if (!isDisabled) {
+            handleDayPress(date);
+          }
+        }}
+        activeOpacity={isDisabled ? 1 : 0.85}
+        disabled={isDisabled}
         className="items-center justify-center"
         style={[
           styles.calendarDayBase,
@@ -334,7 +344,10 @@ const DashBoardScreen = () => {
   };
 
   const handleLogFoodPress = () => {
-    navigation.navigate('Food' as any, { screen: 'FoodLog' } as any);
+    navigation.navigate(
+      'Food' as any,
+      { screen: 'FoodLog', params: { selectedDate } } as any,
+    );
   };
 
   return (
@@ -377,6 +390,7 @@ const DashBoardScreen = () => {
 
             <Calendar
               current={selectedDate}
+              maxDate={todayKey}
               hideExtraDays={false}
               enableSwipeMonths={true}
               markingType="dot"
@@ -568,7 +582,7 @@ const DashBoardScreen = () => {
                 >
                   {canLogFoodForSelectedDate
                     ? 'Add meals to see calories and macros for this date.'
-                    : 'Food can only be logged for today.'}
+                    : 'Food can only be logged for today or past dates.'}
                 </Text>
                 {canLogFoodForSelectedDate ? (
                   <TouchableOpacity

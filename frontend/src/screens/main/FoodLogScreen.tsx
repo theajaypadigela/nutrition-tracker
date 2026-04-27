@@ -20,18 +20,25 @@ import {
 import AppBar from '../../components/AppBar';
 import useApi from '../../hooks/useApi';
 import NutritionDisplay from '../../components/food-log/NutritionDisplay';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import {
+  useNavigation,
+  useFocusEffect,
+  useRoute,
+  RouteProp,
+} from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Plus, Mic, Clock } from 'lucide-react-native';
 import { loadMealRescheduleTime } from '../../services/mealScheduler';
 import { getTodayLocalDate } from '../../utils/date';
 import { createEmptyMeals, normalizeMeals } from '../../utils/meals';
+import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 
-// Use a local type to avoid a circular import with FoodStackNavigator
 type FoodLogNavigationProp = StackNavigationProp<
-  { FoodLog: undefined; ManualFoodLog: undefined; VoiceMealLog: undefined },
+  FoodStackParamList,
   'FoodLog'
 >;
+
+type FoodLogRouteProp = RouteProp<FoodStackParamList, 'FoodLog'>;
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -45,13 +52,27 @@ function formatTime(ts: number): string {
 
 const FoodLogScreen = () => {
   const navigation = useNavigation<FoodLogNavigationProp>();
+  const route = useRoute<FoodLogRouteProp>();
   const [expandedMeal, setExpandedMeal] = useState<string | null>('breakfast');
   const [showDrawer, setShowDrawer] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
 
   const { data, request } = useApi<MealsResponse>();
 
-  const [selectedDate] = useState(getTodayLocalDate());
+  const selectedDate = React.useMemo(() => {
+    const todayKey = getTodayLocalDate();
+    const requestedDate = route.params?.selectedDate;
+
+    if (
+      typeof requestedDate !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+    ) {
+      return todayKey;
+    }
+
+    return requestedDate > todayKey ? todayKey : requestedDate;
+  }, [route.params?.selectedDate]);
+
   const [refreshing, setRefreshing] = useState(false);
   const [mealRescheduleTime, setMealRescheduleTime] = useState<number | null>(null);
 
@@ -226,7 +247,7 @@ const FoodLogScreen = () => {
 
       {/* Voice Log Button */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('VoiceMealLog')}
+        onPress={() => navigation.navigate('VoiceMealLog', { selectedDate })}
         style={styles.voiceFab}
         activeOpacity={0.8}
       >
@@ -235,7 +256,7 @@ const FoodLogScreen = () => {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('ManualFoodLog')}
+        onPress={() => navigation.navigate('ManualFoodLog', { selectedDate })}
         style={styles.fab}
         activeOpacity={0.8}
       >

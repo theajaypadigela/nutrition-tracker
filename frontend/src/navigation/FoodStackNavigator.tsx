@@ -5,9 +5,15 @@ import ManualFoodLogScreen from '../screens/main/ManualFoodLogScreen';
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
 
 export type FoodStackParamList = {
-  FoodLog: undefined;
-  ManualFoodLog: undefined;
-  VoiceMealLog: undefined;
+  FoodLog: { selectedDate?: string } | undefined;
+  ManualFoodLog: { selectedDate?: string } | undefined;
+  VoiceMealLog:
+    | {
+        selectedDate?: string;
+        mealSlotId?: string;
+        autoStart?: boolean;
+      }
+    | undefined;
 };
 
 const Stack = createStackNavigator<FoodStackParamList>();

@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert, Platform } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
 import { initializeVapiClient } from '../../services/vapiSessionService';
 import { MealVoiceInterpretationResponse } from '../../types/types';
 import { getTodayLocalDate } from '../../utils/date';
+import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
@@ -26,10 +27,24 @@ function toDebugJson(value: unknown): string {
 
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();
-  const route = useRoute<any>();
+  const route = useRoute<RouteProp<FoodStackParamList, 'VoiceMealLog'>>();
   const { user } = useAuth();
   const mealSlotId: string | undefined = route.params?.mealSlotId;
   const autoStart: boolean = route.params?.autoStart === true;
+  const selectedDate = React.useMemo(() => {
+    const todayKey = getTodayLocalDate();
+    const requestedDate = route.params?.selectedDate;
+
+    if (
+      typeof requestedDate !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+    ) {
+      return todayKey;
+    }
+
+    return requestedDate > todayKey ? todayKey : requestedDate;
+  }, [route.params?.selectedDate]);
+
   const mealLabel =
     {
       breakfast: 'Breakfast',
@@ -154,7 +169,6 @@ export default function VoiceMealLogScreen() {
     return () => {
       disposeVapiInstance();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-start the VAPI call when navigated from IncomingMealCallScreen accept
@@ -359,7 +373,7 @@ export default function VoiceMealLogScreen() {
       let count = 0;
       let duplicateTranscript = false;
       if (shouldLogMeals) {
-        const logDate = getTodayLocalDate();
+        const logDate = selectedDate;
         const baseline = await getFoodLogSnapshot(logDate);
 
         console.log('[VoiceMealLog] Sending transcript to backend for meal logging');
@@ -424,7 +438,7 @@ export default function VoiceMealLogScreen() {
     } finally {
       isParsingTranscriptRef.current = false;
     }
-  }, [getFoodLogSnapshot, mealSlotId, waitForNutritionEnrichment]);
+  }, [getFoodLogSnapshot, mealSlotId, selectedDate, waitForNutritionEnrichment]);
 
   const getStatusText = () => {
     switch (status) {

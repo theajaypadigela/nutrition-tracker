@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -27,9 +27,11 @@ import {
   SelectDragIndicator,
 } from '../../components/ui/select';
 import { ChevronDownIcon } from 'lucide-react-native';
+import { RouteProp, useRoute } from '@react-navigation/native';
 import useApi from '../../hooks/useApi';
 import { MealType, MealsResponse } from '../../types/types';
 import { getTodayLocalDate } from '../../utils/date';
+import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 
 const MEAL_TYPES: { label: string; value: MealType }[] = [
   { label: 'Breakfast', value: 'breakfast' },
@@ -57,8 +59,25 @@ interface FormErrors {
   unit: string;
 }
 
+type ManualFoodLogRouteProp = RouteProp<FoodStackParamList, 'ManualFoodLog'>;
+
 const ManualFoodLogScreen = () => {
+  const route = useRoute<ManualFoodLogRouteProp>();
   const { request, loading } = useApi<MealsResponse>();
+
+  const selectedDate = useMemo(() => {
+    const todayKey = getTodayLocalDate();
+    const requestedDate = route.params?.selectedDate;
+
+    if (
+      typeof requestedDate !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+    ) {
+      return todayKey;
+    }
+
+    return requestedDate > todayKey ? todayKey : requestedDate;
+  }, [route.params?.selectedDate]);
 
   const [mealType, setMealType] = useState<MealType | ''>('');
   const [foodName, setFoodName] = useState('');
@@ -125,9 +144,8 @@ const ManualFoodLogScreen = () => {
     setSubmitError('');
 
     try {
-      const date = getTodayLocalDate();
       await request({
-        url: `/food/${date}/meals/${mealType}/entries`,
+        url: `/food/${selectedDate}/meals/${mealType}/entries`,
         method: 'POST',
         data: [
           {
@@ -403,8 +421,8 @@ const ManualFoodLogScreen = () => {
             <View className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
               <HStack className="items-center gap-2">
                 <Text className="text-xs text-blue-600">
-                  This entry will be logged for today:{' '}
-                  <Text className="font-semibold">{getTodayLocalDate()}</Text>
+                  This entry will be logged for:{' '}
+                  <Text className="font-semibold">{selectedDate}</Text>
                 </Text>
               </HStack>
             </View>
