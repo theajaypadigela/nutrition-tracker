@@ -10,9 +10,21 @@ const LOCALHOST_HTTP_BASE_URL = `http://localhost:${DEV_API_PORT}/`;
 const ANDROID_EMULATOR_HTTP_BASE_URL = `http://10.0.2.2:${DEV_API_PORT}/`;
 
 const DEV_API_BASE_URL_OVERRIDE =
-  __DEV__ && typeof DEV_API_BASE_URL === 'string' && DEV_API_BASE_URL.trim()
+  typeof DEV_API_BASE_URL === 'string' && DEV_API_BASE_URL.trim()
     ? DEV_API_BASE_URL.trim()
     : null;
+
+const DEV_API_BASE_URL_ORIGIN = (() => {
+  if (!DEV_API_BASE_URL_OVERRIDE) {
+    return null;
+  }
+
+  try {
+    return new URL(withTrailingSlash(DEV_API_BASE_URL_OVERRIDE)).origin.toLowerCase();
+  } catch {
+    return null;
+  }
+})();
 
 const ALLOWED_HTTP_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
 
@@ -157,6 +169,15 @@ function isSecureOrLocalhostUrl(url) {
 
     // Allow local network HTTP targets in development only.
     if (__DEV__ && (isPrivateIPv4(host) || host.endsWith('.local'))) {
+      return true;
+    }
+
+    // Allow HTTP if it matches the explicit build-time DEV_API_BASE_URL
+    // origin configured for this app build.
+    if (
+      DEV_API_BASE_URL_ORIGIN &&
+      parsed.origin.toLowerCase() === DEV_API_BASE_URL_ORIGIN
+    ) {
       return true;
     }
 

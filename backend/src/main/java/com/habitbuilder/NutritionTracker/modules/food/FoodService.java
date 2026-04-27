@@ -169,7 +169,7 @@ public class FoodService {
         }
 
         String userId = getCurrentUserId();
-        List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, from, to);
+        List<FoodLog> logs = findLogsInDateRange(userId, from, to);
 
         List<DayLogResponse> response = new ArrayList<>();
 
@@ -497,8 +497,7 @@ public class FoodService {
 
     public WeeklyNutritionReport getWeeklyNutritionReport(LocalDate startDate, LocalDate endDate) {
         String userId = getCurrentUserId();
-        List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, startDate,
-                endDate);
+        List<FoodLog> logs = findLogsInDateRange(userId, startDate, endDate);
 
         // Batch-fetch all entries for all logs
         List<String> logIds = logs.stream().map(FoodLog::getId).collect(Collectors.toList());
@@ -598,8 +597,7 @@ public class FoodService {
         User user = getCurrentUser();
         String userId = user.getId();
 
-        List<FoodLog> logs = foodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAsc(userId, startDate,
-                endDate);
+        List<FoodLog> logs = findLogsInDateRange(userId, startDate, endDate);
 
         // Batch-fetch all entries for all logs
         List<String> logIds = logs.stream().map(FoodLog::getId).collect(Collectors.toList());
@@ -721,6 +719,19 @@ public class FoodService {
         return summaries;
     }
 
+    private List<FoodLog> findLogsInDateRange(String userId, LocalDate from, LocalDate to) {
+        List<FoodLog> logs = new ArrayList<>();
+        LocalDate cursor = from;
+
+        while (!cursor.isAfter(to)) {
+            foodLogRepository.findByUserIdAndLogDate(userId, cursor)
+                    .ifPresent(logs::add);
+            cursor = cursor.plusDays(1);
+        }
+
+        return logs;
+    }
+
     private String computeFlag(int pctDV) {
         if (pctDV <= 0)
             return "none";
@@ -796,7 +807,8 @@ public class FoodService {
     }
 
     /**
-     * Call the configured AI service to get personalised RDI goals based on user's age and
+     * Call the configured AI service to get personalised RDI goals based on user's
+     * age and
      * gender.
      */
     private Map<String, Double> fetchRdiGoals(User user) {

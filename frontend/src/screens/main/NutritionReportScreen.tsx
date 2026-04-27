@@ -107,9 +107,15 @@ const NutritionReportScreen = () => {
   }, [nutrientSummaryRequest]);
 
   useEffect(() => {
-    loadWeeklyReport();
-    loadNutrientSummaries();
-  }, [loadWeeklyReport, loadNutrientSummaries]);
+    const loadReportData = async () => {
+      await Promise.all([loadWeeklyReport(), loadNutrientSummaries()]);
+    };
+
+    loadReportData();
+    const unsubscribe = navigation.addListener('focus', loadReportData);
+
+    return unsubscribe;
+  }, [navigation, loadWeeklyReport, loadNutrientSummaries]);
 
   useEffect(() => {
     if (data) {
@@ -166,8 +172,29 @@ const NutritionReportScreen = () => {
         ];
   }, [reportData]);
 
+  const hasNutritionData = useCallback((report: WeeklyNutritionReport | null) => {
+    if (!report?.weeklyTotals) {
+      return false;
+    }
+
+    const { calories, protein, carbs, fat, fiber, sugar, sodium } =
+      report.weeklyTotals;
+
+    return [calories, protein, carbs, fat, fiber, sugar, sodium].some(
+      value => (value ?? 0) > 0,
+    );
+  }, []);
+
   // Fetch AI Insights
   const fetchAiInsights = useCallback(async () => {
+    if (!hasNutritionData(reportData)) {
+      setAiInsights([]);
+      setInsightsError(null);
+      setUsingFallback(false);
+      setInsightsLoading(false);
+      return;
+    }
+
     setInsightsLoading(true);
     setInsightsError(null);
     setUsingFallback(false);
@@ -201,26 +228,36 @@ const NutritionReportScreen = () => {
     } finally {
       setInsightsLoading(false);
     }
-  }, [insightsRequest, reportData, generateFallbackInsights]);
+  }, [insightsRequest, reportData, generateFallbackInsights, hasNutritionData]);
 
   useEffect(() => {
-    if (reportData) {
+    if (hasNutritionData(reportData)) {
       fetchAiInsights();
+      return;
     }
-  }, [reportData, fetchAiInsights]);
+
+    setAiInsights([]);
+    setInsightsError(null);
+    setUsingFallback(false);
+    setInsightsLoading(false);
+  }, [reportData, fetchAiInsights, hasNutritionData]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      loadWeeklyReport(),
-      loadNutrientSummaries(),
-      fetchAiInsights(),
-    ]);
+    await Promise.all([loadWeeklyReport(), loadNutrientSummaries()]);
     setRefreshing(false);
-  }, [loadWeeklyReport, loadNutrientSummaries, fetchAiInsights]);
+  }, [loadWeeklyReport, loadNutrientSummaries]);
 
-  const displayInsights =
-    aiInsights.length > 0 ? aiInsights : generateFallbackInsights();
+  const canShowInsights = hasNutritionData(reportData);
+  const emptyStateInsight: Insight = {
+    variant: 'neutral',
+    message: 'Log your meals to get personalized insights.',
+  };
+  const displayInsights = canShowInsights
+    ? aiInsights.length > 0
+      ? aiInsights
+      : generateFallbackInsights()
+    : [emptyStateInsight];
 
   const { daysElapsed } = getCurrentSundayToSaturdayRange();
 
@@ -358,7 +395,7 @@ const NutritionReportScreen = () => {
                   <ActivityIndicator size="small" color="#d97706" />
                 )}
               </HStack>
-              {!insightsLoading && reportData && (
+              {!insightsLoading && reportData && canShowInsights && (
                 <TouchableOpacity onPress={fetchAiInsights} className="p-2">
                   <RefreshCw size={18} color="#d97706" />
                 </TouchableOpacity>
