@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -28,9 +28,9 @@ import {
 } from '../../components/ui/select';
 import { ChevronDownIcon } from 'lucide-react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import useApi from '../../hooks/useApi';
-import { MealType, MealsResponse } from '../../types/types';
+import { MealType } from '../../types/types';
 import { getTodayLocalDate } from '../../utils/date';
+import { useManualFoodLogForm } from '../../hooks/useManualFoodLogForm';
 import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 
 const MEAL_TYPES: { label: string; value: MealType }[] = [
@@ -52,18 +52,10 @@ const COMMON_UNITS = [
   'serving',
 ];
 
-interface FormErrors {
-  mealType: string;
-  foodName: string;
-  quantity: string;
-  unit: string;
-}
-
 type ManualFoodLogRouteProp = RouteProp<FoodStackParamList, 'ManualFoodLog'>;
 
 const ManualFoodLogScreen = () => {
   const route = useRoute<ManualFoodLogRouteProp>();
-  const { request, loading } = useApi<MealsResponse>();
 
   const selectedDate = useMemo(() => {
     const todayKey = getTodayLocalDate();
@@ -79,122 +71,24 @@ const ManualFoodLogScreen = () => {
     return requestedDate > todayKey ? todayKey : requestedDate;
   }, [route.params?.selectedDate]);
 
-  const [mealType, setMealType] = useState<MealType | ''>('');
-  const [foodName, setFoodName] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [unit, setUnit] = useState('');
-  const [errors, setErrors] = useState<FormErrors>({
-    mealType: '',
-    foodName: '',
-    quantity: '',
-    unit: '',
-  });
-  const [submitError, setSubmitError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (successTimerRef.current) {
-        clearTimeout(successTimerRef.current);
-      }
-    };
-  }, []);
-
-  const validate = (): boolean => {
-    const newErrors: FormErrors = {
-      mealType: '',
-      foodName: '',
-      quantity: '',
-      unit: '',
-    };
-    let isValid = true;
-
-    if (!mealType) {
-      newErrors.mealType = 'Please select a meal type';
-      isValid = false;
-    }
-    if (!foodName.trim()) {
-      newErrors.foodName = 'Food name is required';
-      isValid = false;
-    } else if (foodName.trim().length < 2) {
-      newErrors.foodName = 'Food name must be at least 2 characters';
-      isValid = false;
-    }
-    if (!quantity.trim()) {
-      newErrors.quantity = 'Quantity is required';
-      isValid = false;
-    } else if (isNaN(Number(quantity)) || Number(quantity) <= 0) {
-      newErrors.quantity = 'Quantity must be a positive number';
-      isValid = false;
-    }
-    if (!unit.trim()) {
-      newErrors.unit = 'Unit is required';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleSubmit = async () => {
-    if (!validate()) return;
-
-    setSubmitError('');
-
-    try {
-      await request({
-        url: `/food/${selectedDate}/meals/${mealType}/entries`,
-        method: 'POST',
-        data: [
-          {
-            name: foodName.trim(),
-            quantity: parseFloat(quantity),
-            unit: unit.trim(),
-          },
-        ],
-      });
-
-      setIsSuccess(true);
-      // Reset form
-      setMealType('');
-      setFoodName('');
-      setQuantity('');
-      setUnit('');
-      setErrors({ mealType: '', foodName: '', quantity: '', unit: '' });
-
-      if (successTimerRef.current) {
-        clearTimeout(successTimerRef.current);
-      }
-      successTimerRef.current = setTimeout(() => setIsSuccess(false), 3000);
-    } catch (err) {
-      setSubmitError('Failed to log food entry. Please try again.');
-      console.error('Error adding food entry:', err);
-    }
-  };
-
-  const clearError = (field: keyof FormErrors) => {
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setMealType('');
-    setFoodName('');
-    setQuantity('');
-    setUnit('');
-    setSubmitError('');
-    setIsSuccess(false);
-    if (successTimerRef.current) {
-      clearTimeout(successTimerRef.current);
-      successTimerRef.current = null;
-    }
-    setErrors({ mealType: '', foodName: '', quantity: '', unit: '' });
-    setRefreshing(false);
-  };
+  const {
+    mealType,
+    setMealType,
+    foodName,
+    setFoodName,
+    quantity,
+    setQuantity,
+    unit,
+    setUnit,
+    errors,
+    submitError,
+    isSuccess,
+    submitting,
+    refreshing,
+    handleSubmit,
+    clearError,
+    handleRefresh,
+  } = useManualFoodLogForm(selectedDate);
 
   return (
     <KeyboardAvoidingView
@@ -433,11 +327,11 @@ const ManualFoodLogScreen = () => {
               size="xl"
               className="w-full bg-emerald-500 rounded-2xl"
               onPress={handleSubmit}
-              isDisabled={loading}
+              isDisabled={submitting}
             >
               <ButtonText className="text-white font-semibold text-base">
                 <Text className="text-white font-semibold text-base">
-                  {loading ? 'Adding Entry...' : 'Add Food Entry'}
+                  {submitting ? 'Adding Entry...' : 'Add Food Entry'}
                 </Text>
               </ButtonText>
             </Button>
