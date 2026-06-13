@@ -1,14 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Text } from '../../components/ui/text';
 import { VStack } from '../../components/ui/vstack';
 import { MealGroup } from '../../components/food-log/MealGroup';
 import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
-import {
-  FoodItem,
-  Meals,
-  MealsResponse,
-  NutritionTotals,
-} from '../../types/types';
 import {
   ScrollView,
   View,
@@ -18,7 +12,6 @@ import {
   RefreshControl,
 } from 'react-native';
 import AppBar from '../../components/AppBar';
-import useApi from '../../hooks/useApi';
 import NutritionDisplay from '../../components/food-log/NutritionDisplay';
 import {
   useNavigation,
@@ -28,10 +21,9 @@ import {
 } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Plus, Mic, Clock } from 'lucide-react-native';
-import { loadMealRescheduleTime } from '../../services/mealScheduler';
 import { getTodayLocalDate } from '../../utils/date';
-import { createEmptyMeals, normalizeMeals } from '../../utils/meals';
 import { formatEpochTime12h } from '../../utils/timeFormatter';
+import { useFoodLog } from '../../hooks/useFoodLog';
 import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 
 type FoodLogNavigationProp = StackNavigationProp<
@@ -44,11 +36,6 @@ type FoodLogRouteProp = RouteProp<FoodStackParamList, 'FoodLog'>;
 const FoodLogScreen = () => {
   const navigation = useNavigation<FoodLogNavigationProp>();
   const route = useRoute<FoodLogRouteProp>();
-  const [expandedMeal, setExpandedMeal] = useState<string | null>('breakfast');
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-
-  const { data, request } = useApi<MealsResponse>();
 
   const selectedDate = React.useMemo(() => {
     const todayKey = getTodayLocalDate();
@@ -64,109 +51,29 @@ const FoodLogScreen = () => {
     return requestedDate > todayKey ? todayKey : requestedDate;
   }, [route.params?.selectedDate]);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [mealRescheduleTime, setMealRescheduleTime] = useState<number | null>(null);
+  const {
+    meals,
+    nutritionTotals,
+    refreshing,
+    mealRescheduleTime,
+    expandedMeal,
+    toggleMeal,
+    showDrawer,
+    selectedFood,
+    openEditor,
+    closeEditor,
+    reload,
+    handleRefresh,
+    saveFood,
+    deleteFood,
+  } = useFoodLog(selectedDate);
 
-  const [meals, setMeals] = useState<Meals>(createEmptyMeals());
-
-  const [nutritionTotals, setNutritionTotals] = useState<NutritionTotals>({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    fiber: 0,
-    sugar: 0,
-    sodium: 0,
-  });
-
-  const loadFoodLog = useCallback(async () => {
-    try {
-      await request({
-        url: `/food/${selectedDate}`,
-        method: 'GET',
-      });
-    } catch (error) {
-      console.error('Failed to load food log:', error);
-    }
-  }, [selectedDate, request]);
-
-  // Reload data when the screen gains focus (e.g., after returning from VoiceMealLogScreen)
+  // Reload on focus (e.g., after returning from VoiceMealLogScreen).
   useFocusEffect(
     useCallback(() => {
-      loadFoodLog();
-      loadMealRescheduleTime().then(ts => setMealRescheduleTime(ts));
-    }, [loadFoodLog]),
+      reload();
+    }, [reload]),
   );
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadFoodLog();
-    const ts = await loadMealRescheduleTime();
-    setMealRescheduleTime(ts);
-    setRefreshing(false);
-  };
-
-  useEffect(() => {
-    if (data?.meals) {
-      setMeals(normalizeMeals(data.meals));
-    }
-    if (data?.totals) {
-      setNutritionTotals(data.totals);
-    }
-  }, [data]);
-
-  const handleEditFood = async (item: FoodItem) => {
-    setSelectedFood(item);
-    setShowDrawer(true);
-  };
-
-  const handleSaveFood = async (
-    name: string,
-    quantity: string,
-    servingSize: string,
-  ) => {
-    if (!selectedFood) return;
-
-    try {
-      const response = await request({
-        url: `/food/${selectedDate}/meals/entries/${selectedFood.id}`,
-        method: 'PUT',
-        data: {
-          name,
-          quantity: parseFloat(quantity),
-          unit: servingSize,
-        },
-      });
-
-      if (response?.meals) {
-        setMeals(normalizeMeals(response.meals));
-      }
-      if (response?.totals) {
-        setNutritionTotals(response.totals);
-      }
-    } catch (err) {
-      console.error('Error saving food:', err);
-      throw err;
-    }
-  };
-
-  const handleDeleteFood = async (_mealType: string, itemId: string) => {
-    try {
-      const response = await request({
-        url: `/food/meals/entries/${itemId}`,
-        method: 'DELETE',
-      });
-
-      if (response?.meals) {
-        setMeals(normalizeMeals(response.meals));
-      }
-      if (response?.totals) {
-        setNutritionTotals(response.totals);
-      }
-    } catch (err) {
-      console.error('Error deleting food:', err);
-    }
-  };
 
   return (
     <View className="flex-1">
@@ -200,11 +107,9 @@ const FoodLogScreen = () => {
                 mealType={mealType}
                 items={items}
                 isExpanded={expandedMeal === mealType}
-                onToggleExpand={() =>
-                  setExpandedMeal(expandedMeal === mealType ? null : mealType)
-                }
-                onEdit={handleEditFood}
-                onDelete={handleDeleteFood}
+                onToggleExpand={() => toggleMeal(mealType)}
+                onEdit={openEditor}
+                onDelete={deleteFood}
               />
             ))}
           </VStack>
@@ -227,11 +132,8 @@ const FoodLogScreen = () => {
         </VStack>
         <EditFoodDrawer
           isOpen={showDrawer}
-          onClose={() => {
-            setShowDrawer(false);
-            setSelectedFood(null);
-          }}
-          onSave={handleSaveFood}
+          onClose={closeEditor}
+          onSave={saveFood}
           initialData={selectedFood}
         />
       </ScrollView>
