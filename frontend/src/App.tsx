@@ -3,9 +3,9 @@ import 'react-native-gesture-handler';
 import { AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GluestackUIProvider } from './components/ui/gluestack-ui-provider';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppNavigator, navigationRef } from './navigation/AppNavigator';
-import { setupNotifeeChannels } from './services/notifee.bootstrap';
+import { takePendingAcceptNavigation } from './navigation/pendingNavigation';
 import notifee, { EventType } from '@notifee/react-native';
 import {
   handleAcceptCall,
@@ -16,294 +16,239 @@ import {
   type IncomingCallPayload,
 } from './hooks/useIncomingCall';
 import IncomingCallBanner from './components/IncomingCallBanner';
+import { initReminders, reconcileReminders } from './services/notifications/reminderService';
+import {
+  readOccurrenceData,
+  onCallDelivered,
+  type OccurrenceData,
+} from './services/notifications/callLifecycle';
+import { claimAction } from './services/notifications/processedActions';
+import { reminderLog } from './services/notifications/logger';
 
-// Flag set by background handler so the app navigates when it resumes
-let pendingAcceptNavigation: {
-  mealSlotId?: string;
-  habitId?: string;
-  habitName?: string;
-  habitTime?: string;
-  screen: string;
-} | null = null;
-
-// Background handler — runs when app is killed/background
-notifee.onBackgroundEvent(async ({ type, detail }) => {
-  if (type !== EventType.ACTION_PRESS) {
-    return;
+/** Builds the call payload the UI/handlers use from a notification's data bag. */
+function payloadFromData(
+  data: Record<string, any> | undefined,
+  notificationId: string | undefined,
+  occ: OccurrenceData,
+): IncomingCallPayload {
+  if (occ.kind === 'meal-call') {
+    return {
+      type: 'meal',
+      notificationId,
+      mealSlotId: (data?.mealSlotId as string | undefined) || 'daily',
+      reminderKind: 'meal-call',
+      intendedFireAt: occ.intendedFireAt,
+      slotKey: occ.slotKey,
+      isRescheduled: occ.isRescheduled,
+    };
   }
+  return {
+    type: 'habit',
+    notificationId,
+    habitId: occ.habitId,
+    habitName: occ.habitName,
+    habitTime: occ.habitTime,
+    reminderKind: occ.kind,
+    intendedFireAt: occ.intendedFireAt,
+    slotKey: occ.slotKey,
+    isRescheduled: occ.isRescheduled,
+  };
+}
 
-  const notificationId = detail.notification?.id;
-  const data = detail.notification?.data;
-
-  if (notificationId) {
-    setActiveCallNotificationId(notificationId);
-  }
-
-  const isHabitCall = data?.screen === 'IncomingHabitCall';
-  const payload = isHabitCall
-    ? {
-        type: 'habit' as const,
-        notificationId,
-        habitId: data?.habitId as string | undefined,
-        habitName: data?.habitName as string | undefined,
-        habitTime: data?.habitTime as string | undefined,
-      }
-    : {
-        type: 'meal' as const,
-        notificationId,
-        mealSlotId: (data?.mealSlotId as string | undefined) || 'daily',
-      };
-
-  if (detail.pressAction?.id === 'decline') {
-    await handleDeclineCall(payload, { skipNavigation: true });
-    return;
-  }
-
-  if (detail.pressAction?.id === 'accept') {
-    await handleAcceptCall(payload, { skipNavigation: true });
-
-    if (isHabitCall) {
-      pendingAcceptNavigation = {
-        habitId: data?.habitId as string | undefined,
-        habitName: data?.habitName as string | undefined,
-        habitTime: data?.habitTime as string | undefined,
-        screen: 'VoiceHabit',
-      };
-    } else {
-      pendingAcceptNavigation = {
-        mealSlotId: (data?.mealSlotId as string | undefined) || 'daily',
-        screen: 'VoiceMealLog',
-      };
-    }
-  }
-});
-
-function App() {
+function AppShell() {
+  const { isAuthenticated, isInitializing } = useAuth();
   const [callBannerPayload, setCallBannerPayload] =
     React.useState<IncomingCallPayload | null>(null);
 
+  // One-time startup: channels + iOS categories.
   React.useEffect(() => {
-    setupNotifeeChannels();
+    initReminders().catch(e => reminderLog.warn('init.failed', String(e)));
   }, []);
 
-  // Wire the banner callback so handleAccept/handleDecline can dismiss it
+  // Wire the banner callback so handleAccept/handleDecline can dismiss it.
   React.useEffect(() => {
     registerCallBannerCallback(setCallBannerPayload);
   }, []);
 
-  // Handle resume from background after tapping "Accept"
+  // Reconciliation: cold start once auth is known, and on every foreground resume.
   React.useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active' && pendingAcceptNavigation) {
-        const pending = pendingAcceptNavigation;
-        pendingAcceptNavigation = null;
-        if (navigationRef.isReady()) {
-          if (pending.screen === 'VoiceHabit') {
-            (navigationRef as any).current?.navigate('VoiceHabit', {
-              habitId: pending.habitId,
-              habitName: pending.habitName,
-              habitTime: pending.habitTime,
-              autoStart: true,
-            });
-          } else {
-            (navigationRef as any).current?.navigate('VoiceMealLog', {
-              mealSlotId: pending.mealSlotId,
-              autoStart: true,
-            });
-          }
-        }
+    if (isInitializing) return;
+    reconcileReminders('cold-start', isAuthenticated).catch(e =>
+      reminderLog.warn('reconcile.cold_start_failed', String(e)),
+    );
+
+    const sub = AppState.addEventListener('change', next => {
+      if (next === 'active') {
+        reconcileReminders('resume', isAuthenticated).catch(e =>
+          reminderLog.warn('reconcile.resume_failed', String(e)),
+        );
       }
+    });
+    return () => sub.remove();
+  }, [isInitializing, isAuthenticated]);
+
+  // Consume a pending Accept navigation recorded by the background handler on resume.
+  React.useEffect(() => {
+    const consumePending = () => {
+      const pending = takePendingAcceptNavigation();
+      if (!pending) return;
+      // Poll for navigator readiness rather than relying on a future AppState event —
+      // if the navigator becomes ready while the app stays 'active', no further event
+      // fires and the pending navigation would otherwise be lost.
+      const run = () => {
+        if (!navigationRef.isReady()) {
+          setTimeout(run, 150);
+          return;
+        }
+        const nav = navigationRef as any;
+        if (pending.screen === 'VoiceHabit') {
+          nav.navigate('VoiceHabit', {
+            habitId: pending.habitId,
+            habitName: pending.habitName,
+            habitTime: pending.habitTime,
+            autoStart: true,
+          });
+        } else {
+          nav.navigate('VoiceMealLog', {
+            mealSlotId: pending.mealSlotId,
+            autoStart: true,
+          });
+        }
+      };
+      run();
+    };
+
+    // Consume immediately on mount (cold start) and on every resume.
+    consumePending();
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') consumePending();
     });
     return () => subscription.remove();
   }, []);
 
+  // Cold-start tap recovery. Deduped against the background handler (P0 #5).
   React.useEffect(() => {
-    // When the app is cold-started by tapping the notification or an action button
-    notifee.getInitialNotification().then(initialNotification => {
+    notifee.getInitialNotification().then(async initialNotification => {
       if (!initialNotification) return;
-      const data = initialNotification.notification?.data;
-      const isAccept = initialNotification.pressAction?.id === 'accept';
+      const data = initialNotification.notification?.data as
+        | Record<string, any>
+        | undefined;
       const notificationId = initialNotification.notification?.id;
+      const actionId = initialNotification.pressAction?.id;
+      const occ = readOccurrenceData(data);
 
-      if (notificationId) {
-        setActiveCallNotificationId(notificationId);
-      }
+      if (notificationId) setActiveCallNotificationId(notificationId);
 
-      if (data?.screen === 'IncomingHabitCall') {
+      const isAccept = actionId === 'accept';
+      const isDecline = actionId === 'decline';
+
+      if (isAccept || isDecline) {
+        const claimed = await claimAction(`${notificationId ?? 'unknown'}:${actionId}`);
+        if (!claimed) return; // background handler already processed this action
+        const payload = payloadFromData(data, notificationId, occ);
         if (isAccept) {
-          handleAcceptCall({
-            type: 'habit',
-            notificationId,
-            habitId: data.habitId as string | undefined,
-            habitName: data.habitName as string | undefined,
-            habitTime: data.habitTime as string | undefined,
-          }).catch(() => {});
-          return;
-        }
-
-        const params = {
-          habitId: data.habitId,
-          habitName: data.habitName,
-          habitTime: data.habitTime,
-          notificationId,
-          autoAccept: false,
-        };
-
-        const tryNavigate = () => {
-          if (navigationRef.isReady()) {
-            (navigationRef as any).current?.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }, { name: 'IncomingHabitCall', params }],
-            });
-          } else {
-            setTimeout(tryNavigate, 150);
-          }
-        };
-        tryNavigate();
-      } else if (data?.screen === 'IncomingMealCall') {
-        if (isAccept) {
-          handleAcceptCall({
-            type: 'meal',
-            notificationId,
-            mealSlotId: (data.mealSlotId as string | undefined) || 'daily',
-          }).catch(() => {});
-          return;
-        }
-
-        const mealSlotId = data.mealSlotId as string;
-        const params = {
-          mealSlotId,
-          notificationId,
-          autoAccept: false,
-        };
-
-        const tryNavigate = () => {
-          if (navigationRef.isReady()) {
-            (navigationRef as any).current?.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }, { name: 'IncomingMealCall', params }],
-            });
-          } else {
-            setTimeout(tryNavigate, 150);
-          }
-        };
-        tryNavigate();
-      }
-    });
-  }, []);
-
-  // Foreground handler
-  React.useEffect(() => {
-    return notifee.onForegroundEvent(({ type, detail }) => {
-      const data = detail.notification?.data;
-      const notificationId = detail.notification?.id;
-
-      if (notificationId) {
-        setActiveCallNotificationId(notificationId);
-      }
-
-      // ── Habit call ──────────────────────────────────────────────────────────
-      if (data?.screen === 'IncomingHabitCall') {
-        if (type === EventType.DELIVERED) {
-          // Cancel the native notification so the OS banner and the in-app
-          // banner don't coexist. Show the custom in-app pill banner instead.
-          if (notificationId) {
-            notifee.cancelNotification(notificationId).catch(() => {});
-          }
-          showCallBanner({
-            type: 'habit',
-            notificationId,
-            habitId: data.habitId as string | undefined,
-            habitName: data.habitName as string | undefined,
-            habitTime: data.habitTime as string | undefined,
-          });
-          return;
-        }
-
-        if (type === EventType.PRESS) {
-          // User tapped the notification in the shade — go to full screen.
-          (navigationRef as any).current?.navigate('IncomingHabitCall', {
-            habitId: data.habitId,
-            habitName: data.habitName,
-            habitTime: data.habitTime,
-            notificationId,
-            autoAccept: false,
-          });
-          return;
-        }
-
-        if (type === EventType.ACTION_PRESS) {
-          if (detail.pressAction?.id === 'accept') {
-            handleAcceptCall({
-              type: 'habit',
-              notificationId,
-              habitId: data.habitId as string | undefined,
-              habitName: data.habitName as string | undefined,
-              habitTime: data.habitTime as string | undefined,
-            }).catch(() => {});
-          }
-          if (detail.pressAction?.id === 'decline') {
-            handleDeclineCall({
-              type: 'habit',
-              notificationId,
-              habitId: data.habitId as string | undefined,
-              habitName: data.habitName as string | undefined,
-              habitTime: data.habitTime as string | undefined,
-            }).catch(() => {});
-          }
+          handleAcceptCall(payload).catch(() => {});
+        } else {
+          handleDeclineCall(payload).catch(() => {});
         }
         return;
       }
 
-      // ── Meal call ───────────────────────────────────────────────────────────
-      if (data?.screen === 'IncomingMealCall') {
-        if (type === EventType.DELIVERED) {
-          // Cancel native notification, show custom in-app banner.
-          if (notificationId) {
-            notifee.cancelNotification(notificationId).catch(() => {});
-          }
-          showCallBanner({
-            type: 'meal',
-            notificationId,
-            mealSlotId: (data.mealSlotId as string | undefined) || 'daily',
+      // Body tap (no action): open the full-screen incoming call.
+      const params = {
+        notificationId,
+        autoAccept: false,
+        ...(occ.kind === 'meal-call'
+          ? { mealSlotId: data?.mealSlotId }
+          : {
+              habitId: occ.habitId,
+              habitName: occ.habitName,
+              habitTime: occ.habitTime,
+            }),
+      };
+      const target = occ.kind === 'meal-call' ? 'IncomingMealCall' : 'IncomingHabitCall';
+      const tryNavigate = () => {
+        if (navigationRef.isReady()) {
+          (navigationRef as any).reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }, { name: target, params }],
           });
-          return;
+        } else {
+          setTimeout(tryNavigate, 150);
         }
+      };
+      tryNavigate();
+    });
+  }, []);
 
-        if (type === EventType.PRESS) {
-          (navigationRef as any).current?.navigate('IncomingMealCall', {
-            mealSlotId: data.mealSlotId,
-            notificationId,
-            autoAccept: false,
-          });
-          return;
+  // Foreground events.
+  React.useEffect(() => {
+    return notifee.onForegroundEvent(({ type, detail }) => {
+      const data = detail.notification?.data as Record<string, any> | undefined;
+      const notificationId = detail.notification?.id;
+      const occ = readOccurrenceData(data);
+
+      if (notificationId) setActiveCallNotificationId(notificationId);
+
+      const isCall = occ.kind === 'meal-call' || occ.kind === 'habit-call';
+      if (!isCall) return;
+
+      if (type === EventType.DELIVERED) {
+        // Classify staleness and record the in-flight call. A stale fire is suppressed:
+        // no in-app ringing banner, a quiet missed record instead.
+        onCallDelivered(occ, notificationId)
+          .then(({ suppress }) => {
+            if (suppress) {
+              if (notificationId) {
+                notifee.cancelDisplayedNotification(notificationId).catch(() => {});
+              }
+              return;
+            }
+            // Display-only cancel (P0 #2): swap the OS notification for the in-app banner
+            // WITHOUT deleting the recurring trigger.
+            if (notificationId) {
+              notifee.cancelDisplayedNotification(notificationId).catch(() => {});
+            }
+            showCallBanner(payloadFromData(data, notificationId, occ));
+          })
+          .catch(() => {});
+        return;
+      }
+
+      if (type === EventType.PRESS) {
+        const target =
+          occ.kind === 'meal-call' ? 'IncomingMealCall' : 'IncomingHabitCall';
+        (navigationRef as any).navigate(target, {
+          notificationId,
+          autoAccept: false,
+          ...(occ.kind === 'meal-call'
+            ? { mealSlotId: data?.mealSlotId }
+            : {
+                habitId: occ.habitId,
+                habitName: occ.habitName,
+                habitTime: occ.habitTime,
+              }),
+        });
+        return;
+      }
+
+      if (type === EventType.ACTION_PRESS) {
+        const payload = payloadFromData(data, notificationId, occ);
+        if (detail.pressAction?.id === 'accept') {
+          handleAcceptCall(payload).catch(() => {});
         }
-
-        if (type === EventType.ACTION_PRESS) {
-          if (detail.pressAction?.id === 'accept') {
-            handleAcceptCall({
-              type: 'meal',
-              notificationId,
-              mealSlotId: (data?.mealSlotId as string | undefined) || 'daily',
-            }).catch(() => {});
-          }
-          if (detail.pressAction?.id === 'decline') {
-            handleDeclineCall({
-              type: 'meal',
-              notificationId,
-              mealSlotId: (data?.mealSlotId as string | undefined) || 'daily',
-            }).catch(() => {});
-          }
+        if (detail.pressAction?.id === 'decline') {
+          handleDeclineCall(payload).catch(() => {});
         }
       }
     });
   }, []);
 
   const handleBannerExpand = (payload: IncomingCallPayload) => {
-    // Hide the banner (audio keeps playing — IncomingCallScreen manages it).
     setCallBannerPayload(null);
+    const nav = navigationRef as any;
     if (payload.type === 'habit') {
-      (navigationRef as any).current?.navigate('IncomingHabitCall', {
+      nav.navigate('IncomingHabitCall', {
         habitId: payload.habitId,
         habitName: payload.habitName,
         habitTime: payload.habitTime,
@@ -311,7 +256,7 @@ function App() {
         autoAccept: false,
       });
     } else {
-      (navigationRef as any).current?.navigate('IncomingMealCall', {
+      nav.navigate('IncomingMealCall', {
         mealSlotId: payload.mealSlotId,
         notificationId: payload.notificationId,
         autoAccept: false,
@@ -320,17 +265,23 @@ function App() {
   };
 
   return (
+    <SafeAreaView className="flex-1 bg-white">
+      <AppNavigator />
+      <IncomingCallBanner
+        payload={callBannerPayload}
+        onAccept={payload => handleAcceptCall(payload).catch(() => {})}
+        onDecline={payload => handleDeclineCall(payload).catch(() => {})}
+        onExpand={handleBannerExpand}
+      />
+    </SafeAreaView>
+  );
+}
+
+function App() {
+  return (
     <GluestackUIProvider>
       <AuthProvider>
-        <SafeAreaView className="flex-1 bg-white">
-          <AppNavigator />
-          <IncomingCallBanner
-            payload={callBannerPayload}
-            onAccept={payload => handleAcceptCall(payload).catch(() => {})}
-            onDecline={payload => handleDeclineCall(payload).catch(() => {})}
-            onExpand={handleBannerExpand}
-          />
-        </SafeAreaView>
+        <AppShell />
       </AuthProvider>
     </GluestackUIProvider>
   );

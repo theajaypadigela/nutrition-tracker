@@ -36,6 +36,10 @@ public class User implements UserDetails {
 
     private String role;
 
+    /** IANA timezone id (e.g. "America/New_York"), sent by the client. Used to make
+     *  server-side "today" computations timezone-aware near midnight / across zones. */
+    private String timezone;
+
     private boolean enabled = true;
 
     private LocalDateTime createdAt = LocalDateTime.now();

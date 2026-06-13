@@ -1,19 +1,14 @@
-import { Platform, Vibration } from 'react-native';
+import { Vibration } from 'react-native';
 import notifee from '@notifee/react-native';
-import { navigationRef } from '../navigation/AppNavigator';
+import { navigationRef } from '../navigation/navigationRef';
 import { clearMealRescheduleTime } from '../services/mealScheduler';
 import { stopRingtone } from './useRingtone';
-
-type CallKeepModule = {
-  answerIncomingCall?: (callKeepId: string) => void;
-  rejectCall?: (callKeepId: string) => void;
-};
-
-const callKeep: CallKeepModule | null =
-  Platform.OS === 'ios'
-    ? ((require('react-native-callkeep')?.default ??
-        require('react-native-callkeep')) as CallKeepModule)
-    : null;
+import {
+  onCallAccepted,
+  onCallDeclined,
+  type OccurrenceData,
+} from '../services/notifications/callLifecycle';
+import type { ReminderKind } from '../services/notifications/notificationBuilder';
 
 export type IncomingCallType = 'meal' | 'habit';
 
@@ -25,6 +20,11 @@ export type IncomingCallPayload = {
   habitId?: string;
   habitName?: string;
   habitTime?: string;
+  // Occurrence metadata carried from the notification data when available.
+  intendedFireAt?: number | null;
+  slotKey?: string;
+  reminderKind?: ReminderKind;
+  isRescheduled?: boolean;
 };
 
 type HandleCallOptions = {
@@ -55,66 +55,51 @@ export function hideCallBanner() {
   callBannerCallback?.(null);
 }
 
-function resolveCallKeepId(payload: IncomingCallPayload): string {
-  if (payload.callId) {
-    return payload.callId;
-  }
-
-  if (payload.type === 'habit') {
-    return `habit-${payload.habitId ?? payload.habitTime ?? 'incoming'}`;
-  }
-
-  return `meal-${payload.mealSlotId ?? 'incoming'}`;
+function payloadToOccurrence(payload: IncomingCallPayload): OccurrenceData {
+  const kind: ReminderKind =
+    payload.reminderKind ??
+    (payload.type === 'meal' ? 'meal-call' : 'habit-call');
+  return {
+    kind,
+    intendedFireAt: payload.intendedFireAt ?? null,
+    slotKey: payload.slotKey,
+    habitId: payload.habitId,
+    habitName: payload.habitName,
+    habitTime: payload.habitTime,
+    isRescheduled: payload.isRescheduled ?? false,
+  };
 }
 
-async function cancelCallNotifications(notificationId?: string) {
+/**
+ * Display-only cancellation (P0 #1 / #2). The previous code called
+ * notifee.cancelAllNotifications() / cancelNotification(id), both of which ALSO delete
+ * the matching pending trigger — wiping the recurring meal/habit chain on every call
+ * interaction. We only ever dismiss what is *currently displayed*; recurring triggers
+ * are managed exclusively by the scheduler/reconciliation.
+ */
+async function dismissDisplayedCall(notificationId?: string) {
   const idToCancel = notificationId ?? activeCallNotificationId;
 
   if (idToCancel) {
-    await notifee.cancelNotification(idToCancel).catch(() => {});
+    await notifee.cancelDisplayedNotification(idToCancel).catch(() => {});
   }
 
   activeCallNotificationId = null;
 
-  // Safety net for sticky call notifications across all channels.
-  await notifee.cancelAllNotifications().catch(() => {});
+  // Safety net for sticky displayed call notifications — display-only, never triggers.
+  await notifee.cancelDisplayedNotifications().catch(() => {});
 }
 
-function navigateWhenReady(runNavigate: () => void, attempts = 0) {
+/**
+ * Polls until the navigator is ready, then runs the navigation. No early cap: a pending
+ * Accept must survive a slow cold start until navigation is possible (P0 #5).
+ */
+function navigateWhenReady(runNavigate: () => void) {
   if (navigationRef.isReady()) {
     runNavigate();
     return;
   }
-
-  if (attempts > 20) {
-    return;
-  }
-
-  setTimeout(() => navigateWhenReady(runNavigate, attempts + 1), 150);
-}
-
-function answerIncomingCall(callKeepId: string) {
-  if (!callKeep?.answerIncomingCall) {
-    return;
-  }
-
-  try {
-    callKeep.answerIncomingCall(callKeepId);
-  } catch {
-    // Ignore bridge or setup errors; notification cleanup still proceeds.
-  }
-}
-
-function rejectIncomingCall(callKeepId: string) {
-  if (!callKeep?.rejectCall) {
-    return;
-  }
-
-  try {
-    callKeep.rejectCall(callKeepId);
-  } catch {
-    // Ignore bridge or setup errors; notification cleanup still proceeds.
-  }
+  setTimeout(() => navigateWhenReady(runNavigate), 150);
 }
 
 export async function handleAcceptCall(
@@ -122,12 +107,11 @@ export async function handleAcceptCall(
   options: HandleCallOptions = {},
 ) {
   hideCallBanner();
-  await cancelCallNotifications(payload.notificationId);
+  await dismissDisplayedCall(payload.notificationId);
   stopRingtone();
   Vibration.cancel();
 
-  const callKeepId = resolveCallKeepId(payload);
-  answerIncomingCall(callKeepId);
+  await onCallAccepted(payloadToOccurrence(payload)).catch(() => {});
 
   if (payload.type === 'meal') {
     await clearMealRescheduleTime().catch(() => {});
@@ -138,8 +122,9 @@ export async function handleAcceptCall(
   }
 
   navigateWhenReady(() => {
+    const nav = navigationRef as any;
     if (payload.type === 'habit') {
-      (navigationRef as any).current?.navigate('VoiceHabit', {
+      nav.navigate('VoiceHabit', {
         habitId: payload.habitId,
         habitName: payload.habitName,
         habitTime: payload.habitTime,
@@ -148,7 +133,7 @@ export async function handleAcceptCall(
       return;
     }
 
-    (navigationRef as any).current?.navigate('VoiceMealLog', {
+    nav.navigate('VoiceMealLog', {
       mealSlotId: payload.mealSlotId,
       autoStart: true,
     });
@@ -160,24 +145,26 @@ export async function handleDeclineCall(
   options: HandleCallOptions = {},
 ) {
   hideCallBanner();
-  await cancelCallNotifications(payload.notificationId);
+  await dismissDisplayedCall(payload.notificationId);
   stopRingtone();
   Vibration.cancel();
 
-  const callKeepId = resolveCallKeepId(payload);
-  rejectIncomingCall(callKeepId);
+  await onCallDeclined(payloadToOccurrence(payload)).catch(() => {});
+
+  if (payload.type === 'meal') {
+    await clearMealRescheduleTime().catch(() => {});
+  }
 
   if (options.skipNavigation) {
     return;
   }
 
   navigateWhenReady(() => {
-    const canGoBack = (navigationRef as any).current?.canGoBack?.();
-    if (canGoBack) {
-      (navigationRef as any).current?.goBack();
+    const nav = navigationRef as any;
+    if (nav.canGoBack()) {
+      nav.goBack();
       return;
     }
-
-    (navigationRef as any).current?.navigate('MainTabs');
+    nav.navigate('MainTabs');
   });
 }

@@ -28,18 +28,6 @@ export default function MealScheduleScreen() {
     loadSchedule().then(setReminder);
   }, []);
 
-  const requestPermissions = async (): Promise<boolean> => {
-    const settings = await notifee.requestPermission();
-    if (settings.authorizationStatus === AuthorizationStatus.DENIED) {
-      Alert.alert(
-        'Permission needed',
-        'Please allow notifications so we can remind you to log meals.',
-      );
-      return false;
-    }
-    return true;
-  };
-
   const toggleEnabled = (enabled: boolean) => {
     setReminder(prev => ({ ...prev, enabled }));
   };
@@ -54,13 +42,27 @@ export default function MealScheduleScreen() {
   };
 
   const handleSave = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
     setSaving(true);
+    // Schedule-and-flag (unified with onboarding & habit creation): persist the intent
+    // regardless, but if the user is enabling a reminder while notifications are denied,
+    // flag it — reconciliation arms it and it delivers once permission is granted.
+    let notificationsDenied = false;
+    if (reminder.enabled) {
+      const settings = await notifee.requestPermission();
+      notificationsDenied =
+        settings.authorizationStatus === AuthorizationStatus.DENIED;
+    }
     try {
       await saveSchedule(reminder);
       await scheduleAllAlarms(reminder);
-      Alert.alert('✅ Saved', 'Your meal reminder has been scheduled.');
+      if (notificationsDenied) {
+        Alert.alert(
+          'Saved — but notifications are off',
+          'Your meal reminder is saved, but it can’t ring until you enable notifications. Fix this from Profile → Reminder health.',
+        );
+      } else {
+        Alert.alert('✅ Saved', 'Your meal reminder has been scheduled.');
+      }
     } catch (e: any) {
       console.error('Schedule alarm error:', e);
       Alert.alert('Error', `Could not schedule alarm: ${e?.message || e}`);

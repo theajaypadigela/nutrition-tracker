@@ -6,6 +6,7 @@ import {
   TextInput,
   Platform,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -21,6 +22,9 @@ import { Text } from '../../components/ui/text';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import useApi from '../../hooks/useApi';
 import { scheduleHabitReminder } from '../../services/habitScheduler';
+import {
+  requestReminderPermissions,
+} from '../../services/notifications/reminderService';
 import AppBar from '../../components/AppBar';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
@@ -142,6 +146,22 @@ const HabitCreationScreen = () => {
   const handleSave = async () => {
     if (!isFormValid) return;
 
+    const wantsReminder =
+      reminderType === REMINDER_NOTIFICATION || reminderType === REMINDER_CALL;
+
+    // Unify permission handling with the meal screens: a habit that wants a reminder must
+    // check notification permission, and a denial is visibly flagged (the habit is still
+    // created; reconciliation will arm it once permission is granted).
+    if (wantsReminder) {
+      const snapshot = await requestReminderPermissions();
+      if (!snapshot.notificationsAuthorized) {
+        Alert.alert(
+          'Notifications are off',
+          'This habit reminder won’t be delivered until you enable notifications in Settings. You can fix this from Profile → Reminder health.',
+        );
+      }
+    }
+
     const newHabit = {
       name: habitName.trim(),
       repeatDays: selectedDays,
@@ -156,24 +176,34 @@ const HabitCreationScreen = () => {
         data: newHabit,
       });
 
-      console.log('Habit created successfully');
-
-      // Schedule notification for this habit
-      if (createdHabit) {
-        await scheduleHabitReminder({
-          id: String(createdHabit.id),
-          name: createdHabit.name,
-          reminderTime: formatTimeToHHMM(reminderTime),
-          reminderType: reminderType as 'notification' | 'call',
-          completed: false,
-          repeatDays: selectedDays,
-        });
+      // Re-arm reminders from server truth (idempotent). Surface scheduling failures
+      // rather than only logging them (§F: schedule writes must reach the user).
+      if (createdHabit && wantsReminder) {
+        try {
+          await scheduleHabitReminder({
+            id: String(createdHabit.id),
+            name: createdHabit.name,
+            reminderTime: formatTimeToHHMM(reminderTime),
+            reminderType: reminderType as 'notification' | 'call',
+            completed: false,
+            repeatDays: selectedDays,
+          });
+        } catch (scheduleErr) {
+          console.error('Failed to schedule habit reminder:', scheduleErr);
+          Alert.alert(
+            'Reminder not scheduled',
+            'The habit was saved, but its reminder could not be scheduled. Open the habit again to retry.',
+          );
+        }
       }
 
       navigation.goBack();
     } catch (err) {
       console.error('Failed to create habit:', err);
-      // Error is already set in the useApi hook
+      Alert.alert(
+        'Could not create habit',
+        'Something went wrong saving this habit. Please check your connection and try again.',
+      );
     }
   };
 

@@ -238,6 +238,15 @@ const ProfileScreen = () => {
             <Text style={profileStyles.rowChevron}>›</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={profileStyles.mealReminderRow}
+            onPress={() => navigation.navigate('ReminderHealth')}
+          >
+            <Text style={profileStyles.rowIcon}>🩺</Text>
+            <Text style={profileStyles.rowLabel}>Reminder health</Text>
+            <Text style={profileStyles.rowChevron}>›</Text>
+          </TouchableOpacity>
+
           <View>
             <Button
               variant="outline"

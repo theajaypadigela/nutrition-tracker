@@ -17,6 +17,7 @@ class NutritionEnrichmentServiceTest {
             null,
             null,
             null,
+            null, // FoodEntryRepository (added to the constructor in an earlier commit)
             new ObjectMapper(),
             WebClient.builder(),
             "",

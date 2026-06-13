@@ -1,8 +1,5 @@
 import React from 'react';
-import {
-  NavigationContainer,
-  createNavigationContainerRef,
-} from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
@@ -13,8 +10,10 @@ import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealSc
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
 import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
+import ReminderHealthScreen from '../screens/main/ReminderHealthScreen';
+import { navigationRef } from './navigationRef';
 
-export const navigationRef = createNavigationContainerRef();
+export { navigationRef };
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -33,6 +32,7 @@ export type RootStackParamList = {
   MealSchedule: undefined;
   OnboardingMealSchedule: undefined;
   Profile: undefined;
+  ReminderHealth: undefined;
   VoiceMealLog: { mealSlotId?: string; autoStart?: boolean };
   VoiceHabit: {
     habitId?: string;
@@ -73,6 +73,15 @@ const AuthenticatedNavigator = () => {
         component={OnboardingMealScheduleScreen}
       />
       <RootStack.Screen name="Profile" component={ProfileScreen} />
+      <RootStack.Screen
+        name="ReminderHealth"
+        component={ReminderHealthScreen}
+        options={{
+          headerShown: true,
+          title: 'Reminder health',
+          presentation: 'card',
+        }}
+      />
       <RootStack.Screen
         name="VoiceMealLog"
         component={VoiceMealLogScreen}

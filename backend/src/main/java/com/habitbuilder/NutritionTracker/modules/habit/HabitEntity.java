@@ -35,5 +35,6 @@ enum HabitStatus {
     COMPLETED,
     MISSED,
     PENDING,
-    RESCHEDULED
+    RESCHEDULED,
+    DECLINED
 }

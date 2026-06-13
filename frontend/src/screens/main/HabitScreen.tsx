@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import {
   Trash2,
@@ -25,7 +26,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/MainTabNavigator';
 import useApi from '@/src/hooks/useApi';
-import { cancelHabitReminder, cancelHabitCallSlot } from '../../services/habitScheduler';
+import { cancelHabitReminder } from '../../services/habitScheduler';
 
 const REMINDER_TYPE_CALL = 'call';
 
@@ -100,31 +101,28 @@ const HabitScreen = () => {
   }, [habits]);
 
   async function deleteHabit(id: string): Promise<void> {
+    const previousHabits = habits;
+    // Optimistic UI update.
+    setHabits(prev => prev.filter(habit => habit.id !== id));
+
     try {
-      const habitToDelete = habits.find(h => h.id === id);
-      setHabits(prev => prev.filter(habit => habit.id !== id));
-      await cancelHabitReminder(id);
-
-      // If this was a call-type habit, cancel the consolidated time-slot
-      // notification if no other call habits remain at the same time.
-      if (habitToDelete?.reminderType === REMINDER_TYPE_CALL) {
-        const remaining = habits.filter(
-          h =>
-            h.id !== id &&
-            h.reminderTime === habitToDelete.reminderTime &&
-            h.reminderType === REMINDER_TYPE_CALL,
-        );
-        if (remaining.length === 0) {
-          await cancelHabitCallSlot(habitToDelete.reminderTime);
-        }
-      }
-
+      // Delete on the server FIRST. Then reconcile, which recomputes the desired trigger
+      // set from server truth and prunes any now-orphaned slot trigger. This removes the
+      // stale-closure race that two rapid same-slot deletes used to hit: there is no
+      // local "remaining" list to read incorrectly — the server is the source of truth.
       await request({
         url: `/habit/${id}`,
         method: 'DELETE',
       });
+      await cancelHabitReminder(id);
     } catch (err) {
+      // Roll back the optimistic update and tell the user; never silently drop.
+      setHabits(previousHabits);
       console.error('Error deleting habit:', err);
+      Alert.alert(
+        'Could not delete habit',
+        'The habit could not be deleted. Please check your connection and try again.',
+      );
     }
   }
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<!--
+		  Time-Sensitive notifications entitlement. The reminder payloads already set
+		  interruptionLevel: 'timeSensitive', but that is inert without this entitlement.
+		  NOTE: this file must be linked to the target via the CODE_SIGN_ENTITLEMENTS build
+		  setting in Xcode (the project was never built from this repo, so it is not wired
+		  in project.pbxproj yet). Compile-verified only.
+		-->
+		<key>com.apple.developer.usernotifications.time-sensitive</key>
+		<true/>
+	</dict>
+</plist>

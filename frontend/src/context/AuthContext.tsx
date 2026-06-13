@@ -9,6 +9,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/types';
 import apiClient from '../api/client';
 import { setLogoutHandler } from '../services/authService';
+import {
+  onLoginReminders,
+  onLogoutReminders,
+} from '../services/notifications/reminderService';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +43,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = async () => {
     await AsyncStorage.removeItem('token');
     setUser(null);
+    // Cancel all local triggers and clear device-local reminder state on logout.
+    await onLogoutReminders().catch(() => {});
   };
 
   // Set the logout handler for the API client
@@ -55,6 +61,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         const response = await apiClient.get('/auth/me');
         setUser(response.data);
+        // Converge reminders from server state on every authenticated launch
+        // (covers reinstall / data-clear / second device).
+        onLoginReminders().catch(() => {});
       } catch (error) {
         console.error(error);
         await AsyncStorage.removeItem('token');
@@ -92,6 +101,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         age: data.age,
         gender: data.gender,
       });
+
+      // Rebuild reminders from server state for this account (incl. a second device).
+      onLoginReminders().catch(() => {});
     } finally {
       setIsLoading(false);
     }

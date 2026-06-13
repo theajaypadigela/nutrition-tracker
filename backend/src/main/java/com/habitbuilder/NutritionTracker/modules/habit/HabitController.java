@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -28,6 +29,18 @@ public class HabitController {
     @GetMapping("/today")
     public List<HabitWithCompletionDTO> getpresentDayHabits() {
         return habitService.getPresentDayHabits();
+    }
+
+    /** All habits for the current user — consumed by the device reconciliation pass. */
+    @GetMapping
+    public List<Habit> getAllHabits(@RequestParam(name = "tz", required = false) String tz) {
+        return habitService.getAllHabitsForCurrentUser(tz);
+    }
+
+    /** Records a terminal occurrence status (MISSED/DECLINED) so habits don't stay PENDING. */
+    @PostMapping("/occurrence-status")
+    public void reportOccurrenceStatus(@RequestBody HabitOccurrenceStatusDTO request) {
+        habitService.recordOccurrenceStatus(request);
     }
 
     @PostMapping("/{id}/toggle")

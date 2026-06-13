@@ -43,15 +43,21 @@ export default function OnboardingMealScheduleScreen() {
   };
 
   const handleContinue = async () => {
-    const settings = await notifee.requestPermission();
-    if (settings.authorizationStatus === AuthorizationStatus.DENIED) {
-      Alert.alert(
-        'Tip',
-        'You can enable reminders later in Profile → Meal Reminders.',
-      );
+    // Schedule-and-flag, unified with the meal-settings & habit screens.
+    let notificationsDenied = false;
+    if (reminder.enabled) {
+      const settings = await notifee.requestPermission();
+      notificationsDenied =
+        settings.authorizationStatus === AuthorizationStatus.DENIED;
     }
     await saveSchedule(reminder);
     await scheduleAllAlarms(reminder);
+    if (notificationsDenied) {
+      Alert.alert(
+        'Reminders are off',
+        'Your meal reminder is saved, but it can’t ring until you enable notifications. You can fix this anytime from Profile → Reminder health.',
+      );
+    }
     navigation.replace('MainTabs');
   };
 

@@ -6,13 +6,25 @@
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
   <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <!--
+    Exact alarms (Play-policy posture): we rely on SCHEDULE_EXACT_ALARM, which is grantable
+    by the user and detectable at launch via notifee.getNotificationSettings().android.alarm.
+    USE_EXACT_ALARM was REMOVED: it makes canScheduleExactAlarms() always true on Android 13+
+    but is Play-policy-restricted to alarm/calendar apps and would be a launch blocker. The
+    scheduler falls back to inexact (SET_AND_ALLOW_WHILE_IDLE) triggers when exact is not
+    granted, and the reminder-health surface shows the "may be a few minutes late" state.
+  -->
   <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-  <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <!--
+    Declared explicitly so Notifee's boot receiver re-arms alarm triggers after reboot.
+    Previously this only existed via Notifee's manifest merge.
+  -->
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
   <application
     android:name=".MainApplication"

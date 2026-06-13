@@ -13,6 +13,7 @@ import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
@@ -23,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
+import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 
 @Service
 public class HabitService {
@@ -33,16 +35,19 @@ public class HabitService {
     private HabitEntityRepository habitEntityRepository;
     private AiTextService aiTextService;
     private ObjectMapper objectMapper;
+    private UserRepository userRepository;
 
     HabitService(
             HabitRepository habitRepository,
             HabitEntityRepository habitEntityRepository,
             AiTextService aiTextService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            UserRepository userRepository) {
         this.habitRepository = habitRepository;
         this.habitEntityRepository = habitEntityRepository;
         this.aiTextService = aiTextService;
         this.objectMapper = objectMapper;
+        this.userRepository = userRepository;
     }
 
     public Habit addHabit(HabitDTO habitDto) {
@@ -94,8 +99,108 @@ public class HabitService {
         throw new IllegalStateException("User not authenticated");
     }
 
+    /** The user's timezone, falling back to the server zone when not yet known. */
+    private ZoneId zoneFor(User user) {
+        String tz = user.getTimezone();
+        if (tz != null && !tz.isBlank()) {
+            try {
+                return ZoneId.of(tz);
+            } catch (Exception ignored) {
+                // Fall through to the system default on an invalid id.
+            }
+        }
+        return ZoneId.systemDefault();
+    }
+
     public List<HabitWithCompletionDTO> getPresentDayHabits() {
-        return getHabitsByDate(LocalDate.now());
+        // Timezone-aware "today": evaluate the current date in the user's zone so client
+        // and server agree near midnight / across timezones.
+        ZoneId zone = zoneFor(getCurrentUser());
+        return getHabitsByDate(LocalDate.now(zone));
+    }
+
+    /** All habits for the current user, for the device reconciliation pass. The optional
+     *  timezone is captured on every reconciliation so server-side "today" stays correct. */
+    public List<Habit> getAllHabitsForCurrentUser(String timezone) {
+        User currentUser = getCurrentUser();
+        persistTimezone(currentUser, timezone);
+        return habitRepository.findByUserId(currentUser.getId());
+    }
+
+    private void persistTimezone(User user, String timezone) {
+        if (timezone == null || timezone.isBlank()) {
+            return;
+        }
+        if (timezone.equals(user.getTimezone())) {
+            return;
+        }
+        try {
+            ZoneId.of(timezone); // validate before storing
+            user.setTimezone(timezone);
+            userRepository.save(user);
+        } catch (Exception ignored) {
+            // Ignore an invalid timezone id rather than failing the request.
+        }
+    }
+
+    /**
+     * Records a terminal occurrence status (MISSED/DECLINED) for today. When a habitId is
+     * given it targets that habit; otherwise it targets every habit at the given
+     * reminderTime (a consolidated call slot). A habit already COMPLETED today is left
+     * untouched.
+     */
+    public void recordOccurrenceStatus(HabitOccurrenceStatusDTO request) {
+        User currentUser = getCurrentUser();
+        persistTimezone(currentUser, request.getTimezone());
+        LocalDate today = LocalDate.now(zoneFor(currentUser));
+
+        HabitStatus status;
+        if ("DECLINED".equalsIgnoreCase(request.getStatus())) {
+            status = HabitStatus.DECLINED;
+        } else {
+            status = HabitStatus.MISSED;
+        }
+
+        List<Habit> targets;
+        if (request.getHabitId() != null && !request.getHabitId().isBlank()) {
+            targets = habitRepository.findById(request.getHabitId())
+                    .filter(h -> currentUser.getId().equals(h.getUserId()))
+                    .map(List::of)
+                    .orElse(List.of());
+        } else if (request.getReminderTime() != null && !request.getReminderTime().isBlank()) {
+            LocalTime time = parseReminderTime(request.getReminderTime());
+            targets = habitRepository.findByUserIdAndReminderTime(currentUser.getId(), time);
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "habitId or reminderTime is required");
+        }
+
+        for (Habit habit : targets) {
+            HabitEntity entity = habitEntityRepository
+                    .findFirstByHabitIdAndUserIdAndEntryDateOrderByIdDesc(
+                            habit.getId(), currentUser.getId(), today)
+                    .orElseGet(() -> {
+                        HabitEntity fresh = new HabitEntity();
+                        fresh.setHabitId(habit.getId());
+                        fresh.setUserId(currentUser.getId());
+                        fresh.setEntryDate(today);
+                        return fresh;
+                    });
+
+            // Don't overwrite a completed or rescheduled habit with a miss/decline.
+            if (entity.getStatus() == HabitStatus.COMPLETED
+                    || entity.getStatus() == HabitStatus.RESCHEDULED) {
+                continue;
+            }
+
+            entity.setStatus(status);
+            entity.setCompletionTime(null);
+            entity.setRescheduledTime(null);
+            habitEntityRepository.save(entity);
+        }
+
+        log.info("Recorded habit occurrence status={} for {} habit(s), user={}",
+                status, targets.size(), currentUser.getId());
     }
 
     public List<HabitWithCompletionDTO> getHabitsByDate(LocalDate date) {
@@ -140,7 +245,7 @@ public class HabitService {
 
     public void toggleHabit(HabitCompletionDTO habitCompletion) {
         User currentUser = getCurrentUser();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(zoneFor(currentUser));
 
         String habitId = habitCompletion.getId();
         if (habitId == null) {
@@ -198,7 +303,7 @@ public class HabitService {
 
     public HabitWithCompletionDTO processVoiceResult(HabitVoiceResultDTO result) {
         User currentUser = getCurrentUser();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(zoneFor(currentUser));
 
         log.info("Received habit voice result: userId={}, habitId={}, status={}, rescheduleMinutes={}",
                 currentUser.getId(), result.getHabitId(), result.getHabitStatus(), result.getRescheduleMinutes());
