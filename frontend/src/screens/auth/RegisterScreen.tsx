@@ -24,6 +24,13 @@ import { ChevronDownIcon } from '../../components/ui/icon';
 import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
 import { ButtonText, Button } from '../../components/ui/button';
 import { useAuth } from '@/src/context/AuthContext';
+import {
+  validateEmail as validateEmailRule,
+  validatePassword as validatePasswordRule,
+  validateFullName as validateFullNameRule,
+  validateAge as validateAgeRule,
+  validateGender as validateGenderRule,
+} from '../../utils/authValidation';
 
 const RegisterScreen = () => {
   const [selectedGender, setSelectedGender] = useState('');
@@ -62,17 +69,9 @@ const RegisterScreen = () => {
   };
 
   const validateEmail = (email: string): boolean => {
-    if (!email) {
-      setEmailError('Email is required');
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError('Invalid email format');
-      return false;
-    }
-    setEmailError('');
-    return true;
+    const { valid, error } = validateEmailRule(email);
+    setEmailError(error);
+    return valid;
   };
 
   const handleEmailBlur = () => {
@@ -80,12 +79,9 @@ const RegisterScreen = () => {
   };
 
   const validateFullName = (name: string): boolean => {
-    if (!name.trim()) {
-      setFullNameError('Full name is required');
-      return false;
-    }
-    setFullNameError('');
-    return true;
+    const { valid, error } = validateFullNameRule(name);
+    setFullNameError(error);
+    return valid;
   };
 
   const handleFullNameBlur = () => {
@@ -93,16 +89,9 @@ const RegisterScreen = () => {
   };
 
   const validateAge = (age: string): boolean => {
-    if (!age) {
-      setAgeError('Age is required');
-      return false;
-    }
-    if (isNaN(Number(age)) || Number(age) <= 0) {
-      setAgeError('Invalid age');
-      return false;
-    }
-    setAgeError('');
-    return true;
+    const { valid, error } = validateAgeRule(age);
+    setAgeError(error);
+    return valid;
   };
 
   const handleAgeBlur = () => {
@@ -110,25 +99,15 @@ const RegisterScreen = () => {
   };
 
   const validateGender = (gender: string): boolean => {
-    if (!gender) {
-      setGenderError('Gender is required');
-      return false;
-    }
-    setGenderError('');
-    return true;
+    const { valid, error } = validateGenderRule(gender);
+    setGenderError(error);
+    return valid;
   };
 
   const validatePassword = (pwd: string): boolean => {
-    if (!pwd) {
-      setPasswordError('Password is required');
-      return false;
-    }
-    if (pwd.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      return false;
-    }
-    setPasswordError('');
-    return true;
+    const { valid, error } = validatePasswordRule(pwd);
+    setPasswordError(error);
+    return valid;
   };
 
   const handlePasswordBlur = () => {

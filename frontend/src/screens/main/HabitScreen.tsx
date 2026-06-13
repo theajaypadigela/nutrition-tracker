@@ -1,15 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import { VStack } from '../../components/ui/vstack';
 import { Text } from '../../components/ui/text';
 import { HStack } from '../../components/ui/hstack';
-import { Habit } from '../../types/types';
 import {
   View,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import {
   Trash2,
@@ -25,106 +23,31 @@ import AppBar from '../../components/AppBar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/MainTabNavigator';
-import useApi from '@/src/hooks/useApi';
-import { cancelHabitReminder } from '../../services/habitScheduler';
+import { formatIsoTime12h } from '../../utils/timeFormatter';
+import { useHabitList } from '../../hooks/useHabitList';
 
 const REMINDER_TYPE_CALL = 'call';
 
-function formatRescheduledTime(iso: string): string {
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return '';
-  let hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
-  return `${hours}:${mm} ${ampm}`;
-}
-
 const HabitScreen = () => {
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
-
-  const { loading, request } = useApi<Habit[]>();
-
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchHabits = useCallback(async () => {
-    try {
-      const fetchedHabits = await request({ url: '/habit/today' });
-      setHabits(fetchedHabits || []);
-    } catch (err) {
-      console.error('Error fetching habits:', err);
-    } finally {
-      setIsInitialLoad(false);
-    }
-  }, [request]);
+  const {
+    habits,
+    isInitialLoad,
+    loading,
+    refreshing,
+    completedHabits,
+    progressPercent,
+    fetchHabits,
+    refresh,
+    toggleHabit,
+    deleteHabit,
+  } = useHabitList();
 
   useFocusEffect(
     useCallback(() => {
       fetchHabits();
     }, [fetchHabits]),
   );
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchHabits();
-    setRefreshing(false);
-  };
-  const [completedHabits, setCompletedHabits] = useState(0);
-
-  const progressPercent =
-    habits.length > 0 ? Math.min(100, (completedHabits / habits.length) * 100) : 0;
-
-  const toggleHabit = async (id: string) => {
-    const previousHabits = habits;
-    try {
-      setHabits(prev =>
-        prev.map(habit =>
-          habit.id === id ? { ...habit, completed: !habit.completed } : habit,
-        ),
-      );
-
-      await request({
-        url: `/habit/${id}/toggle`,
-        method: 'POST',
-      });
-    } catch (err) {
-      setHabits(previousHabits);
-      console.error('Error toggling habit:', err);
-    }
-  };
-
-  useEffect(() => {
-    setCompletedHabits(habits.filter(habit => habit.completed).length);
-  }, [habits]);
-
-  async function deleteHabit(id: string): Promise<void> {
-    const previousHabits = habits;
-    // Optimistic UI update.
-    setHabits(prev => prev.filter(habit => habit.id !== id));
-
-    try {
-      // Delete on the server FIRST. Then reconcile, which recomputes the desired trigger
-      // set from server truth and prunes any now-orphaned slot trigger. This removes the
-      // stale-closure race that two rapid same-slot deletes used to hit: there is no
-      // local "remaining" list to read incorrectly — the server is the source of truth.
-      await request({
-        url: `/habit/${id}`,
-        method: 'DELETE',
-      });
-      await cancelHabitReminder(id);
-    } catch (err) {
-      // Roll back the optimistic update and tell the user; never silently drop.
-      setHabits(previousHabits);
-      console.error('Error deleting habit:', err);
-      Alert.alert(
-        'Could not delete habit',
-        'The habit could not be deleted. Please check your connection and try again.',
-      );
-    }
-  }
 
   return (
     <View className="flex-1">
@@ -134,7 +57,7 @@ const HabitScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
       >
         {isInitialLoad && loading ? (
@@ -166,7 +89,7 @@ const HabitScreen = () => {
             {habits.map(habit => {
               const isRescheduled = habit.status === 'RESCHEDULED';
               const rescheduledTime = habit.rescheduledTime
-                ? formatRescheduledTime(habit.rescheduledTime)
+                ? formatIsoTime12h(habit.rescheduledTime)
                 : '';
 
               return (

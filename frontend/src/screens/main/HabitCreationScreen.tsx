@@ -26,6 +26,10 @@ import {
   requestReminderPermissions,
 } from '../../services/notifications/reminderService';
 import AppBar from '../../components/AppBar';
+import {
+  formatClockTime,
+  formatReminderTime,
+} from '../../utils/timeFormatter';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 type ReminderType = 'notification' | 'call' | 'none';
@@ -98,10 +102,6 @@ const HabitCreationScreen = () => {
     setSelectedDays(weekends);
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   const onTimeChange = (_event: any, selectedTime?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
@@ -135,14 +135,6 @@ const HabitCreationScreen = () => {
     reminderType.length > 0 &&
     reminderTime instanceof Date;
 
-  const formatTimeToHHMM = date => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const hours12 = hours % 12 || 12;
-    return `${hours12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
-  };
-
   const handleSave = async () => {
     if (!isFormValid) return;
 
@@ -165,7 +157,7 @@ const HabitCreationScreen = () => {
     const newHabit = {
       name: habitName.trim(),
       repeatDays: selectedDays,
-      reminderTime: formatTimeToHHMM(reminderTime),
+      reminderTime: formatReminderTime(reminderTime),
       reminderType,
     };
 
@@ -183,7 +175,7 @@ const HabitCreationScreen = () => {
           await scheduleHabitReminder({
             id: String(createdHabit.id),
             name: createdHabit.name,
-            reminderTime: formatTimeToHHMM(reminderTime),
+            reminderTime: formatReminderTime(reminderTime),
             reminderType: reminderType as 'notification' | 'call',
             completed: false,
             repeatDays: selectedDays,
@@ -393,7 +385,7 @@ const HabitCreationScreen = () => {
               className="bg-gray-50 rounded-xl px-4 py-3.5 border border-gray-200 flex-row items-center justify-between"
             >
               <Text size="md" className="text-gray-900 font-medium">
-                {formatTime(reminderTime)}
+                {formatClockTime(reminderTime)}
               </Text>
               <Clock size={18} color="#9CA3AF" />
             </TouchableOpacity>
@@ -562,7 +554,7 @@ const HabitCreationScreen = () => {
               </HStack>
               <HStack className="items-center gap-2">
                 <Text size="sm" className="text-emerald-700">
-                  ⏰ {formatTime(reminderTime)}
+                  ⏰ {formatClockTime(reminderTime)}
                 </Text>
               </HStack>
               <HStack className="items-center gap-2">

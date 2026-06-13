@@ -22,7 +22,6 @@ import {
   listExpiredPendingAnswers,
 } from './pendingAnswerStore';
 import { recordMissed, missedKey } from './missedStore';
-import { removeReschedule } from './rescheduleStore';
 import { reportHabitOccurrence } from './habitOccurrenceApi';
 
 export const RING_TIMEOUT_MS = 60_000;
@@ -185,5 +184,3 @@ export async function reconcileExpiredAnswers(nowEpoch: number = Date.now()): Pr
   }
   return count;
 }
-
-export { removeReschedule };

@@ -1,9 +1,9 @@
-// Global logout handler that can be set by the AuthContext
-// This allows the API client to trigger logout without circular dependencies
-let logoutHandler = null;
+// Backward-compatible shim.
+//
+// The unauthorized/logout handler now lives on the API client itself
+// (registerUnauthorizedHandler in ../api/client). This module is kept so existing
+// importers of `setLogoutHandler` keep working; prefer importing
+// registerUnauthorizedHandler from '../api/client' directly in new code.
+import { registerUnauthorizedHandler } from '../api/client';
 
-export const setLogoutHandler = (handler) => {
-  logoutHandler = handler;
-};
-
-export { logoutHandler };
+export const setLogoutHandler = registerUnauthorizedHandler;

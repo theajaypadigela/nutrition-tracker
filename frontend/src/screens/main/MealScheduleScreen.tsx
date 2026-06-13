@@ -18,6 +18,7 @@ import {
   scheduleAllAlarms,
   defaultSchedule,
 } from '../../services/mealScheduler';
+import { formatClockTimeFromParts } from '../../utils/timeFormatter';
 
 export default function MealScheduleScreen() {
   const [reminder, setReminder] = useState<MealReminder>(defaultSchedule());
@@ -71,12 +72,6 @@ export default function MealScheduleScreen() {
     }
   };
 
-  const formatTime = (hour: number, minute: number): string => {
-    const d = new Date();
-    d.setHours(hour, minute);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Meal Reminder</Text>
@@ -98,7 +93,7 @@ export default function MealScheduleScreen() {
                 !reminder.enabled && styles.timeTextDisabled,
               ]}
             >
-              {formatTime(reminder.hour, reminder.minute)}
+              {formatClockTimeFromParts(reminder.hour, reminder.minute)}
             </Text>
             {reminder.enabled && (
               <Text style={styles.tapToChange}>Tap to change time</Text>

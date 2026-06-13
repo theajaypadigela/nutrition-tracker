@@ -38,7 +38,6 @@ interface NutritionDetailDrawerProps {
   nutrientBreakdown?: FoodSource[];
   onPin?: (id: string) => void;
   onSetTarget?: (nutrientId: string, value: string) => void;
-  _onAddFood?: () => void;
   onMarkAvoid?: () => void;
 }
 
@@ -92,7 +91,6 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
   nutrientBreakdown = [],
   onPin,
   onSetTarget,
-  _onAddFood,
   onMarkAvoid,
 }) => {
   const [showModal, setShowModal] = React.useState(false);

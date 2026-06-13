@@ -1,19 +1,22 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { logoutHandler } from '../services/authService';
-
-const DEFAULT_BASE_URL =
-  'http://ec2-3-109-239-9.ap-south-1.compute.amazonaws.com:5000/';
+import { API_BASE_URL } from '../config/env';
 
 const apiClient = axios.create({
-  baseURL: DEFAULT_BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
-apiClient.interceptors.request.use(async config => {
-  // Keep all API calls pinned to the configured backend.
-  config.baseURL = DEFAULT_BASE_URL;
+// Handler invoked when the server rejects auth (401). The AuthProvider registers its
+// logout() here at startup. This replaces the old global-mutable `logoutHandler` that
+// was shared through services/authService and coupled the client to that module.
+let unauthorizedHandler = null;
 
+export const registerUnauthorizedHandler = handler => {
+  unauthorizedHandler = handler;
+};
+
+apiClient.interceptors.request.use(async config => {
   const token = await AsyncStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -27,12 +30,13 @@ apiClient.interceptors.response.use(
   async error => {
     if (error.response?.status === 401) {
       await AsyncStorage.removeItem('token');
-      logoutHandler?.();
+      unauthorizedHandler?.();
     }
 
     return Promise.reject(error);
   },
 );
 
-export { DEFAULT_BASE_URL };
+// Re-exported under the original name for any code still importing DEFAULT_BASE_URL.
+export { API_BASE_URL as DEFAULT_BASE_URL };
 export default apiClient;

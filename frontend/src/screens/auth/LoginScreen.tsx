@@ -17,6 +17,11 @@ import { HStack } from '../../components/ui/hstack';
 import { Divider } from '../../components/ui/divider';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuth } from '@/src/context/AuthContext';
+import {
+  EMAIL_REGEX,
+  validateEmail as validateEmailRule,
+  validatePassword as validatePasswordRule,
+} from '../../utils/authValidation';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -36,30 +41,15 @@ export function LoginScreen() {
   const { login, isLoading } = useAuth();
 
   const validateEmail = (emailValue: string): boolean => {
-    if (!emailValue) {
-      setEmailError('Email is required');
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailValue)) {
-      setEmailError('Invalid email format');
-      return false;
-    }
-    setEmailError('');
-    return true;
+    const { valid, error } = validateEmailRule(emailValue);
+    setEmailError(error);
+    return valid;
   };
 
   const validatePassword = (passwordValue: string): boolean => {
-    if (!passwordValue) {
-      setPasswordError('Password is required');
-      return false;
-    }
-    if (passwordValue.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      return false;
-    }
-    setPasswordError('');
-    return true;
+    const { valid, error } = validatePasswordRule(passwordValue);
+    setPasswordError(error);
+    return valid;
   };
 
   const handleEmailBlur = () => {
@@ -200,7 +190,7 @@ export function LoginScreen() {
               className="w-full bg-emerald-500 rounded-xl"
               isDisabled={
                 !email ||
-                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+                !EMAIL_REGEX.test(email) ||
                 !password ||
                 password.length < 6 ||
                 isLoading

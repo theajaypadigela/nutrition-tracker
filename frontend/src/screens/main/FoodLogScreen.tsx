@@ -31,6 +31,7 @@ import { Plus, Mic, Clock } from 'lucide-react-native';
 import { loadMealRescheduleTime } from '../../services/mealScheduler';
 import { getTodayLocalDate } from '../../utils/date';
 import { createEmptyMeals, normalizeMeals } from '../../utils/meals';
+import { formatEpochTime12h } from '../../utils/timeFormatter';
 import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 
 type FoodLogNavigationProp = StackNavigationProp<
@@ -39,16 +40,6 @@ type FoodLogNavigationProp = StackNavigationProp<
 >;
 
 type FoodLogRouteProp = RouteProp<FoodStackParamList, 'FoodLog'>;
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  let hours = d.getHours();
-  const minutes = d.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
-  return `${hours}:${mm} ${ampm}`;
-}
 
 const FoodLogScreen = () => {
   const navigation = useNavigation<FoodLogNavigationProp>();
@@ -194,7 +185,7 @@ const FoodLogScreen = () => {
               <Text className="text-amber-700 text-sm flex-1">
                 Meal logging call rescheduled for today at{' '}
                 <Text className="font-bold text-amber-800">
-                  {formatTime(mealRescheduleTime)}
+                  {formatEpochTime12h(mealRescheduleTime)}
                 </Text>
               </Text>
             </View>

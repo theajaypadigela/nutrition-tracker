@@ -7,8 +7,8 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/types';
-import apiClient from '../api/client';
-import { setLogoutHandler } from '../services/authService';
+import { registerUnauthorizedHandler } from '../api/client';
+import { authApi } from '../services/api/authApi';
 import {
   onLoginReminders,
   onLogoutReminders,
@@ -47,9 +47,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     await onLogoutReminders().catch(() => {});
   };
 
-  // Set the logout handler for the API client
+  // Register the logout handler the API client calls on a 401.
   useEffect(() => {
-    setLogoutHandler(logout);
+    registerUnauthorizedHandler(logout);
   }, []);
 
   useEffect(() => {
@@ -59,8 +59,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         if (!token) return;
 
-        const response = await apiClient.get('/auth/me');
-        setUser(response.data);
+        const me = await authApi.me();
+        setUser(me);
         // Converge reminders from server state on every authenticated launch
         // (covers reinstall / data-clear / second device).
         onLoginReminders().catch(() => {});
@@ -80,13 +80,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setIsLoading(true);
 
     try {
-      const response = await apiClient({
-        method: 'POST',
-        url: '/auth/login',
-        data: { email, password },
-      });
-
-      const data = response.data;
+      const data = await authApi.login(email, password);
 
       if (data.token) {
         await AsyncStorage.setItem('token', data.token);
@@ -118,11 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     setIsLoading(true);
     try {
-      await apiClient({
-        method: 'POST',
-        url: '/auth/register',
-        data: { name, email, password, age, gender },
-      });
+      await authApi.register(name, email, password, age, gender);
 
       await login(email, password);
     } finally {
@@ -133,13 +123,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const updateProfile = async (name: string, age: string, gender: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient({
-        method: 'PUT',
-        url: '/profile',
-        data: { name, age, gender },
-      });
+      const updated = await authApi.updateProfile(name, age, gender);
 
-      setUser(response.data);
+      setUser(updated);
     } finally {
       setIsLoading(false);
     }
