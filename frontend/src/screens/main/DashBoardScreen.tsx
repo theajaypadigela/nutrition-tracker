@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   View,
   ScrollView,
@@ -33,30 +33,13 @@ import {
   DrawerHeader,
 } from '../../components/ui/drawer';
 
-import { DashboardResponse, FoodItem, Habit } from '../../types/types';
-import apiClient from '../../api/client';
 import {
   addDaysToLocalDate,
   getTodayLocalDate,
   isSameLocalCalendarDay,
   parseLocalDateString,
 } from '../../utils/date';
-import { normalizeMeals } from '../../utils/meals';
-
-const MEAL_SLOTS = [
-  { key: 'breakfast', label: 'Breakfast' },
-  { key: 'lunch', label: 'Lunch' },
-  { key: 'snack', label: 'Snack' },
-  { key: 'dinner', label: 'Dinner' },
-] as const;
-const MEAL_SLOT_ORDER = ['breakfast', 'lunch', 'snack', 'dinner'] as const;
-const EMPTY_HABITS: Habit[] = [];
-const EMPTY_FOOD_TOTALS = {
-  calories: 0,
-  protein: 0,
-  carbs: 0,
-  fat: 0,
-} as const;
+import { useDashboard } from '../../hooks/useDashboard';
 
 const styles = StyleSheet.create({
   scrollContent: {
@@ -104,7 +87,6 @@ const styles = StyleSheet.create({
 const DashBoardScreen = () => {
   const navigation = useNavigation<any>();
   const [showDrawer, setShowDrawer] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<string>(getTodayLocalDate);
   const todayKey = React.useMemo(() => getTodayLocalDate(), []);
   const [visibleMonthLabel, setVisibleMonthLabel] = React.useState<string>(() => {
     const selected = new Date();
@@ -113,109 +95,28 @@ const DashBoardScreen = () => {
       year: 'numeric',
     });
   });
-  const [dashboardData, setDashboardData] =
-    React.useState<DashboardResponse | null>(null);
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [expandedMeal, setExpandedMeal] = React.useState<string | null>(null);
 
-  const toggleMeal = (mealKey: string) => {
-    setExpandedMeal(prev => (prev === mealKey ? null : mealKey));
-  };
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      const response = await apiClient.get<DashboardResponse>(
-        `/dashboard/${selectedDate}`,
-      );
-      setDashboardData(response.data);
-    } catch (error) {
-      console.error('Failed to fetch dashboard data', error);
-    }
-  }, [selectedDate]);
-
-  React.useEffect(() => {
-    if (selectedDate) fetchDashboard();
-  }, [selectedDate, fetchDashboard]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchDashboard();
-    setRefreshing(false);
-  };
-
-  const normalizedMeals = React.useMemo(
-    () => normalizeMeals(dashboardData?.foodSummary?.meals),
-    [dashboardData],
-  );
-
-  const foodLogs: FoodItem[] = React.useMemo(() => {
-    return Object.values(normalizedMeals).flat();
-  }, [normalizedMeals]);
-
-  const habits: Habit[] = dashboardData?.habits ?? EMPTY_HABITS;
-
-  const completedHabits = habits.filter(h => h.completed).length;
-  const totalHabits = habits.length;
-  const habitProgress = totalHabits > 0 ? completedHabits / totalHabits : 0;
-  const completedHabitItems = React.useMemo(
-    () => habits.filter(h => h.completed),
-    [habits],
-  );
-  const incompleteHabitItems = React.useMemo(
-    () => habits.filter(h => !h.completed),
-    [habits],
-  );
-
-  const foodTotals = dashboardData?.foodSummary?.totals ?? EMPTY_FOOD_TOTALS;
-  const dailyMacroSummaryItems = React.useMemo(
-    () => [
-      { label: 'Calories', value: `${Math.round(foodTotals.calories)}`, green: true },
-      { label: 'Protein', value: `${Math.round(foodTotals.protein)}g`, green: false },
-      { label: 'Carbs', value: `${Math.round(foodTotals.carbs)}g`, green: false },
-      { label: 'Fats', value: `${Math.round(foodTotals.fat)}g`, green: false },
-    ],
-    [foodTotals],
-  );
-  const mealStatusItems = React.useMemo(() => {
-    return MEAL_SLOT_ORDER.map(key => {
-      const slot = MEAL_SLOTS.find(item => item.key === key)!;
-      const entries = normalizedMeals[key] || [];
-      return {
-        ...slot,
-        logged: entries.length > 0,
-        count: entries.length,
-      };
-    });
-  }, [normalizedMeals]);
-  const loggedMealItems = React.useMemo(
-    () => mealStatusItems.filter(slot => slot.logged),
-    [mealStatusItems],
-  );
-  const missingMealItems = React.useMemo(
-    () => mealStatusItems.filter(slot => !slot.logged),
-    [mealStatusItems],
-  );
-  const expandedMealDetails = React.useMemo(() => {
-    if (!expandedMeal) return null;
-
-    const mealFoods = normalizedMeals[expandedMeal] || [];
-    const slot = MEAL_SLOTS.find(s => s.key === expandedMeal);
-    const totalCal = mealFoods.reduce((s, f) => s + (f.calories || 0), 0);
-    const totalProt = mealFoods.reduce((s, f) => s + (f.protein || 0), 0);
-    const totalCarb = mealFoods.reduce((s, f) => s + (f.carbs || 0), 0);
-    const totalFat = mealFoods.reduce((s, f) => s + (f.fat || 0), 0);
-
-    return {
-      slotLabel: slot?.label,
-      mealFoods,
-      macroItems: [
-        { label: 'cal', value: Math.round(totalCal) },
-        { label: 'protein', value: `${Math.round(totalProt)}g` },
-        { label: 'carbs', value: `${Math.round(totalCarb)}g` },
-        { label: 'fats', value: `${Math.round(totalFat)}g` },
-      ],
-    };
-  }, [expandedMeal, normalizedMeals]);
+  const {
+    selectedDate,
+    setSelectedDate,
+    refreshing,
+    handleRefresh,
+    expandedMeal,
+    toggleMeal,
+    normalizedMeals,
+    foodLogs,
+    habits,
+    completedHabits,
+    totalHabits,
+    habitProgress,
+    completedHabitItems,
+    incompleteHabitItems,
+    foodTotals,
+    dailyMacroSummaryItems,
+    loggedMealItems,
+    missingMealItems,
+    expandedMealDetails,
+  } = useDashboard();
 
   const isPastSelectedDate = selectedDate < todayKey;
   const incompleteHabitLabel = isPastSelectedDate ? 'Missed' : 'Not Completed';
