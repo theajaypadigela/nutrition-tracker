@@ -1,4 +1,7 @@
-import { getCurrentSundayToSaturdayRange } from '../weekRange';
+import {
+  getCurrentSundayToSaturdayRange,
+  getMondayWeekRange,
+} from '../weekRange';
 import { parseLocalDateString } from '../date';
 
 describe('getCurrentSundayToSaturdayRange', () => {
@@ -25,5 +28,26 @@ describe('getCurrentSundayToSaturdayRange', () => {
     expect(parseLocalDateString(r.startDate).getTime()).toBe(
       new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate()).getTime(),
     );
+  });
+});
+
+describe('getMondayWeekRange', () => {
+  it('spans Monday→Sunday for the current week (weekIdx 0)', () => {
+    const now = new Date(2026, 5, 10, 9, 0);
+    const r = getMondayWeekRange(0, now);
+    const start = parseLocalDateString(r.startDate);
+    const end = parseLocalDateString(r.endDate);
+    expect(start.getDay()).toBe(1); // Monday
+    expect(end.getDay()).toBe(0); // Sunday
+    expect((end.getTime() - start.getTime()) / 86_400_000).toBe(6);
+  });
+
+  it('shifts a full week back for weekIdx -1', () => {
+    const now = new Date(2026, 5, 10, 9, 0);
+    const cur = getMondayWeekRange(0, now);
+    const prev = getMondayWeekRange(-1, now);
+    const curStart = parseLocalDateString(cur.startDate);
+    const prevStart = parseLocalDateString(prev.startDate);
+    expect((curStart.getTime() - prevStart.getTime()) / 86_400_000).toBe(7);
   });
 });
