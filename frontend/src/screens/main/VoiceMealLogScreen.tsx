@@ -3,10 +3,9 @@ import { Alert } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
+import { foodLogApi } from '../../services/api/foodLogApi';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
 import { initializeVapiClient } from '../../services/vapiSessionService';
-import { MealVoiceInterpretationResponse } from '../../types/types';
 import { getTodayLocalDate } from '../../utils/date';
 import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 import VoiceSessionScreen, {
@@ -228,8 +227,8 @@ export default function VoiceMealLogScreen() {
 
   const getFoodLogSnapshot = useCallback(async (logDate: string) => {
     try {
-      const response = await apiClient.get(`/food/${logDate}`);
-      const meals = response.data?.meals || {};
+      const data = await foodLogApi.getLog(logDate);
+      const meals = data?.meals || {};
       const items = Object.values(meals).flat() as any[];
 
       return {
@@ -262,8 +261,8 @@ export default function VoiceMealLogScreen() {
           await new Promise<void>(resolve =>
             setTimeout(() => resolve(undefined), delayMs),
           );
-          const res = await apiClient.get(`/food/${logDate}`);
-          const meals = res.data?.meals || {};
+          const res = await foodLogApi.getLog(logDate);
+          const meals = res?.meals || {};
           const currentItems = Object.values(meals).flat() as any[];
           const currentTotalCount = currentItems.length;
           const currentEnrichedCount = Object.values(meals)
@@ -332,24 +331,19 @@ export default function VoiceMealLogScreen() {
 
     try {
       console.log('[VoiceMealLog] Sending transcript to backend for interpretation');
-      const interpretation = await apiClient.post<MealVoiceInterpretationResponse>(
-        '/food/voice-log/interpret-transcript',
-        {
-          transcript: fullTranscript,
-          mealSlotId,
-        },
-        {
-          timeout: VOICE_INTERPRET_TIMEOUT_MS,
-        },
+      const interpretation = await foodLogApi.interpretTranscript(
+        fullTranscript,
+        mealSlotId,
+        { timeout: VOICE_INTERPRET_TIMEOUT_MS },
       );
 
-      const shouldLogMeals = interpretation.data?.shouldLogMeals === true;
-      const delayMinutes = interpretation.data?.rescheduleMinutes ?? null;
+      const shouldLogMeals = interpretation?.shouldLogMeals === true;
+      const delayMinutes = interpretation?.rescheduleMinutes ?? null;
 
       console.log('[VoiceMealLog] Backend interpretation:', {
         shouldLogMeals,
-        rescheduleMinutes: interpretation.data?.rescheduleMinutes,
-        rationale: interpretation.data?.rationale,
+        rescheduleMinutes: interpretation?.rescheduleMinutes,
+        rationale: interpretation?.rationale,
       });
 
       let count = 0;
@@ -359,14 +353,13 @@ export default function VoiceMealLogScreen() {
         const baseline = await getFoodLogSnapshot(logDate);
 
         console.log('[VoiceMealLog] Sending transcript to backend for meal logging');
-        const response = await apiClient.post('/food/voice-log/parse-transcript', {
-          transcript: fullTranscript,
+        const response = await foodLogApi.parseTranscript(
+          fullTranscript,
           logDate,
-        }, {
-          timeout: VOICE_PARSE_TIMEOUT_MS,
-        });
-        count = response.data?.entriesLogged ?? 0;
-        duplicateTranscript = response.data?.duplicateTranscript === true;
+          { timeout: VOICE_PARSE_TIMEOUT_MS },
+        );
+        count = response?.entriesLogged ?? 0;
+        duplicateTranscript = response?.duplicateTranscript === true;
 
         if (count > 0) {
           console.log('[VoiceMealLog] Waiting for nutrition enrichment...');

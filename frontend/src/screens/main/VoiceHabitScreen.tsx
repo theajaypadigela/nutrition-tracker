@@ -3,12 +3,8 @@ import { Alert } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
-import {
-  Habit,
-  HabitVoiceInterpretationResponse,
-  HabitVoiceResult,
-} from '../../types/types';
+import { habitApi } from '../../services/api/habitApi';
+import { Habit, HabitVoiceResult } from '../../types/types';
 import { scheduleHabitReschedule } from '../../services/habitScheduler';
 import { initializeVapiClient } from '../../services/vapiSessionService';
 import VoiceSessionScreen, {
@@ -26,16 +22,11 @@ async function interpretVoiceTranscriptWithBackend(
 ): Promise<HabitVoiceResult | null> {
   if (transcriptLines.length === 0) return null;
 
-  const response = await apiClient.post<HabitVoiceInterpretationResponse>(
-    '/habit/interpret-voice',
-    {
-      transcriptLines,
-      habitName,
-      habitTime,
-    },
+  const interpreted = await habitApi.interpretVoice(
+    transcriptLines,
+    habitName,
+    habitTime,
   );
-
-  const interpreted = response.data;
   const status = normalizeHabitStatus(interpreted?.habitStatus);
   if (status === 'not_completed') {
     return {
@@ -122,8 +113,7 @@ export default function VoiceHabitScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await apiClient.get('/habit/today');
-        const todayHabits: Habit[] = response.data ?? [];
+        const todayHabits: Habit[] = (await habitApi.getToday()) ?? [];
 
         console.log('[VapiHabit] Fetched today habits:', JSON.stringify(todayHabits, null, 2));
         console.log('[VapiHabit] Route params -> habitId:', habitId, 'habitTime:', habitTime);
@@ -374,7 +364,7 @@ export default function VoiceHabitScreen() {
       // Apply the voice result to ALL habits in the time slot
       for (const habit of habits) {
         try {
-          await apiClient.post('/habit/voice-result', {
+          await habitApi.submitVoiceResult({
             habitId: habit.id,
             habitName: habit.name,
             habitStatus,
