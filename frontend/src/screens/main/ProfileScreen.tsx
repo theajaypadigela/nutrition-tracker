@@ -27,61 +27,24 @@ import {
 import { useAuth } from '@/src/context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import AppBar from '../../components/AppBar';
+import { useProfileForm } from '../../hooks/useProfileForm';
 
 const ProfileScreen = () => {
-  const { name, age, gender } = useAuth().user || {};
-  const { updateProfile, isLoading, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const name = user?.name;
   const navigation = useNavigation<any>();
 
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [form, setForm] = React.useState({
-    name: name || '',
-    age: age || '',
-    gender: gender || '',
-  });
-
-  // Update form when user data changes
-  React.useEffect(() => {
-    setForm({
-      name: name || '',
-      age: age || '',
-      gender: gender || '',
-    });
-  }, [name, age, gender]);
-
-  const handleEditPress = () => {
-    setIsEditing(prev => !prev);
-  };
-
-  const handleCancelPress = (): void => {
-    setForm({
-      name: name || '',
-      age: age || '',
-      gender: gender || '',
-    });
-    setIsEditing(false);
-  };
-
-  const handleSavePress = async () => {
-    try {
-      await updateProfile(form.name, form.age, form.gender);
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      // You can add error notification here
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setForm({
-      name: name || '',
-      age: age || '',
-      gender: gender || '',
-    });
-    setRefreshing(false);
-  };
+  const {
+    form,
+    updateField,
+    isEditing,
+    refreshing,
+    isLoading,
+    handleEditPress,
+    handleCancelPress,
+    handleSavePress,
+    handleRefresh,
+  } = useProfileForm();
 
   return (
     <View className="flex-1">
@@ -141,9 +104,7 @@ const ProfileScreen = () => {
                   type="text"
                   value={form.name}
                   placeholder="Enter your name.."
-                  onChangeText={text =>
-                    setForm(prev => ({ ...prev, name: text }))
-                  }
+                  onChangeText={text => updateField('name', text)}
                 />
               </Input>
             </VStack>
@@ -162,9 +123,7 @@ const ProfileScreen = () => {
                   type="text"
                   value={form.age}
                   placeholder="Enter your age.."
-                  onChangeText={text =>
-                    setForm(prev => ({ ...prev, age: text }))
-                  }
+                  onChangeText={text => updateField('age', text)}
                 />
               </Input>
             </VStack>
@@ -173,9 +132,7 @@ const ProfileScreen = () => {
               <Select
                 isDisabled={!isEditing}
                 selectedValue={form.gender}
-                onValueChange={value => {
-                  setForm(prev => ({ ...prev, gender: value }));
-                }}
+                onValueChange={value => updateField('gender', value)}
                 className="w-full"
               >
                 <SelectTrigger
