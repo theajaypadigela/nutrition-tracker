@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   ScrollView,
@@ -6,7 +6,6 @@ import {
   TextInput,
   Platform,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -20,19 +19,19 @@ import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
 import { Text } from '../../components/ui/text';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import useApi from '../../hooks/useApi';
-import { scheduleHabitReminder } from '../../services/habitScheduler';
-import {
-  requestReminderPermissions,
-} from '../../services/notifications/reminderService';
 import AppBar from '../../components/AppBar';
+import { formatClockTime } from '../../utils/timeFormatter';
 import {
-  formatClockTime,
-  formatReminderTime,
-} from '../../utils/timeFormatter';
+  DayKey,
+  isAllDays,
+  isWeekdaysOnly,
+  isWeekendsOnly,
+} from '../../utils/daySelection';
+import {
+  ReminderType,
+  useHabitCreationForm,
+} from '../../hooks/useHabitCreationForm';
 
-type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
-type ReminderType = 'notification' | 'call' | 'none';
 const IOS_PLATFORM = 'ios';
 const REMINDER_NOTIFICATION: ReminderType = 'notification';
 const REMINDER_CALL: ReminderType = 'call';
@@ -49,165 +48,30 @@ const DAYS: { key: DayKey; label: string }[] = [
 
 const HabitCreationScreen = () => {
   const navigation = useNavigation();
-  const { loading, error, request } = useApi();
+  const {
+    habitName,
+    setHabitName,
+    selectedDays,
+    reminderType,
+    setReminderType,
+    reminderTime,
+    showTimePicker,
+    setShowTimePicker,
+    refreshing,
+    saving,
+    error,
+    repeatSummary,
+    isFormValid,
+    toggleDay,
+    selectAllDays,
+    selectWeekdays,
+    selectWeekends,
+    onTimeChange,
+    handleSave,
+    handleRefresh,
+  } = useHabitCreationForm(() => navigation.goBack());
 
-  const [habitName, setHabitName] = useState('');
-  const [selectedDays, setSelectedDays] = useState<DayKey[]>([]);
-  const [reminderType, setReminderType] =
-    useState<ReminderType>('notification');
-  const [reminderTime, setReminderTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const isIOS = Platform.OS === IOS_PLATFORM;
-
-  const toggleDay = (day: DayKey) => {
-    setSelectedDays(prev =>
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day],
-    );
-  };
-
-  const selectAllDays = () => {
-    if (selectedDays.length === 7) {
-      setSelectedDays([]);
-    } else {
-      setSelectedDays(DAYS.map(d => d.key));
-    }
-  };
-
-  const selectWeekdays = () => {
-    if (
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].every(d =>
-        selectedDays.includes(d as DayKey),
-      ) &&
-      !['Sat', 'Sun'].some(d => selectedDays.includes(d as DayKey))
-    ) {
-      setSelectedDays([]);
-      return;
-    }
-    const weekdays: DayKey[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    setSelectedDays(weekdays);
-  };
-
-  const selectWeekends = () => {
-    if (
-      ['Sat', 'Sun'].every(d => selectedDays.includes(d as DayKey)) &&
-      !['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].some(d =>
-        selectedDays.includes(d as DayKey),
-      )
-    ) {
-      setSelectedDays([]);
-      return;
-    }
-    const weekends: DayKey[] = ['Sat', 'Sun'];
-    setSelectedDays(weekends);
-  };
-
-  const onTimeChange = (_event: any, selectedTime?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    if (selectedTime) {
-      setReminderTime(selectedTime);
-    }
-  };
-
-  const getRepeatSummary = () => {
-    if (selectedDays.length === 0) return 'No days selected';
-    if (selectedDays.length === 7) return 'Every day';
-    const weekdays: DayKey[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    const weekends: DayKey[] = ['Sat', 'Sun'];
-    if (
-      weekdays.every(d => selectedDays.includes(d)) &&
-      !weekends.some(d => selectedDays.includes(d))
-    )
-      return 'Weekdays';
-    if (
-      weekends.every(d => selectedDays.includes(d)) &&
-      !weekdays.some(d => selectedDays.includes(d))
-    )
-      return 'Weekends';
-    return selectedDays.join(', ');
-  };
-
-  const isFormValid =
-    habitName.trim().length > 0 &&
-    selectedDays.length > 0 &&
-    reminderType.length > 0 &&
-    reminderTime instanceof Date;
-
-  const handleSave = async () => {
-    if (!isFormValid) return;
-
-    const wantsReminder =
-      reminderType === REMINDER_NOTIFICATION || reminderType === REMINDER_CALL;
-
-    // Unify permission handling with the meal screens: a habit that wants a reminder must
-    // check notification permission, and a denial is visibly flagged (the habit is still
-    // created; reconciliation will arm it once permission is granted).
-    if (wantsReminder) {
-      const snapshot = await requestReminderPermissions();
-      if (!snapshot.notificationsAuthorized) {
-        Alert.alert(
-          'Notifications are off',
-          'This habit reminder won’t be delivered until you enable notifications in Settings. You can fix this from Profile → Reminder health.',
-        );
-      }
-    }
-
-    const newHabit = {
-      name: habitName.trim(),
-      repeatDays: selectedDays,
-      reminderTime: formatReminderTime(reminderTime),
-      reminderType,
-    };
-
-    try {
-      const createdHabit = await request({
-        url: '/habit',
-        method: 'POST',
-        data: newHabit,
-      });
-
-      // Re-arm reminders from server truth (idempotent). Surface scheduling failures
-      // rather than only logging them (§F: schedule writes must reach the user).
-      if (createdHabit && wantsReminder) {
-        try {
-          await scheduleHabitReminder({
-            id: String(createdHabit.id),
-            name: createdHabit.name,
-            reminderTime: formatReminderTime(reminderTime),
-            reminderType: reminderType as 'notification' | 'call',
-            completed: false,
-            repeatDays: selectedDays,
-          });
-        } catch (scheduleErr) {
-          console.error('Failed to schedule habit reminder:', scheduleErr);
-          Alert.alert(
-            'Reminder not scheduled',
-            'The habit was saved, but its reminder could not be scheduled. Open the habit again to retry.',
-          );
-        }
-      }
-
-      navigation.goBack();
-    } catch (err) {
-      console.error('Failed to create habit:', err);
-      Alert.alert(
-        'Could not create habit',
-        'Something went wrong saving this habit. Please check your connection and try again.',
-      );
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setHabitName('');
-    setSelectedDays([]);
-    setReminderType('notification');
-    setReminderTime(new Date());
-    setShowTimePicker(false);
-    setRefreshing(false);
-  };
 
   return (
     <View className="flex-1">
@@ -257,7 +121,7 @@ const HabitCreationScreen = () => {
                   Repeat Days
                 </Text>
                 <Text size="xs" className="text-gray-500">
-                  {getRepeatSummary()}
+                  {repeatSummary}
                 </Text>
               </VStack>
             </HStack>
@@ -294,7 +158,7 @@ const HabitCreationScreen = () => {
               <TouchableOpacity
                 onPress={selectAllDays}
                 className={`flex-1 py-2 rounded-lg items-center border ${
-                  selectedDays.length === 7
+                  isAllDays(selectedDays)
                     ? 'bg-emerald-50 border-emerald-300'
                     : 'bg-gray-50 border-gray-200'
                 }`}
@@ -302,7 +166,7 @@ const HabitCreationScreen = () => {
                 <Text
                   size="xs"
                   className={`font-medium ${
-                    selectedDays.length === 7
+                    isAllDays(selectedDays)
                       ? 'text-emerald-700'
                       : 'text-gray-600'
                   }`}
@@ -313,10 +177,7 @@ const HabitCreationScreen = () => {
               <TouchableOpacity
                 onPress={selectWeekdays}
                 className={`flex-1 py-2 rounded-lg items-center border ${
-                  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].every(d =>
-                    selectedDays.includes(d as DayKey),
-                  ) &&
-                  !['Sat', 'Sun'].some(d => selectedDays.includes(d as DayKey))
+                  isWeekdaysOnly(selectedDays)
                     ? 'bg-emerald-50 border-emerald-300'
                     : 'bg-gray-50 border-gray-200'
                 }`}
@@ -324,12 +185,7 @@ const HabitCreationScreen = () => {
                 <Text
                   size="xs"
                   className={`font-medium ${
-                    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].every(d =>
-                      selectedDays.includes(d as DayKey),
-                    ) &&
-                    !['Sat', 'Sun'].some(d =>
-                      selectedDays.includes(d as DayKey),
-                    )
+                    isWeekdaysOnly(selectedDays)
                       ? 'text-emerald-700'
                       : 'text-gray-600'
                   }`}
@@ -340,12 +196,7 @@ const HabitCreationScreen = () => {
               <TouchableOpacity
                 onPress={selectWeekends}
                 className={`flex-1 py-2 rounded-lg items-center border ${
-                  ['Sat', 'Sun'].every(d =>
-                    selectedDays.includes(d as DayKey),
-                  ) &&
-                  !['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].some(d =>
-                    selectedDays.includes(d as DayKey),
-                  )
+                  isWeekendsOnly(selectedDays)
                     ? 'bg-emerald-50 border-emerald-300'
                     : 'bg-gray-50 border-gray-200'
                 }`}
@@ -353,12 +204,7 @@ const HabitCreationScreen = () => {
                 <Text
                   size="xs"
                   className={`font-medium ${
-                    ['Sat', 'Sun'].every(d =>
-                      selectedDays.includes(d as DayKey),
-                    ) &&
-                    !['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].some(d =>
-                      selectedDays.includes(d as DayKey),
-                    )
+                    isWeekendsOnly(selectedDays)
                       ? 'text-emerald-700'
                       : 'text-gray-600'
                   }`}
@@ -549,7 +395,7 @@ const HabitCreationScreen = () => {
               </HStack>
               <HStack className="items-center gap-2">
                 <Text size="sm" className="text-emerald-700">
-                  🔁 {getRepeatSummary()}
+                  🔁 {repeatSummary}
                 </Text>
               </HStack>
               <HStack className="items-center gap-2">
@@ -583,18 +429,18 @@ const HabitCreationScreen = () => {
         )}
         <TouchableOpacity
           onPress={handleSave}
-          disabled={!isFormValid || loading}
+          disabled={!isFormValid || saving}
           className={`py-4 rounded-xl items-center ${
-            isFormValid && !loading ? 'bg-emerald-500' : 'bg-gray-300'
+            isFormValid && !saving ? 'bg-emerald-500' : 'bg-gray-300'
           }`}
         >
           <Text
             size="lg"
             className={`font-bold ${
-              isFormValid && !loading ? 'text-white' : 'text-gray-500'
+              isFormValid && !saving ? 'text-white' : 'text-gray-500'
             }`}
           >
-            {loading ? 'Creating...' : 'Create Habit'}
+            {saving ? 'Creating...' : 'Create Habit'}
           </Text>
         </TouchableOpacity>
       </View>
