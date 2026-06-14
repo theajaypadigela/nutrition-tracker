@@ -1,6 +1,11 @@
 import { Vibration } from 'react-native';
 import notifee from '@notifee/react-native';
 import { navigationRef } from '../navigation/navigationRef';
+import {
+  goBackOrMainTabs,
+  navigateToVoiceHabit,
+  navigateToVoiceMealLog,
+} from '../navigation/navigationUtils';
 import { clearMealRescheduleTime } from '../services/mealScheduler';
 import { stopRingtone } from './useRingtone';
 import {
@@ -122,9 +127,8 @@ export async function handleAcceptCall(
   }
 
   navigateWhenReady(() => {
-    const nav = navigationRef as any;
     if (payload.type === 'habit') {
-      nav.navigate('VoiceHabit', {
+      navigateToVoiceHabit({
         habitId: payload.habitId,
         habitName: payload.habitName,
         habitTime: payload.habitTime,
@@ -133,7 +137,7 @@ export async function handleAcceptCall(
       return;
     }
 
-    nav.navigate('VoiceMealLog', {
+    navigateToVoiceMealLog({
       mealSlotId: payload.mealSlotId,
       autoStart: true,
     });
@@ -159,12 +163,5 @@ export async function handleDeclineCall(
     return;
   }
 
-  navigateWhenReady(() => {
-    const nav = navigationRef as any;
-    if (nav.canGoBack()) {
-      nav.goBack();
-      return;
-    }
-    nav.navigate('MainTabs');
-  });
+  navigateWhenReady(goBackOrMainTabs);
 }

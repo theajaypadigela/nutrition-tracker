@@ -5,6 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GluestackUIProvider } from './components/ui/gluestack-ui-provider';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppNavigator, navigationRef } from './navigation/AppNavigator';
+import { ROUTES } from './navigation/routeNames';
+import {
+  navigateToIncomingCall,
+  navigateToVoiceHabit,
+  navigateToVoiceMealLog,
+  resetToIncomingCall,
+} from './navigation/navigationUtils';
 import { takePendingAcceptNavigation } from './navigation/pendingNavigation';
 import notifee, { EventType } from '@notifee/react-native';
 import {
@@ -100,16 +107,15 @@ function AppShell() {
           setTimeout(run, 150);
           return;
         }
-        const nav = navigationRef as any;
         if (pending.screen === 'VoiceHabit') {
-          nav.navigate('VoiceHabit', {
+          navigateToVoiceHabit({
             habitId: pending.habitId,
             habitName: pending.habitName,
             habitTime: pending.habitTime,
             autoStart: true,
           });
         } else {
-          nav.navigate('VoiceMealLog', {
+          navigateToVoiceMealLog({
             mealSlotId: pending.mealSlotId,
             autoStart: true,
           });
@@ -166,13 +172,13 @@ function AppShell() {
               habitTime: occ.habitTime,
             }),
       };
-      const target = occ.kind === 'meal-call' ? 'IncomingMealCall' : 'IncomingHabitCall';
+      const target =
+        occ.kind === 'meal-call'
+          ? ROUTES.INCOMING_MEAL_CALL
+          : ROUTES.INCOMING_HABIT_CALL;
       const tryNavigate = () => {
         if (navigationRef.isReady()) {
-          (navigationRef as any).reset({
-            index: 0,
-            routes: [{ name: 'MainTabs' }, { name: target, params }],
-          });
+          resetToIncomingCall(target, params);
         } else {
           setTimeout(tryNavigate, 150);
         }
@@ -217,8 +223,10 @@ function AppShell() {
 
       if (type === EventType.PRESS) {
         const target =
-          occ.kind === 'meal-call' ? 'IncomingMealCall' : 'IncomingHabitCall';
-        (navigationRef as any).navigate(target, {
+          occ.kind === 'meal-call'
+            ? ROUTES.INCOMING_MEAL_CALL
+            : ROUTES.INCOMING_HABIT_CALL;
+        navigateToIncomingCall(target, {
           notificationId,
           autoAccept: false,
           ...(occ.kind === 'meal-call'
@@ -246,9 +254,8 @@ function AppShell() {
 
   const handleBannerExpand = (payload: IncomingCallPayload) => {
     setCallBannerPayload(null);
-    const nav = navigationRef as any;
     if (payload.type === 'habit') {
-      nav.navigate('IncomingHabitCall', {
+      navigateToIncomingCall(ROUTES.INCOMING_HABIT_CALL, {
         habitId: payload.habitId,
         habitName: payload.habitName,
         habitTime: payload.habitTime,
@@ -256,7 +263,7 @@ function AppShell() {
         autoAccept: false,
       });
     } else {
-      nav.navigate('IncomingMealCall', {
+      navigateToIncomingCall(ROUTES.INCOMING_MEAL_CALL, {
         mealSlotId: payload.mealSlotId,
         notificationId: payload.notificationId,
         autoAccept: false,

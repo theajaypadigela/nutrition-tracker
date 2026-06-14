@@ -12,34 +12,25 @@ import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import ReminderHealthScreen from '../screens/main/ReminderHealthScreen';
 import { navigationRef } from './navigationRef';
+import type {
+  IncomingHabitCallParams,
+  IncomingMealCallParams,
+  VoiceHabitParams,
+  VoiceMealLogParams,
+} from './paramTypes';
 
 export { navigationRef };
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  IncomingMealCall: {
-    mealSlotId?: string;
-    notificationId?: string;
-    autoAccept?: boolean;
-  };
-  IncomingHabitCall: {
-    habitId?: string;
-    habitName?: string;
-    habitTime?: string;
-    notificationId?: string;
-    autoAccept?: boolean;
-  };
+  IncomingMealCall: IncomingMealCallParams;
+  IncomingHabitCall: IncomingHabitCallParams;
   MealSchedule: undefined;
   OnboardingMealSchedule: undefined;
   Profile: undefined;
   ReminderHealth: undefined;
-  VoiceMealLog: { mealSlotId?: string; autoStart?: boolean };
-  VoiceHabit: {
-    habitId?: string;
-    habitName?: string;
-    habitTime?: string;
-    autoStart?: boolean;
-  };
+  VoiceMealLog: VoiceMealLogParams;
+  VoiceHabit: VoiceHabitParams;
 };
 
 const RootStack = createStackNavigator<RootStackParamList>();

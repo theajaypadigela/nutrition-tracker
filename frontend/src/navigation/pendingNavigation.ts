@@ -5,8 +5,10 @@
  * the single RN JS context (foreground + headless), which is exactly this case.
  */
 
+import { ROUTES } from './routeNames';
+
 export type PendingAcceptNavigation = {
-  screen: 'VoiceHabit' | 'VoiceMealLog';
+  screen: typeof ROUTES.VOICE_HABIT | typeof ROUTES.VOICE_MEAL_LOG;
   mealSlotId?: string;
   habitId?: string;
   habitName?: string;
