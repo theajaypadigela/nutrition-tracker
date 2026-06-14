@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  buildReminderHealthReport,
-  HealthItem,
-  HealthStatus,
-  ReminderHealthReport,
-} from '../../services/notifications/reminderHealth';
+import { HealthStatus } from '../../services/notifications/reminderHealth';
+import { useReminderHealth } from '../../hooks/useReminderHealth';
 
 const STATUS_COLOR: Record<HealthStatus, string> = {
   ok: '#1D9E75',
@@ -31,36 +27,13 @@ const STATUS_LABEL: Record<HealthStatus, string> = {
 };
 
 export default function ReminderHealthScreen() {
-  const [report, setReport] = useState<ReminderHealthReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setReport(await buildReminderHealthReport());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { report, loading, busyId, load, runFix } = useReminderHealth();
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load]),
   );
-
-  const runFix = async (item: HealthItem) => {
-    if (!item.fix) return;
-    setBusyId(item.id);
-    try {
-      await item.fix.run();
-    } finally {
-      setBusyId(null);
-      // Re-read after returning from settings so the surface reflects the new state.
-      load();
-    }
-  };
 
   if (loading && !report) {
     return (
