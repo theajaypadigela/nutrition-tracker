@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import CaloriesSummaryCard from '../../components/nutrition-report/CaloriesSummaryCard';
 import MacroNutrientsSection from '../../components/nutrition-report/MacroNutrientsSection';
@@ -21,333 +21,36 @@ import {
 } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
-import {
-  Insight,
-  AllNutrientSummary,
-} from '../../components/nutrition-report/types';
 import AppBar from '../../components/AppBar';
-import useApi from '../../hooks/useApi';
-import { WeeklyNutritionReport } from '../../types/types';
-import { formatLocalDate } from '../../utils/date';
-
-interface InsightApiResponse {
-  variant: 'positive' | 'negative' | 'neutral';
-  message: string;
-}
-
-const DAYS_IN_WEEK = 7;
-const DAILY_GOALS = {
-  calories: 2500,
-  protein: 180,
-  carbs: 250,
-  fat: 70,
-  sugar: 40,
-  fiber: 30,
-  sodium: 2300,
-};
-
-const getCurrentSundayToSaturdayRange = () => {
-  const today = new Date();
-  const start = new Date(today);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(today.getDate() - today.getDay());
-
-  const end = new Date(start);
-  end.setDate(start.getDate() + DAYS_IN_WEEK - 1);
-
-  return {
-    startDate: formatLocalDate(start),
-    endDate: formatLocalDate(end),
-    daysElapsed: today.getDay() + 1,
-  };
-};
+import { useWeeklyNutritionReport } from '../../hooks/useWeeklyNutritionReport';
 
 const NutritionReportScreen = () => {
   const navigation = useNavigation();
-  const { data, request, loading } = useApi<WeeklyNutritionReport>();
-  const nutrientSummaryApi = useApi<AllNutrientSummary[]>();
-  const { request: nutrientSummaryRequest } = nutrientSummaryApi;
-  const insightsApi = useApi<InsightApiResponse[]>();
-  const { request: insightsRequest } = insightsApi;
-  const [reportData, setReportData] = useState<WeeklyNutritionReport | null>(
-    null,
-  );
-  const [allNutrients, setAllNutrients] = useState<AllNutrientSummary[]>([]);
-  const [aiInsights, setAiInsights] = useState<Insight[]>([]);
-  const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState<string | null>(null);
-  const [usingFallback, setUsingFallback] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const loadWeeklyReport = useCallback(async () => {
-    try {
-      const { startDate, endDate } = getCurrentSundayToSaturdayRange();
-      await request({
-        url: `/food/nutrition/weekly?startDate=${startDate}&endDate=${endDate}`,
-        method: 'GET',
-      });
-    } catch (error) {
-      console.error('Failed to load weekly nutrition report:', error);
-    }
-  }, [request]);
-
-  const loadNutrientSummaries = useCallback(async () => {
-    try {
-      const { startDate, endDate } = getCurrentSundayToSaturdayRange();
-      const result = await nutrientSummaryRequest({
-        url: `/food/nutrition/all?startDate=${startDate}&endDate=${endDate}`,
-        method: 'GET',
-      });
-      if (Array.isArray(result)) {
-        setAllNutrients(result);
-      }
-    } catch (error) {
-      console.error('Failed to load nutrient summaries:', error);
-    }
-  }, [nutrientSummaryRequest]);
+  const {
+    reportData,
+    loading,
+    refreshing,
+    reload,
+    handleRefresh,
+    fetchAiInsights,
+    insightsLoading,
+    insightsError,
+    usingFallback,
+    canShowInsights,
+    displayInsights,
+    daysElapsed,
+    caloriesSoFar,
+    proratedCalorieGoal,
+    weeklyCalorieGoal,
+    macroNutrients,
+    microNutrients,
+  } = useWeeklyNutritionReport();
 
   useEffect(() => {
-    const loadReportData = async () => {
-      await Promise.all([loadWeeklyReport(), loadNutrientSummaries()]);
-    };
-
-    loadReportData();
-    const unsubscribe = navigation.addListener('focus', loadReportData);
-
+    reload();
+    const unsubscribe = navigation.addListener('focus', reload);
     return unsubscribe;
-  }, [navigation, loadWeeklyReport, loadNutrientSummaries]);
-
-  useEffect(() => {
-    if (data) {
-      setReportData(data);
-    }
-  }, [data]);
-
-  // Fallback rule-based insights
-  const generateFallbackInsights = useCallback((): Insight[] => {
-    const insights: Insight[] = [];
-    if (!reportData) {
-      return [
-        {
-          variant: 'neutral',
-          message: 'Start logging your meals to get personalized insights!',
-        },
-      ];
-    }
-
-    const { weeklyAverage } = reportData;
-
-    if (weeklyAverage.fiber < 25) {
-      insights.push({
-        variant: 'negative',
-        message:
-          'Fiber low this week - add oats, veggies and fruits to your diet',
-      });
-    }
-    if (weeklyAverage.sugar > 50) {
-      insights.push({
-        variant: 'negative',
-        message: 'Sugar high this week - reduce sugary drinks and desserts',
-      });
-    }
-    if (weeklyAverage.protein >= 150) {
-      insights.push({
-        variant: 'positive',
-        message: 'Great protein intake!',
-      });
-    } else if (weeklyAverage.protein < 120) {
-      insights.push({
-        variant: 'neutral',
-        message: 'Consider adding more protein to your diet',
-      });
-    }
-
-    return insights.length > 0
-      ? insights
-      : [
-          {
-            variant: 'neutral',
-            message: 'Start logging your meals to get personalized insights!',
-          },
-        ];
-  }, [reportData]);
-
-  const hasNutritionData = useCallback((report: WeeklyNutritionReport | null) => {
-    if (!report?.weeklyTotals) {
-      return false;
-    }
-
-    const { calories, protein, carbs, fat, fiber, sugar, sodium } =
-      report.weeklyTotals;
-
-    return [calories, protein, carbs, fat, fiber, sugar, sodium].some(
-      value => (value ?? 0) > 0,
-    );
-  }, []);
-
-  // Fetch AI Insights
-  const fetchAiInsights = useCallback(async () => {
-    if (!hasNutritionData(reportData)) {
-      setAiInsights([]);
-      setInsightsError(null);
-      setUsingFallback(false);
-      setInsightsLoading(false);
-      return;
-    }
-
-    setInsightsLoading(true);
-    setInsightsError(null);
-    setUsingFallback(false);
-    try {
-      const { startDate, endDate } = getCurrentSundayToSaturdayRange();
-      const result = await insightsRequest({
-        url: `/food/nutrition/insights?startDate=${startDate}&endDate=${endDate}`,
-        method: 'GET',
-      });
-      if (result && Array.isArray(result)) {
-        setAiInsights(
-          result.map((r: InsightApiResponse) => ({
-            variant: r.variant,
-            message: r.message,
-          })),
-        );
-        setUsingFallback(false);
-      }
-    } catch (error: any) {
-      console.error('Failed to load AI insights:', error);
-      setInsightsError(
-        error?.message ||
-          'Failed to load AI insights. Showing rule-based insights.',
-      );
-      // Fallback to rule-based insights
-      if (reportData) {
-        const fallbackInsights = generateFallbackInsights();
-        setAiInsights(fallbackInsights);
-        setUsingFallback(true);
-      }
-    } finally {
-      setInsightsLoading(false);
-    }
-  }, [insightsRequest, reportData, generateFallbackInsights, hasNutritionData]);
-
-  useEffect(() => {
-    if (hasNutritionData(reportData)) {
-      fetchAiInsights();
-      return;
-    }
-
-    setAiInsights([]);
-    setInsightsError(null);
-    setUsingFallback(false);
-    setInsightsLoading(false);
-  }, [reportData, fetchAiInsights, hasNutritionData]);
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([loadWeeklyReport(), loadNutrientSummaries()]);
-    setRefreshing(false);
-  }, [loadWeeklyReport, loadNutrientSummaries]);
-
-  const canShowInsights = hasNutritionData(reportData);
-  const emptyStateInsight: Insight = {
-    variant: 'neutral',
-    message: 'Log your meals to get personalized insights.',
-  };
-  const displayInsights = canShowInsights
-    ? aiInsights.length > 0
-      ? aiInsights
-      : generateFallbackInsights()
-    : [emptyStateInsight];
-
-  const { daysElapsed } = getCurrentSundayToSaturdayRange();
-
-  const getSummaryTotal = useCallback(
-    (id: string): number => {
-      const nutrient = allNutrients.find(n => n.id === id);
-      if (!nutrient) {
-        return 0;
-      }
-      if (Array.isArray(nutrient.trend) && nutrient.trend.length > 0) {
-        return nutrient.trend.reduce((total, value) => total + value, 0);
-      }
-      const dailyAverage = nutrient.value ?? nutrient.weeklyAvg ?? 0;
-      return dailyAverage * daysElapsed;
-    },
-    [allNutrients, daysElapsed],
-  );
-
-  const preferNonZero = (primary: number, fallback: number) =>
-    primary > 0 ? primary : fallback;
-
-  // Use real data if available, otherwise show defaults
-  const caloriesSoFar = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.calories ?? 0),
-    Math.round(getSummaryTotal('calories')),
-  );
-  const dailyCalorieGoal = DAILY_GOALS.calories;
-  const proratedCalorieGoal = dailyCalorieGoal * daysElapsed;
-  const weeklyCalorieGoal = dailyCalorieGoal * DAYS_IN_WEEK;
-
-  const proteinCurrent = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.protein ?? 0),
-    Math.round(getSummaryTotal('protein')),
-  );
-  const carbsCurrent = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.carbs ?? 0),
-    Math.round(getSummaryTotal('carbs')),
-  );
-  const fatCurrent = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.fat ?? 0),
-    Math.round(getSummaryTotal('fat')),
-  );
-  const sugarCurrent = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.sugar ?? 0),
-    Math.round(getSummaryTotal('sugar')),
-  );
-  const fiberCurrent = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.fiber ?? 0),
-    Math.round(getSummaryTotal('fiber')),
-  );
-  const sodiumCurrent = preferNonZero(
-    Math.round(reportData?.weeklyTotals?.sodium ?? 0),
-    Math.round(getSummaryTotal('sodium')),
-  );
-
-  const macroNutrients = {
-    protein: {
-      current: proteinCurrent,
-      goal: DAILY_GOALS.protein * daysElapsed,
-      weeklyGoal: DAILY_GOALS.protein * DAYS_IN_WEEK,
-    },
-    carbs: {
-      current: carbsCurrent,
-      goal: DAILY_GOALS.carbs * daysElapsed,
-      weeklyGoal: DAILY_GOALS.carbs * DAYS_IN_WEEK,
-    },
-    fats: {
-      current: fatCurrent,
-      goal: DAILY_GOALS.fat * daysElapsed,
-      weeklyGoal: DAILY_GOALS.fat * DAYS_IN_WEEK,
-    },
-  };
-
-  const microNutrients = {
-    sugar: {
-      current: sugarCurrent,
-      goal: DAILY_GOALS.sugar * daysElapsed,
-      weeklyGoal: DAILY_GOALS.sugar * DAYS_IN_WEEK,
-    },
-    fiber: {
-      current: fiberCurrent,
-      goal: DAILY_GOALS.fiber * daysElapsed,
-      weeklyGoal: DAILY_GOALS.fiber * DAYS_IN_WEEK,
-    },
-    sodium: {
-      current: sodiumCurrent,
-      goal: DAILY_GOALS.sodium * daysElapsed,
-      weeklyGoal: DAILY_GOALS.sodium * DAYS_IN_WEEK,
-    },
-  };
+  }, [navigation, reload]);
 
   const handleOpenWeeklySummary = () => {
     navigation.navigate('WeeklyNutritionSummary' as never);
