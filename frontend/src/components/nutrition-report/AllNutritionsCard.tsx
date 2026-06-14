@@ -38,7 +38,7 @@ import {
   FoodSource,
   TopFoodSource,
 } from './types';
-import useApi from '../../hooks/useApi';
+import { nutritionApi } from '../../services/api/nutritionApi';
 import {
   addDaysToLocalDate,
   formatLocalDate,
@@ -184,10 +184,9 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
   refreshing = false,
   onRefresh,
 }) => {
-  const { data, request, loading, error } = useApi<AllNutrientSummary[]>();
-  const pinApi = useApi();
-  const targetApi = useApi();
-  const avoidApi = useApi();
+  const [data, setData] = useState<AllNutrientSummary[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [nutrients, setNutrients] = useState<AllNutrientSummary[]>([]);
 
@@ -216,15 +215,21 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchNutrients = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      await request({
-        url: `/food/nutrition/all?startDate=${startDate}&endDate=${endDate}`,
-        method: 'GET',
-      });
-    } catch {
-      // error handled by hook
+      const result = await nutritionApi.getAllNutrients({ startDate, endDate });
+      setData(Array.isArray(result) ? result : []);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          'An unexpected error occurred',
+      );
+    } finally {
+      setLoading(false);
     }
-  }, [request, startDate, endDate]);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchNutrients();
@@ -310,10 +315,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
   // Pin handler
   const handlePin = async (nutrientId: string) => {
     try {
-      await pinApi.request({
-        url: `/food/nutrient/${nutrientId}/pin`,
-        method: 'POST',
-      });
+      await nutritionApi.pinNutrient(nutrientId);
       // Update local state
       setNutrients(prev =>
         prev.map(n => (n.id === nutrientId ? { ...n, pinned: !n.pinned } : n)),
@@ -335,11 +337,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
       const target = parseFloat(value);
       if (isNaN(target) || target <= 0) return;
 
-      await targetApi.request({
-        url: `/food/nutrient/${nutrientId}/target`,
-        method: 'PUT',
-        data: { target },
-      });
+      await nutritionApi.setNutrientTarget(nutrientId, target);
       // Refresh nutrients to get recalculated pctDV/flag
       fetchNutrients();
     } catch (err) {
@@ -365,11 +363,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
               .map(f => f.trim())
               .filter(f => f.length > 0);
             try {
-              await avoidApi.request({
-                url: `/food/nutrient/${nutrientId}/avoid`,
-                method: 'PUT',
-                data: { foods },
-              });
+              await nutritionApi.markNutrientAvoid(nutrientId, foods);
               setNutrients(prev =>
                 prev.map(n =>
                   n.id === nutrientId
