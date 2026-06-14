@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
-import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
@@ -15,14 +14,8 @@ import { initializeVapiClient } from '../../services/vapiSessionService';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
-
-function toDebugJson(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
+import { toDebugJson } from '../../utils/debug';
+import { useMicrophonePermission } from '../../hooks/useMicrophonePermission';
 
 
 /** Uses backend Gemini interpretation to infer completion/reschedule intent. */
@@ -262,18 +255,7 @@ export default function VoiceHabitScreen() {
     };
   }, []);
 
-  const requestMicPermission = useCallback(async (): Promise<boolean> => {
-    const perm =
-      Platform.OS === 'ios'
-        ? PERMISSIONS.IOS.MICROPHONE
-        : PERMISSIONS.ANDROID.RECORD_AUDIO;
-    const result = await check(perm);
-    if (result === RESULTS.GRANTED) {
-      return true;
-    }
-    const requested = await request(perm);
-    return requested === RESULTS.GRANTED;
-  }, []);
+  const requestMicPermission = useMicrophonePermission();
 
   const startVoiceCall = useCallback(async () => {
     setStatus('requesting');
