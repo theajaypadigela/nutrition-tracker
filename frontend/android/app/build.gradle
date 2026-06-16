@@ -133,6 +133,9 @@ dependencies {
     implementation project(':notifee_react-native')
     implementation project(':react-native-sound')
 
+    // NotificationCompat.CallStyle + Person + IconCompat for the native incoming-call UI.
+    implementation("androidx.core:core-ktx:1.13.1")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

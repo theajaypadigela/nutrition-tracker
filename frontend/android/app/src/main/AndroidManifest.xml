@@ -18,8 +18,22 @@
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <!--
+    The incoming call rings inside IncomingCallService (foregroundServiceType="phoneCall"), so the
+    ring no longer depends on the full-screen Activity launching. The phoneCall type is permitted
+    because the app holds MANAGE_OWN_CALLS (declared below). Required from Android 14 (API 34).
+  -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <!--
+    Marks the app as a genuine "calling" app. Together with USE_FULL_SCREEN_INTENT and
+    CallStyle (category=CALL) notifications this is the documented signature that keeps the
+    full-screen-intent grant on Android 14+ (pair with the Play Console full-screen-intent
+    declaration). We do NOT register a Telecom PhoneAccount / ConnectionService — the
+    incoming-call UI is a self-drawn native Activity, so no call-log integration is implied.
+  -->
+  <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
   <!--
     Declared explicitly so Notifee's boot receiver re-arms alarm triggers after reboot.
     Previously this only existed via Notifee's manifest merge.
@@ -49,5 +63,38 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
+
+    <!--
+      Native full-screen incoming-call screen. Rendered in pure Kotlin (no React bridge) so it
+      appears instantly over the lockscreen even when the app process was killed — no JS
+      cold-start race. showWhenLocked/turnScreenOn draw it over the keyguard; a dedicated
+      taskAffinity + excludeFromRecents keep it out of recents and isolated from MainActivity.
+    -->
+    <activity
+      android:name=".incomingcall.IncomingCallActivity"
+      android:exported="false"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:excludeFromRecents="true"
+      android:launchMode="singleInstance"
+      android:taskAffinity="com.habit_builder_app.incomingcall"
+      android:theme="@style/IncomingCallTheme"
+      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|uiMode" />
+
+    <!--
+      Foreground service that owns a ringing call (CallStyle + full-screen notification, looping
+      ringtone, 60s timeout). foregroundServiceType="phoneCall" is allowed because the app holds
+      MANAGE_OWN_CALLS; it keeps the process alive so the ring works even when the full-screen
+      Activity can't launch (Android 14+ FSI denied / background launch blocked).
+    -->
+    <service
+      android:name=".incomingcall.IncomingCallService"
+      android:exported="false"
+      android:foregroundServiceType="phoneCall" />
+
+    <!-- Handles Decline / Snooze actions on the call & missed notifications (works from background). -->
+    <receiver
+      android:name=".incomingcall.CallActionReceiver"
+      android:exported="false" />
   </application>
 </manifest>
