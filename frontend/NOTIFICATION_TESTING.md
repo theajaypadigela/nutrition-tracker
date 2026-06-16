@@ -101,3 +101,31 @@ No iOS build exists in this repo (no `Podfile.lock`), so the following are **not
 - Elapsed one-shots are dropped on iOS; launch reconciliation surfaces them as missed.
 
 Run these on a physical iOS device once a build pipeline exists.
+
+---
+
+## F. The four reported fixes (2026-06-15)
+
+> **Execution status:** authored with **no device/emulator attached** (`adb devices` empty).
+> Frontend `npx tsc --noEmit` and `npm test` (60 tests) pass; `./gradlew :app:compileDebugKotlin`
+> builds. The native runtime behavior below is **compile-verified only** — run on a device.
+>
+> **Dev-build note for Issue 1:** installing over a previous build keeps Notifee's trigger
+> database, so a *stale* trigger from an older id scheme can linger. The broadened `meal-`
+> prune handles it on the next reconcile, but for a clean baseline either fully uninstall
+> first (`adb uninstall $PKG`) or open the app once after install (cold-start reconcile prunes).
+
+| # | Scenario | Commands / steps | Expected outcome | Result |
+|---|----------|------------------|------------------|--------|
+| F1 | **Issue 1 — meal time change takes effect** | Set the meal reminder to T1 (e.g. 10:43 PM), save. `adb shell dumpsys alarm \| grep -A3 $PKG` → note the alarm. Change to T2 (e.g. 11:15 PM) the next day, save. Re-check `dumpsys alarm`. | Exactly ONE meal alarm, at **T2**. The T1 alarm is gone (cancel-before-arm + `meal-alarm-daily` overwrite). At T1 nothing fires; at T2 the call rings. | |
+| F2 | **Issue 1 — habit time change takes effect** | Create a call habit at T1; confirm armed (`dumpsys alarm`). Edit/recreate it to T2 (delete+recreate). Re-check. Also repeat with **airplane mode ON** during the change (forces the GET /habit fetch to fail). | Only the T2 slot trigger (`habit-call-<T2>`) remains; the old `habit-call-<T1>` is pruned even when the fetch fails (`forceHabitPrune`). Old time never rings. | |
+| F3 | **Issue 2 — manage reminder on Food Log** | Open the **Food tab → Food Log**. | A "Meal logging reminder" card is shown inline with time + toggle + Save. Changing time + Save here schedules identically to the Profile → Meal Reminders screen (verify with F1). No nested-scroll warning in logcat. | |
+| F4 | **Issue 3 — missed-call notification (killed app)** | `adb shell am force-stop $PKG`. Let a call fire; do NOT answer; wait >60s. | At ~60s an **audible** "You missed your … call" notification appears (posted natively by `IncomingCallService` on timeout) with **Log now** + **Snooze** actions — even though the app stayed killed. | |
+| F5 | **Issue 3 — missed notification (app open, ignored)** | With the app foregrounded, let a call ring and ignore it for >60s. | Same audible missed notification appears; only ONE (native posts it; JS reconcile dedupes via `markFollowUpShown`). Habit calls also report MISSED to the server. | |
+| F6 | **Issue 3 — Log now** | Tap **Log now** (or the body) on the missed notification. | App opens straight into the voice log for that occurrence (meal → VoiceMealLog, habit → VoiceHabit). | |
+| F7 | **Issue 3 — Snooze** | Tap **Snooze** on the missed notification. `adb shell dumpsys alarm \| grep $PKG`. | The missed notification is dismissed and a one-shot alarm is armed ~10 min out; when it fires the call re-rings (works even if the app is never reopened). | |
+| F8 | **Issue 3 — declined is not "missed"** | Decline a call (notification action or screen button). Reopen. | NO missed notification and NO server MISSED for that occurrence (decline marker handled before the missed sweep). | |
+| F9 | **Issue 4 — default ringtone (Activity shown)** | Trigger a call with the screen on. Confirm the device's ringtone volume is up and ringer mode = Normal. | The **device default ringtone** plays, looping, with call vibration, and ducks/overrides other audio (audio focus). Stops on answer/decline/timeout. | |
+| F10 | **Issue 4 — rings without the full-screen Activity** | Android 14+: revoke "full screen intents" for the app (Settings → Apps → Special access, or `adb shell appops set $PKG SYSTEM_ALERT_WINDOW ...` analog) so the FSI is downgraded; trigger a call. | The ringtone STILL plays (the foreground service owns it; previously the silent channel meant no sound when the Activity didn't launch). A heads-up call notification is shown. | |
+| F11 | **Issue 4 — ringer mode respected** | Set the phone to Vibrate, then Silent; trigger a call in each. | Vibrate: vibration only, no ringtone. Silent: neither (like a real incoming call). Normal: ringtone + vibration. | |
+| F12 | **Issue 4 — FGS does not crash** | Trigger a call from a fully killed app (exact alarm path). `adb logcat \| grep -iE "IncomingCallService\|ForegroundServiceStartNotAllowed\|did not then call startForeground"`. | The phoneCall foreground service starts and rings; no `ForegroundServiceStartNotAllowedException` (exact-alarm exemption) and no "did not then call startForeground" crash. If the FGS is ever blocked, logs show the notification-only fallback rather than a crash. | |
