@@ -13,18 +13,6 @@ export type VoiceHabitParams = {
 export type VoiceMealLogParams = {
   mealSlotId?: string;
   autoStart?: boolean;
-};
-
-export type IncomingMealCallParams = {
-  mealSlotId?: string;
-  notificationId?: string;
-  autoAccept?: boolean;
-};
-
-export type IncomingHabitCallParams = {
-  habitId?: string;
-  habitName?: string;
-  habitTime?: string;
-  notificationId?: string;
-  autoAccept?: boolean;
+  /** Optional date the in-app mic entry point is logging for (defaults to today). */
+  selectedDate?: string;
 };

@@ -4,7 +4,6 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { useAuth } from '../context/AuthContext';
-import IncomingCallScreen from '../components/IncomingCallScreen';
 import MealScheduleScreen from '../screens/main/MealScheduleScreen';
 import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealScheduleScreen';
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
@@ -12,19 +11,15 @@ import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import ReminderHealthScreen from '../screens/main/ReminderHealthScreen';
 import { navigationRef } from './navigationRef';
-import type {
-  IncomingHabitCallParams,
-  IncomingMealCallParams,
-  VoiceHabitParams,
-  VoiceMealLogParams,
-} from './paramTypes';
+import type { VoiceHabitParams, VoiceMealLogParams } from './paramTypes';
 
 export { navigationRef };
 
+// The incoming call itself is a NATIVE screen (android/.../incomingcall/IncomingCallActivity),
+// not a React route — so there are no IncomingMealCall/IncomingHabitCall routes. Accepting a call
+// navigates straight into the voice session below.
 export type RootStackParamList = {
   MainTabs: undefined;
-  IncomingMealCall: IncomingMealCallParams;
-  IncomingHabitCall: IncomingHabitCallParams;
   MealSchedule: undefined;
   OnboardingMealSchedule: undefined;
   Profile: undefined;
@@ -39,17 +34,6 @@ const AuthenticatedNavigator = () => {
   return (
     <RootStack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
-      <RootStack.Screen
-        name="IncomingMealCall"
-        component={IncomingCallScreen}
-        options={{
-          presentation: 'modal',
-          gestureEnabled: false,
-          headerShown: false,
-          cardStyle: { backgroundColor: 'transparent' },
-          cardOverlayEnabled: false,
-        }}
-      />
       <RootStack.Screen
         name="MealSchedule"
         component={MealScheduleScreen}
@@ -76,23 +60,18 @@ const AuthenticatedNavigator = () => {
       <RootStack.Screen
         name="VoiceMealLog"
         component={VoiceMealLogScreen}
-        options={{ title: 'Voice Meal Log' }}
+        options={{ title: 'Meal Voice Call' }}
       />
-      <RootStack.Screen
-        name="IncomingHabitCall"
-        component={IncomingCallScreen}
-        options={{
-          presentation: 'modal',
-          gestureEnabled: false,
-          headerShown: false,
-          cardStyle: { backgroundColor: 'transparent' },
-          cardOverlayEnabled: false,
-        }}
-      />
+      {/*
+        VoiceHabit has no in-app (non-call) entry point by design: a habit check-in is
+        scoped to a specific scheduled time slot, so it is reached only by accepting a
+        habit call. VoiceMealLog (general meal logging) keeps its FoodLog mic entry. The
+        call EXPERIENCE itself is unified; the entry points differ deliberately.
+      */}
       <RootStack.Screen
         name="VoiceHabit"
         component={VoiceHabitScreen}
-        options={{ title: 'Habit Check-in' }}
+        options={{ title: 'Habit Voice Call' }}
       />
     </RootStack.Navigator>
   );

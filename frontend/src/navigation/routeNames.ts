@@ -4,8 +4,6 @@
  */
 export const ROUTES = {
   MAIN_TABS: 'MainTabs',
-  INCOMING_MEAL_CALL: 'IncomingMealCall',
-  INCOMING_HABIT_CALL: 'IncomingHabitCall',
   MEAL_SCHEDULE: 'MealSchedule',
   ONBOARDING_MEAL_SCHEDULE: 'OnboardingMealSchedule',
   PROFILE: 'Profile',
