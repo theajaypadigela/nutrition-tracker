@@ -25,6 +25,8 @@ import { getTodayLocalDate } from '../../utils/date';
 import { formatEpochTime12h } from '../../utils/timeFormatter';
 import { useFoodLog } from '../../hooks/useFoodLog';
 import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
+import { navigateToVoiceMealLog } from '../../navigation/navigationUtils';
+import MealReminderSettings from '../../components/food-log/MealReminderSettings';
 
 type FoodLogNavigationProp = StackNavigationProp<
   FoodStackParamList,
@@ -90,13 +92,15 @@ const FoodLogScreen = () => {
             <View className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 gap-2">
               <Clock size={16} color="#D97706" />
               <Text className="text-amber-700 text-sm flex-1">
-                Meal logging call rescheduled for today at{' '}
+                Meal logging call rescheduled for{' '}
                 <Text className="font-bold text-amber-800">
                   {formatEpochTime12h(mealRescheduleTime)}
                 </Text>
               </Text>
             </View>
           )}
+          {/* Manage the daily meal-logging reminder right here, where meals are logged. */}
+          <MealReminderSettings variant="card" />
           <VStack>
             <Text size="md" className="font-bold text-gray-500">
               MEAL BREAKDOWN
@@ -138,9 +142,9 @@ const FoodLogScreen = () => {
         />
       </ScrollView>
 
-      {/* Voice Log Button */}
+      {/* Voice Log Button — routes to the root-stack VoiceMealLog (single registration). */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('VoiceMealLog', { selectedDate })}
+        onPress={() => navigateToVoiceMealLog({ selectedDate })}
         style={styles.voiceFab}
         activeOpacity={0.8}
       >
