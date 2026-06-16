@@ -21,7 +21,7 @@ import {
   resolvePendingAnswer,
   listExpiredPendingAnswers,
 } from './pendingAnswerStore';
-import { recordMissed, missedKey } from './missedStore';
+import { recordMissed, missedKey, markFollowUpShown } from './missedStore';
 import { reportHabitOccurrence } from './habitOccurrenceApi';
 
 export const RING_TIMEOUT_MS = 60_000;
@@ -131,6 +131,39 @@ export async function onCallDeclined(occ: OccurrenceData): Promise<void> {
     });
   }
   reminderLog.info('call.declined', 'Call declined', { kind: occ.kind });
+}
+
+/**
+ * A call rang out unanswered (the native foreground service's 60s timeout). The service ALREADY
+ * posted the user-visible missed-call follow-up, so here we only record the miss, mark the
+ * follow-up as shown (so the reconciliation pass never posts a duplicate), resolve the
+ * pending-answer marker, and report MISSED to the server for habits. Drained from the native
+ * markers at the start of reconciliation (callMarkers.applyCallResultMarkers), before the
+ * pending-answer sweep, so it is never double-counted.
+ */
+export async function onCallMissed(
+  occ: OccurrenceData,
+  nowEpoch: number = Date.now(),
+): Promise<void> {
+  const key = occurrenceKey(occ);
+  const newly = await recordMissed({
+    key,
+    kind: occ.kind,
+    intendedFireAt: occ.intendedFireAt ?? nowEpoch,
+    recordedAt: nowEpoch,
+    slotKey: occ.slotKey,
+    habit: { habitId: occ.habitId, habitName: occ.habitName, habitTime: occ.habitTime },
+  });
+  await markFollowUpShown(key);
+  await resolvePendingAnswer(key);
+  if (newly && (occ.kind === 'habit-call' || occ.kind === 'habit-push')) {
+    await reportHabitOccurrence({
+      habitId: occ.habitId,
+      reminderTime: occ.habitTime,
+      status: 'MISSED',
+    });
+  }
+  reminderLog.info('call.missed', 'Call missed (rang out)', { kind: occ.kind });
 }
 
 async function recordMissedOccurrence(

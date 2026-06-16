@@ -1,20 +1,23 @@
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import notifee, { EventType } from '@notifee/react-native';
-import { ROUTES } from '../../navigation/routeNames';
-import { navigateToIncomingCall } from '../../navigation/navigationUtils';
 import {
   readOccurrenceData,
   onCallDelivered,
+  onCallDeclined,
 } from '../../services/notifications/callLifecycle';
-import {
-  handleAcceptCall,
-  handleDeclineCall,
-  setActiveCallNotificationId,
-  showCallBanner,
-} from '../useIncomingCall';
+import { presentIncomingCall } from '../../services/notifications/nativeIncomingCall';
+import { handleAcceptCall } from '../useIncomingCall';
 import { payloadFromData } from './callPayload';
 
-/** Foreground notifee events: delivered (in-app banner), press (navigate), action-press. */
+/**
+ * Foreground Notifee events for calls.
+ *  - Android: on DELIVERED, classify staleness + record the pending-answer marker, dismiss the
+ *    silent heartbeat, and ring the NATIVE full-screen call (a real takeover even with the app
+ *    open). Accept/Decline happen natively, so there are no Notifee actions to handle here.
+ *  - iOS (true-call out of scope): the OS presents the call notification; we handle its
+ *    Accept/Decline actions.
+ */
 export function useForegroundNotificationEvents() {
   useEffect(() => {
     return notifee.onForegroundEvent(({ type, detail }) => {
@@ -22,59 +25,29 @@ export function useForegroundNotificationEvents() {
       const notificationId = detail.notification?.id;
       const occ = readOccurrenceData(data);
 
-      if (notificationId) setActiveCallNotificationId(notificationId);
-
       const isCall = occ.kind === 'meal-call' || occ.kind === 'habit-call';
       if (!isCall) return;
 
       if (type === EventType.DELIVERED) {
-        // Classify staleness and record the in-flight call. A stale fire is suppressed:
-        // no in-app ringing banner, a quiet missed record instead.
         onCallDelivered(occ, notificationId)
           .then(({ suppress }) => {
-            if (suppress) {
-              if (notificationId) {
-                notifee.cancelDisplayedNotification(notificationId).catch(() => {});
-              }
-              return;
-            }
-            // Display-only cancel (P0 #2): swap the OS notification for the in-app banner
-            // WITHOUT deleting the recurring trigger.
+            if (Platform.OS !== 'android') return;
             if (notificationId) {
               notifee.cancelDisplayedNotification(notificationId).catch(() => {});
             }
-            showCallBanner(payloadFromData(data, notificationId, occ));
+            if (suppress) return;
+            presentIncomingCall(payloadFromData(data, notificationId, occ));
           })
           .catch(() => {});
         return;
       }
 
-      if (type === EventType.PRESS) {
-        const target =
-          occ.kind === 'meal-call'
-            ? ROUTES.INCOMING_MEAL_CALL
-            : ROUTES.INCOMING_HABIT_CALL;
-        navigateToIncomingCall(target, {
-          notificationId,
-          autoAccept: false,
-          ...(occ.kind === 'meal-call'
-            ? { mealSlotId: data?.mealSlotId }
-            : {
-                habitId: occ.habitId,
-                habitName: occ.habitName,
-                habitTime: occ.habitTime,
-              }),
-        });
-        return;
-      }
-
+      // iOS notification actions.
       if (type === EventType.ACTION_PRESS) {
-        const payload = payloadFromData(data, notificationId, occ);
         if (detail.pressAction?.id === 'accept') {
-          handleAcceptCall(payload).catch(() => {});
-        }
-        if (detail.pressAction?.id === 'decline') {
-          handleDeclineCall(payload).catch(() => {});
+          handleAcceptCall(payloadFromData(data, notificationId, occ)).catch(() => {});
+        } else if (detail.pressAction?.id === 'decline') {
+          onCallDeclined(occ).catch(() => {});
         }
       }
     });

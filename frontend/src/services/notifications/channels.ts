@@ -2,9 +2,15 @@
  * Notification channel definitions, creation, and health detection (§C channel health).
  *
  * Channel settings are immutable after creation on Android, so when we need different
- * settings we bump the channel id version (the existing `meal-call-v2` pattern). This
- * module is the single source of channel ids; schedulers import these constants rather
- * than hard-coding strings, so a version bump is one edit here.
+ * settings we bump the channel id version. This module is the single source of channel ids;
+ * schedulers import these constants rather than hard-coding strings.
+ *
+ * Call architecture note: the actual incoming call is drawn by the NATIVE incoming-call surface
+ * (a CallStyle + full-screen-intent notification on NATIVE_CALL_CHANNEL_ID, posted from Kotlin).
+ * On the JS side, a call reminder fires a SILENT, low-importance "heartbeat" notification
+ * (CALL_HEARTBEAT_CHANNEL_ID) whose only job is to run the Notifee trigger and emit the DELIVERED
+ * event; the foreground/background handlers then ask the native side to ring and cancel the
+ * heartbeat. So there is no longer a loud, user-facing JS call channel.
  */
 
 import notifee, {
@@ -14,54 +20,84 @@ import notifee, {
 import { Platform } from 'react-native';
 import { reminderLog } from './logger';
 
-// Bumped from meal-call-v2 / habit-call-v1: these channels now carry call semantics we
-// want consistent (importance HIGH, bypassDnd best-effort, looping call vibration).
-export const MEAL_CALL_CHANNEL_ID = 'meal-call-v3';
-export const HABIT_CALL_CHANNEL_ID = 'habit-call-v2';
+/** Silent alarm carrier for calls: fires the trigger + DELIVERED event, then is cancelled. */
+export const CALL_HEARTBEAT_CHANNEL_ID = 'call-heartbeat-v1';
+
+/**
+ * High-importance, silent channel the NATIVE CallStyle notification uses. Created here too so it
+ * exists from startup (for health inspection); the native side reuses it. Keep this id in sync
+ * with CallConstants.NOTIFICATION_CHANNEL_ID in the Kotlin incomingcall package.
+ */
+export const NATIVE_CALL_CHANNEL_ID = 'incoming-call-native-v1';
+
 export const HABIT_PUSH_CHANNEL_ID = 'habit-push-v2';
 
-/** Quiet channel for late/missed reminder follow-ups — no full-screen, no loop. */
-export const MISSED_CHANNEL_ID = 'reminder-missed-v1';
+/**
+ * Audible channel for missed-reminder follow-ups (no full-screen, no loop). Audible — not silent —
+ * so the user actually notices they missed a call. Kept in sync with the native
+ * CallConstants.MISSED_CHANNEL_ID (the foreground service posts on this same channel).
+ */
+export const MISSED_CHANNEL_ID = 'reminder-missed-v2';
 
 type ChannelDef = {
   id: string;
   name: string;
   description: string;
+  importance: AndroidImportance;
+  silent: boolean;
+  /** Whether this channel's health is surfaced as a "calls can ring" dependency. */
   call: boolean;
 };
 
 export const CHANNEL_DEFS: ChannelDef[] = [
   {
-    id: MEAL_CALL_CHANNEL_ID,
-    name: 'Meal Logging Calls',
-    description: 'Full-screen incoming call notifications for meal logging',
+    id: NATIVE_CALL_CHANNEL_ID,
+    name: 'Incoming Calls',
+    description: 'Full-screen incoming voice-assistant calls',
+    importance: AndroidImportance.HIGH,
+    silent: true, // the native ring screen plays the looping ringtone
     call: true,
   },
   {
-    id: HABIT_CALL_CHANNEL_ID,
-    name: 'Habit Voice Reminders',
-    description: 'Full-screen incoming call notifications for habit reminders',
-    call: true,
+    id: CALL_HEARTBEAT_CHANNEL_ID,
+    name: 'Call Delivery',
+    description: 'Internal: wakes the app to ring a call (no sound of its own)',
+    importance: AndroidImportance.LOW,
+    silent: true,
+    call: false,
   },
   {
     id: HABIT_PUSH_CHANNEL_ID,
     name: 'Habit Push Reminders',
     description: 'Standard push notifications for habit reminders',
+    importance: AndroidImportance.HIGH,
+    silent: false,
     call: false,
   },
   {
     id: MISSED_CHANNEL_ID,
     name: 'Missed Reminders',
-    description: 'Quiet follow-ups when a reminder was missed or arrived late',
+    description: 'Audible follow-ups when a reminder call was missed or arrived late',
+    importance: AndroidImportance.HIGH,
+    silent: false,
     call: false,
   },
 ];
 
 export const CALL_CHANNEL_IDS = CHANNEL_DEFS.filter(c => c.call).map(c => c.id);
 
-// Superseded channel ids from earlier versions. Deleted on startup so upgrading users
-// don't accumulate duplicate "Meal Logging Calls" entries in system settings.
-const DEPRECATED_CHANNEL_IDS = ['meal-call-v2', 'habit-call-v1', 'habit-push-v1'];
+// Superseded channel ids from earlier versions (including the old loud per-family call channels,
+// now replaced by the native call surface). Deleted on startup so upgrading users don't keep
+// stale "Meal Logging Calls"/"Habit Voice Reminders" entries in system settings.
+const DEPRECATED_CHANNEL_IDS = [
+  'meal-call-v2',
+  'meal-call-v3',
+  'habit-call-v1',
+  'habit-call-v2',
+  'habit-push-v1',
+  // Superseded by reminder-missed-v2 (made audible so missed-call follow-ups are noticed).
+  'reminder-missed-v1',
+];
 
 export async function ensureChannels(): Promise<void> {
   if (Platform.OS !== 'android') {
@@ -75,17 +111,12 @@ export async function ensureChannels(): Promise<void> {
       id: def.id,
       name: def.name,
       description: def.description,
-      importance: AndroidImportance.HIGH,
+      importance: def.importance,
       visibility: AndroidVisibility.PUBLIC,
-      // DND honesty (§C): bypassDnd requires user-granted DND access
-      // (ACCESS_NOTIFICATION_POLICY), which Notifee can't request and we don't, so it was
-      // a no-op for ~all users. We set it false rather than claim a bypass we don't have.
-      // The real Doze/DND resilience for call reminders comes from the SET_ALARM_CLOCK
-      // alarm type (notificationBuilder), which is honored as an alarm even in DND when the
-      // user permits alarms — the common default.
+      // DND honesty (§C): bypassDnd requires user-granted DND access which we don't request.
       bypassDnd: false,
-      vibration: true,
-      sound: def.id === MISSED_CHANNEL_ID ? undefined : 'default',
+      vibration: !def.silent,
+      sound: def.silent ? undefined : 'default',
       lights: true,
       lightColor: '#10b981',
     });
@@ -96,13 +127,13 @@ export type ChannelHealth = {
   id: string;
   exists: boolean;
   blocked: boolean;
-  /** Lowered below HIGH by the user; reduces heads-up / sound behaviour. */
+  /** Lowered below HIGH by the user; reduces heads-up behaviour. */
   loweredImportance: boolean;
 };
 
 /**
- * Inspects the call channels users most rely on. Users can mute, lower, or delete a
- * channel; because channel settings are immutable we can only detect and prompt.
+ * Inspects the call channels users most rely on. Users can mute, lower, or delete a channel;
+ * because channel settings are immutable we can only detect and prompt.
  */
 export async function inspectCallChannels(): Promise<ChannelHealth[]> {
   if (Platform.OS !== 'android') {

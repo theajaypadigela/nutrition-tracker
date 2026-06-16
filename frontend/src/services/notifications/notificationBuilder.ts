@@ -19,18 +19,17 @@ import {
   TimestampTrigger,
   RepeatFrequency,
   AndroidImportance,
-  AndroidCategory,
   AndroidVisibility,
   AlarmType,
   Notification,
 } from '@notifee/react-native';
 import { Platform } from 'react-native';
 import {
-  MEAL_CALL_CHANNEL_ID,
-  HABIT_CALL_CHANNEL_ID,
+  CALL_HEARTBEAT_CHANNEL_ID,
   HABIT_PUSH_CHANNEL_ID,
   MISSED_CHANNEL_ID,
 } from './channels';
+import { assistantContextLabel, callNotificationTitle } from '../../config/assistant';
 
 export type ReminderKind = 'meal-call' | 'habit-call' | 'habit-push';
 
@@ -52,8 +51,10 @@ export type BuildCallInput = {
 const CALL_VIBRATION_PATTERN = [1000, 500, 1000, 500];
 
 function callTitle(kind: ReminderKind, habitName?: string): string {
-  if (kind === 'meal-call') return 'AI Nutrition Assistant';
-  if (kind === 'habit-call') return 'AI Habit Assistant';
+  // Unified identity: meal and habit CALLS share one assistant name (the meal/habit context
+  // lives in the body). habit-push, a plain non-call reminder, keeps its descriptive title.
+  if (kind === 'meal-call') return callNotificationTitle('meal');
+  if (kind === 'habit-call') return callNotificationTitle('habit');
   return habitName ? `Habit Reminder: ${habitName}` : 'Habit Reminder';
 }
 
@@ -81,60 +82,39 @@ export function buildReminderNotification(input: BuildCallInput): Notification {
     id: input.id,
     title: callTitle(input.kind, input.habit?.habitName),
     body: isCall
-      ? 'Incoming voice call'
+      ? `Incoming voice call · ${assistantContextLabel(isMeal ? 'meal' : 'habit')}`
       : input.habit?.habitName
         ? `Time for your habit: ${input.habit.habitName}`
         : 'Habit reminder',
     data,
-    android: {
-      channelId: isMeal
-        ? MEAL_CALL_CHANNEL_ID
-        : isCall
-          ? HABIT_CALL_CHANNEL_ID
-          : HABIT_PUSH_CHANNEL_ID,
-      importance: AndroidImportance.HIGH,
-      visibility: AndroidVisibility.PUBLIC,
-      sound: 'default',
-      vibrationPattern: CALL_VIBRATION_PATTERN,
-      pressAction: { id: 'default', launchActivity: 'default' },
-      ...(isCall
-        ? {
-            category: AndroidCategory.CALL,
-            lightUpScreen: true,
-            ongoing: true,
-            loopSound: true,
-            autoCancel: false,
-            showTimestamp: false,
-            timeoutAfter: 60_000,
-            fullScreenAction: {
-              id: isMeal ? 'meal-fullscreen' : 'habit-fullscreen',
-              launchActivity: 'default',
-            },
-            actions: [
-              {
-                title: 'Accept',
-                pressAction: { id: 'accept', launchActivity: 'default' },
-              },
-              { title: 'Decline', pressAction: { id: 'decline' } },
-            ],
-          }
-        : {}),
-    },
+    android: isCall
+      ? {
+          // Silent alarm-carrier "heartbeat" (Android). Its only job is to fire the Notifee
+          // trigger and emit the DELIVERED event; the foreground/background handler then asks
+          // the NATIVE incoming-call surface to ring (CallStyle + full-screen Activity) and
+          // cancels this heartbeat. No sound, no full-screen action, no buttons here.
+          channelId: CALL_HEARTBEAT_CHANNEL_ID,
+          importance: AndroidImportance.LOW,
+          visibility: AndroidVisibility.SECRET,
+          autoCancel: true,
+        }
+      : {
+          channelId: HABIT_PUSH_CHANNEL_ID,
+          importance: AndroidImportance.HIGH,
+          visibility: AndroidVisibility.PUBLIC,
+          sound: 'default',
+          vibrationPattern: CALL_VIBRATION_PATTERN,
+          pressAction: { id: 'default', launchActivity: 'default' },
+        },
     ios: {
       sound: 'default',
       interruptionLevel: 'timeSensitive',
       // categoryId enables Accept/Decline action buttons on iOS (registered in iosCategories.ts).
+      // iOS true-call (CallKit/PushKit) is out of scope; iOS calls are delivered as standard
+      // time-sensitive notifications with Accept/Decline actions, so they must be presented in
+      // the foreground (no native takeover and no in-app banner on iOS).
       ...(isCall ? { categoryId: isMeal ? 'meal-call' : 'habit-call' } : {}),
-      // Foreground presentation:
-      //  - Calls suppress the OS banner/sound so they don't duplicate the in-app call takeover
-      //    (§G) — the foreground handler shows the in-app banner instead.
-      //  - Push reminders (habit 'notification') have NO in-app replacement, so they MUST be
-      //    presented by the OS in the foreground; suppressing them here made habit-push silently
-      //    invisible whenever the app was open (the foreground handler early-returns for
-      //    non-calls). Present a normal heads-up banner + sound for them.
-      foregroundPresentationOptions: isCall
-        ? { banner: false, list: false, sound: false, badge: true }
-        : { banner: true, list: true, sound: true, badge: true },
+      foregroundPresentationOptions: { banner: true, list: true, sound: true, badge: true },
     },
   };
 
@@ -186,10 +166,8 @@ export function buildMissedFollowUp(input: {
 }): Notification {
   const isMeal = input.kind === 'meal-call';
   const label = isMeal
-    ? 'You missed your meal call'
-    : input.habit?.habitName
-      ? `You missed: ${input.habit.habitName}`
-      : 'You missed a habit reminder';
+    ? 'You missed your food logging call today'
+    : 'You missed your habit call today';
 
   const data: Record<string, string> = {
     screen: isMeal ? 'MissedMeal' : 'MissedHabit',
@@ -207,8 +185,10 @@ export function buildMissedFollowUp(input: {
     body: 'Tap to log now or snooze.',
     data,
     android: {
+      // HIGH to match the audible MISSED_CHANNEL (reminder-missed-v2). Channel settings are
+      // authoritative on Android, so this just keeps intent and channel aligned.
       channelId: MISSED_CHANNEL_ID,
-      importance: AndroidImportance.DEFAULT,
+      importance: AndroidImportance.HIGH,
       visibility: AndroidVisibility.PUBLIC,
       pressAction: { id: 'default', launchActivity: 'default' },
       smallIcon: 'ic_launcher',

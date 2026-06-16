@@ -41,8 +41,11 @@ export function habitReschedulePushId(habitId: string): string {
 }
 
 const APP_OWNED_PREFIXES = [
-  'meal-alarm',
-  'meal-reschedule',
+  // `meal-` (not just `meal-alarm`/`meal-reschedule`) so reconciliation also prunes any meal
+  // trigger left over from an earlier id scheme (e.g. a dev rebuild that armed a different meal
+  // id). Without this, a stale meal trigger at an old time is neither overwritten (different id)
+  // nor pruned (not recognised as ours) and keeps firing at the old time after a reschedule.
+  'meal-',
   'habit-call-',
   'habit-push-',
   'habit-reschedule-',
