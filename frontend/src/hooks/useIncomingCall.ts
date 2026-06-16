@@ -1,22 +1,20 @@
-import { Vibration } from 'react-native';
-import notifee from '@notifee/react-native';
 import { navigationRef } from '../navigation/navigationRef';
 import {
-  goBackOrMainTabs,
   navigateToVoiceHabit,
   navigateToVoiceMealLog,
 } from '../navigation/navigationUtils';
 import { clearMealRescheduleTime } from '../services/mealScheduler';
-import { stopRingtone } from './useRingtone';
-import {
-  onCallAccepted,
-  onCallDeclined,
-  type OccurrenceData,
-} from '../services/notifications/callLifecycle';
+import { onCallAccepted, type OccurrenceData } from '../services/notifications/callLifecycle';
 import type { ReminderKind } from '../services/notifications/notificationBuilder';
 
 export type IncomingCallType = 'meal' | 'habit';
 
+/**
+ * The call descriptor shared between the native call surface (relayed verbatim through the
+ * IncomingCall module) and the JS lifecycle. The native side adds display fields
+ * (assistantName/subtitle/verifiedLabel) on the way out and relays the occurrence fields back on
+ * accept/decline; those occurrence fields are what this app acts on.
+ */
 export type IncomingCallPayload = {
   type: IncomingCallType;
   callId?: string;
@@ -31,34 +29,6 @@ export type IncomingCallPayload = {
   reminderKind?: ReminderKind;
   isRescheduled?: boolean;
 };
-
-type HandleCallOptions = {
-  skipNavigation?: boolean;
-};
-
-let activeCallNotificationId: string | null = null;
-
-export function setActiveCallNotificationId(id: string | null) {
-  activeCallNotificationId = id;
-}
-
-// ─── In-app call banner callbacks ────────────────────────────────────────────
-
-let callBannerCallback: ((payload: IncomingCallPayload | null) => void) | null = null;
-
-export function registerCallBannerCallback(
-  cb: (payload: IncomingCallPayload | null) => void,
-) {
-  callBannerCallback = cb;
-}
-
-export function showCallBanner(payload: IncomingCallPayload) {
-  callBannerCallback?.(payload);
-}
-
-export function hideCallBanner() {
-  callBannerCallback?.(null);
-}
 
 function payloadToOccurrence(payload: IncomingCallPayload): OccurrenceData {
   const kind: ReminderKind =
@@ -76,28 +46,9 @@ function payloadToOccurrence(payload: IncomingCallPayload): OccurrenceData {
 }
 
 /**
- * Display-only cancellation (P0 #1 / #2). The previous code called
- * notifee.cancelAllNotifications() / cancelNotification(id), both of which ALSO delete
- * the matching pending trigger — wiping the recurring meal/habit chain on every call
- * interaction. We only ever dismiss what is *currently displayed*; recurring triggers
- * are managed exclusively by the scheduler/reconciliation.
- */
-async function dismissDisplayedCall(notificationId?: string) {
-  const idToCancel = notificationId ?? activeCallNotificationId;
-
-  if (idToCancel) {
-    await notifee.cancelDisplayedNotification(idToCancel).catch(() => {});
-  }
-
-  activeCallNotificationId = null;
-
-  // Safety net for sticky displayed call notifications — display-only, never triggers.
-  await notifee.cancelDisplayedNotifications().catch(() => {});
-}
-
-/**
- * Polls until the navigator is ready, then runs the navigation. No early cap: a pending
- * Accept must survive a slow cold start until navigation is possible (P0 #5).
+ * Polls until the navigator is ready, then runs the navigation. No early cap: a pending Accept
+ * must survive a slow cold start until navigation is possible (a call answered from the lockscreen
+ * boots React Native fresh).
  */
 function navigateWhenReady(runNavigate: () => void) {
   if (navigationRef.isReady()) {
@@ -107,25 +58,8 @@ function navigateWhenReady(runNavigate: () => void) {
   setTimeout(() => navigateWhenReady(runNavigate), 150);
 }
 
-export async function handleAcceptCall(
-  payload: IncomingCallPayload,
-  options: HandleCallOptions = {},
-) {
-  hideCallBanner();
-  await dismissDisplayedCall(payload.notificationId);
-  stopRingtone();
-  Vibration.cancel();
-
-  await onCallAccepted(payloadToOccurrence(payload)).catch(() => {});
-
-  if (payload.type === 'meal') {
-    await clearMealRescheduleTime().catch(() => {});
-  }
-
-  if (options.skipNavigation) {
-    return;
-  }
-
+/** Routes into the voice session for a call payload once the navigator is ready. */
+function navigateToVoiceForPayload(payload: IncomingCallPayload): void {
   navigateWhenReady(() => {
     if (payload.type === 'habit') {
       navigateToVoiceHabit({
@@ -144,24 +78,29 @@ export async function handleAcceptCall(
   });
 }
 
-export async function handleDeclineCall(
-  payload: IncomingCallPayload,
-  options: HandleCallOptions = {},
-) {
-  hideCallBanner();
-  await dismissDisplayedCall(payload.notificationId);
-  stopRingtone();
-  Vibration.cancel();
-
-  await onCallDeclined(payloadToOccurrence(payload)).catch(() => {});
+/**
+ * Runs the lifecycle for an ACCEPTED call and navigates into the voice session. The native call
+ * screen already stopped the ringtone and dismissed the call notification before handing the
+ * accepted payload back, so this only resolves the pending-answer marker and routes the user.
+ */
+export async function handleAcceptCall(payload: IncomingCallPayload): Promise<void> {
+  await onCallAccepted(payloadToOccurrence(payload)).catch(() => {});
 
   if (payload.type === 'meal') {
     await clearMealRescheduleTime().catch(() => {});
   }
 
-  if (options.skipNavigation) {
-    return;
-  }
+  navigateToVoiceForPayload(payload);
+}
 
-  navigateWhenReady(goBackOrMainTabs);
+/**
+ * "Log now" on a missed-call follow-up: route into the voice log for that occurrence (same
+ * destination as answering would have). The miss was already recorded/reported when detected, so
+ * this only navigates.
+ */
+export async function handleMissedLogNow(payload: IncomingCallPayload): Promise<void> {
+  if (payload.type === 'meal') {
+    await clearMealRescheduleTime().catch(() => {});
+  }
+  navigateToVoiceForPayload(payload);
 }

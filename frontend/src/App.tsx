@@ -4,37 +4,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GluestackUIProvider } from './components/ui/gluestack-ui-provider';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppNavigator } from './navigation/AppNavigator';
-import { handleAcceptCall, handleDeclineCall } from './hooks/useIncomingCall';
-import IncomingCallBanner from './components/IncomingCallBanner';
 import { useNotificationInit } from './hooks/notifications/useNotificationInit';
-import { useIncomingCallBanner } from './hooks/notifications/useIncomingCallBanner';
 import { useReminderReconciliation } from './hooks/notifications/useReminderReconciliation';
 import { usePendingAcceptNavigation } from './hooks/notifications/usePendingAcceptNavigation';
 import { useColdStartNotification } from './hooks/notifications/useColdStartNotification';
 import { useForegroundNotificationEvents } from './hooks/notifications/useForegroundNotificationEvents';
+import { useNativeIncomingCallResults } from './hooks/notifications/useNativeIncomingCallResults';
 
 function AppShell() {
   const { isAuthenticated, isInitializing } = useAuth();
 
-  // Lifecycle hooks are invoked in the SAME order as the original effects to preserve
-  // registration order: init -> banner callback -> reconciliation -> pending-nav consume
-  // -> cold-start tap recovery -> foreground events.
+  // Notification lifecycle: init channels -> reconcile schedule -> consume pending Accept (iOS)
+  // -> cold-start action recovery (iOS) -> foreground events -> consume native call answers
+  // (Android, the full-screen-call platform). The incoming call itself is drawn by the native
+  // IncomingCallActivity (see android/.../incomingcall), so there is no in-app call surface here.
   useNotificationInit();
-  const { callBannerPayload, handleBannerExpand } = useIncomingCallBanner();
   useReminderReconciliation(isInitializing, isAuthenticated);
   usePendingAcceptNavigation();
   useColdStartNotification();
   useForegroundNotificationEvents();
+  useNativeIncomingCallResults();
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       <AppNavigator />
-      <IncomingCallBanner
-        payload={callBannerPayload}
-        onAccept={payload => handleAcceptCall(payload).catch(() => {})}
-        onDecline={payload => handleDeclineCall(payload).catch(() => {})}
-        onExpand={handleBannerExpand}
-      />
     </SafeAreaView>
   );
 }
