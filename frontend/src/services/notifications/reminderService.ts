@@ -81,7 +81,10 @@ export async function saveMealSchedule(schedule: MealSchedule): Promise<Reconcil
 
 /** Re-arm after a habit was created or deleted (server is the source of truth). */
 export async function reconcileAfterHabitChange(): Promise<ReconcileReport> {
-  return runReconciliation({ reason: 'save', isAuthenticated: true });
+  // forceHabitPrune: the local habit cache was just updated by the user's change, so prune the
+  // old time-slot trigger now even if the GET /habit round-trip fails on this pass — otherwise a
+  // habit time edit can ring at BOTH the old and new times until the next successful fetch.
+  return runReconciliation({ reason: 'save', isAuthenticated: true, forceHabitPrune: true });
 }
 
 async function armReschedule(entry: RescheduleEntry): Promise<void> {

@@ -12,6 +12,10 @@ import {
   openPowerManagerSettings,
 } from './permissions';
 import { inspectCallChannels } from './channels';
+import {
+  canUseFullScreenIntent,
+  openFullScreenIntentSettings,
+} from './nativeIncomingCall';
 
 export type HealthStatus = 'ok' | 'warn' | 'error' | 'na';
 
@@ -75,6 +79,26 @@ export async function buildReminderHealthReport(): Promise<ReminderHealthReport>
             : 'Not required on this Android version.',
       });
     }
+
+    // Full-screen incoming calls (Android 14+ special access). Without it the call degrades
+    // from a lockscreen takeover to a heads-up banner with Answer/Decline.
+    const fullScreenAllowed = await canUseFullScreenIntent();
+    items.push({
+      id: 'full-screen-calls',
+      title: 'Lock-screen calls',
+      status: fullScreenAllowed ? 'ok' : 'warn',
+      detail: fullScreenAllowed
+        ? 'Calls can take over the screen like a real phone call.'
+        : 'Not allowed — incoming calls will appear as a banner instead of full screen. Enable "full screen intents" for reliable calls.',
+      fix: fullScreenAllowed
+        ? undefined
+        : {
+            label: 'Allow full-screen calls',
+            run: async () => {
+              openFullScreenIntentSettings();
+            },
+          },
+    });
 
     // Battery optimization
     items.push({

@@ -41,6 +41,7 @@ import {
 import { recordMissed, missedKey, listMissedNeedingFollowUp, markFollowUpShown } from './missedStore';
 import { buildMissedFollowUp } from './notificationBuilder';
 import { reconcileExpiredAnswers } from './callLifecycle';
+import { applyCallResultMarkers } from './callMarkers';
 
 export type ReconcileReason =
   | 'cold-start'
@@ -73,6 +74,15 @@ export async function runReconciliation(options: {
   reason: ReconcileReason;
   isAuthenticated: boolean;
   nowEpoch?: number;
+  /**
+   * Prune habit-* orphans even when the live habit fetch fails. Set by an explicit
+   * user-initiated habit change (create/edit/delete), where the local habit cache was just
+   * authoritatively updated — so the old time-slot trigger must be cancelled now rather than
+   * lingering until the next successful fetch (otherwise a habit time change can ring at both
+   * the old and new times). Background passes leave this false so a transient outage never
+   * looks like a server-side delete.
+   */
+  forceHabitPrune?: boolean;
 }): Promise<ReconcileReport> {
   const next = chain.then(
     () => doReconcile(options),
@@ -87,6 +97,7 @@ async function doReconcile(options: {
   reason: ReconcileReason;
   isAuthenticated: boolean;
   nowEpoch?: number;
+  forceHabitPrune?: boolean;
 }): Promise<ReconcileReport> {
   const nowEpoch = options.nowEpoch ?? Date.now();
   const timeZone = resolveDeviceTimeZone();
@@ -136,6 +147,11 @@ async function doReconcile(options: {
   }
   const reschedules: RescheduleEntry[] = await listReschedules();
 
+  // Apply terminal call markers the native surface recorded while the app was away (DECLINED, and
+  // MISSED for calls that rang out), BEFORE the pending-answer missed sweep below so a decline /
+  // native-miss is never misclassified or double-counted. No-ops on iOS / when the module is absent.
+  await applyCallResultMarkers().catch(() => {});
+
   // Resolve elapsed reschedules: a one-shot still in the store with fireAt in the past
   // never fired (app was killed past its time) -> record missed and drop it.
   // Unanswered calls that timed out while the app was killed become misses.
@@ -170,8 +186,11 @@ async function doReconcile(options: {
 
   // When the habit set is not authoritative (fetch failed; armed from cache), never prune
   // habit-* triggers (avoid nuking live ones on a transient outage). Otherwise prune any
-  // app-owned orphan.
-  const ownedIdPredicate = skippedHabits
+  // app-owned orphan. An explicit habit change (forceHabitPrune) overrides the guard: the
+  // cache was just updated by the user's create/edit/delete, so the stale old-time-slot
+  // trigger must be cancelled now instead of ringing alongside the new one.
+  const suppressHabitPrune = skippedHabits && !options.forceHabitPrune;
+  const ownedIdPredicate = suppressHabitPrune
     ? (id: string) => isAppOwnedTriggerId(id) && !id.startsWith('habit-')
     : isAppOwnedTriggerId;
 

@@ -309,6 +309,13 @@ export async function armSpec(spec: ArmSpec, exact: boolean): Promise<void> {
     exact,
     isCall: spec.isCall,
   });
+  // Explicitly tear down any trigger already armed under this id before re-arming. Notifee
+  // is documented to "replace" a same-id trigger, but for a RepeatFrequency.DAILY/WEEKLY
+  // alarm armed via AlarmManager.SET_ALARM_CLOCK the already-committed OS alarm is not
+  // reliably cancelled by the overwrite on every OEM — so after a time change (e.g. 10:43 ->
+  // 11:15) the old wall-clock occurrence could still fire once. Cancelling first guarantees a
+  // clean re-arm. For a brand-new id this is a harmless no-op.
+  await notifee.cancelTriggerNotification(spec.id).catch(() => {});
   await notifee.createTriggerNotification(notification, trigger);
   reminderLog.debug('schedule.armed', `Armed ${spec.id}`, {
     id: spec.id,
