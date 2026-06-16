@@ -47,9 +47,14 @@ export async function scheduleAllAlarms(_reminder: MealReminder): Promise<void> 
   await reconcileReminders('save', true);
 }
 
-export async function scheduleMealReschedule(delayMinutes: number): Promise<boolean> {
-  const fireAt = await rescheduleMeal(delayMinutes);
-  return fireAt != null;
+/**
+ * Arms the "call me back in N minutes" meal follow-up. Returns the absolute fire epoch (ms)
+ * the scheduler armed so the screen can show the exact time, or null on invalid input.
+ */
+export async function scheduleMealReschedule(
+  delayMinutes: number,
+): Promise<number | null> {
+  return rescheduleMeal(delayMinutes);
 }
 
 export async function cancelAllMealAlarms(): Promise<void> {

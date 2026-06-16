@@ -7,10 +7,12 @@ import { foodLogApi } from '../../services/api/foodLogApi';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
 import { initializeVapiClient } from '../../services/vapiSessionService';
 import { getTodayLocalDate } from '../../utils/date';
-import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
+import type { VoiceMealLogParams } from '../../navigation/paramTypes';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
+import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
+import { buildFollowUpMessage, FOLLOW_UP_INVALID_MESSAGE } from '../../utils/followUp';
 import { toDebugJson } from '../../utils/debug';
 import { useMicrophonePermission } from '../../hooks/useMicrophonePermission';
 
@@ -19,7 +21,8 @@ const VOICE_PARSE_TIMEOUT_MS = 120000;
 
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();
-  const route = useRoute<RouteProp<FoodStackParamList, 'VoiceMealLog'>>();
+  const route =
+    useRoute<RouteProp<{ VoiceMealLog: VoiceMealLogParams }, 'VoiceMealLog'>>();
   const { user } = useAuth();
   const mealSlotId: string | undefined = route.params?.mealSlotId;
   const autoStart: boolean = route.params?.autoStart === true;
@@ -371,24 +374,24 @@ export default function VoiceMealLogScreen() {
       console.log('[VoiceMealLog] Logged', count, 'meal entries');
 
       if (delayMinutes != null && delayMinutes > 0) {
-        const scheduled = await scheduleMealReschedule(delayMinutes);
-        if (scheduled) {
-          const message =
-            count > 0
-              ? `Meals logged. Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`
-              : `Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`;
-          setFollowUpMessage(message);
+        const fireAt = await scheduleMealReschedule(delayMinutes);
+        if (fireAt != null) {
+          setFollowUpMessage(
+            buildFollowUpMessage({
+              lead: count > 0 ? 'Meals logged.' : undefined,
+              minutes: delayMinutes,
+              fireAt,
+            }),
+          );
           console.log('[VoiceMealLog] Meal follow-up scheduled:', {
             delayMinutes,
+            fireAt,
           });
         } else {
-          const message =
-            'Could not schedule follow-up because it would fall on the next day.';
-          setFollowUpMessage(message);
-          console.log(
-            '[VoiceMealLog] Skipped follow-up scheduling due to current-day rule.',
-            { delayMinutes },
-          );
+          setFollowUpMessage(FOLLOW_UP_INVALID_MESSAGE);
+          console.log('[VoiceMealLog] Could not schedule meal follow-up', {
+            delayMinutes,
+          });
         }
       } else if (duplicateTranscript) {
         setFollowUpMessage(
@@ -406,9 +409,7 @@ export default function VoiceMealLogScreen() {
         typeof (err as any)?.response?.data?.error === 'string'
           ? (err as any).response.data.error.trim()
           : '';
-      setFollowUpMessage(
-        apiError || 'Something went wrong while processing your meals. Please try again.',
-      );
+      setFollowUpMessage(apiError || VOICE_LANE_COPY.meal.genericError);
       setStatus('error');
     } finally {
       isParsingTranscriptRef.current = false;
@@ -418,13 +419,13 @@ export default function VoiceMealLogScreen() {
   const getStatusText = () => {
     switch (status) {
       case 'idle':
-        return 'Tap the microphone to start logging your meals by voice';
+        return VOICE_LANE_COPY.meal.idle;
       case 'requesting':
         return 'Starting session...';
       case 'active':
         return isSpeaking ? 'Assistant is speaking...' : 'Listening...';
       case 'processing':
-        return 'Processing your meals...';
+        return VOICE_LANE_COPY.meal.processingStatus;
       case 'completed':
         if (followUpMessage) {
           return followUpMessage;
@@ -434,7 +435,7 @@ export default function VoiceMealLogScreen() {
           ? `${entriesLogged} meal${entriesLogged > 1 ? 's' : ''} logged successfully!`
           : 'Call completed';
       case 'error':
-        return followUpMessage || 'Something went wrong. Please try again.';
+        return followUpMessage || VOICE_LANE_COPY.meal.genericError;
       default:
         return '';
     }
@@ -449,9 +450,11 @@ export default function VoiceMealLogScreen() {
       transcript={transcript}
       onPrimaryPress={status === 'active' ? stopVoiceLog : startVoiceLog}
       disablePrimary={status === 'requesting' || status === 'processing'}
-      processingText="Analyzing your conversation and logging meals..."
-      doneButtonText="Back to Food Log"
-      onDonePress={() => navigation.navigate('MainTabs' as never)}
+      processingText={VOICE_LANE_COPY.meal.processingStrip}
+      doneButtonText={VOICE_LANE_COPY.meal.doneButton}
+      onDonePress={() =>
+        (navigation as any).navigate('MainTabs', { screen: 'Food' })
+      }
       onRetryPress={() => setStatus('idle')}
     />
   );

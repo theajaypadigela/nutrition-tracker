@@ -167,8 +167,8 @@ const HabitScreen = () => {
                           className="text-amber-700 font-medium flex-shrink"
                         >
                           {rescheduledTime
-                            ? `Rescheduled for today at ${rescheduledTime}`
-                            : 'Rescheduled for later today'}
+                            ? `Rescheduled for ${rescheduledTime}`
+                            : 'Rescheduled for later'}
                         </Text>
                       </HStack>
                     )}

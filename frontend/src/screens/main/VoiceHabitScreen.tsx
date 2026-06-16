@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { habitApi } from '../../services/api/habitApi';
 import { Habit, HabitVoiceResult } from '../../types/types';
 import { scheduleHabitReschedule } from '../../services/habitScheduler';
 import { initializeVapiClient } from '../../services/vapiSessionService';
+import type { VoiceHabitParams } from '../../navigation/paramTypes';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
+import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
+import { buildFollowUpMessage, FOLLOW_UP_INVALID_MESSAGE } from '../../utils/followUp';
 import { toDebugJson } from '../../utils/debug';
 import { useMicrophonePermission } from '../../hooks/useMicrophonePermission';
 
@@ -73,22 +76,10 @@ function timesMatch(a: string, b: string): boolean {
   return pa !== null && pb !== null && pa === pb;
 }
 
-function formatClockTime(date: Date): string {
-  let hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
-  return `${hours}:${mm} ${ampm}`;
-}
-
-function formatFollowUpTimeFromNow(delayMinutes: number): string {
-  return formatClockTime(new Date(Date.now() + delayMinutes * 60 * 1000));
-}
-
 export default function VoiceHabitScreen() {
   const navigation = useNavigation();
-  const route = useRoute<any>();
+  const route =
+    useRoute<RouteProp<{ VoiceHabit: VoiceHabitParams }, 'VoiceHabit'>>();
   const { user } = useAuth();
 
   const habitId: string | undefined = route.params?.habitId;
@@ -258,7 +249,7 @@ export default function VoiceHabitScreen() {
     if (!hasPermission) {
       Alert.alert(
         'Permission Required',
-        'Microphone access is needed for the habit assistant.',
+        'Microphone access is needed for your habit check-in by voice.',
       );
       setStatus('idle');
       return;
@@ -384,19 +375,14 @@ export default function VoiceHabitScreen() {
       if (habitStatus === 'completed') {
         setResultMessage(`${habitNames} marked as completed!`);
       } else if (habitStatus === 'rescheduled') {
-        const mins = delayMinutes ?? 0;
-        if (mins > 0) {
-          const followUpTime = formatFollowUpTimeFromNow(mins);
-          setResultMessage(
-            `${habitNames} rescheduled. Will check again in ${mins} minute${mins === 1 ? '' : 's'} at ${followUpTime}.`,
-          );
-        } else {
-          setResultMessage(`${habitNames} rescheduled for later.`);
-        }
+        // Default to 30 minutes when the user asked to reschedule but didn't specify a time.
+        const mins = delayMinutes != null && delayMinutes > 0 ? delayMinutes : 30;
 
-        // Schedule ONE consolidated follow-up notification
-        if (mins > 0 && habits.length > 0) {
-          const scheduled = await scheduleHabitReschedule(
+        // Schedule ONE consolidated follow-up call across all habits in this time slot,
+        // then build the confirmation from the epoch the scheduler actually armed.
+        let fireAt: number | null = null;
+        if (habits.length > 0) {
+          fireAt = await scheduleHabitReschedule(
             {
               id: habits[0].id,
               name: habits.map(h => h.name).join(', '),
@@ -407,12 +393,18 @@ export default function VoiceHabitScreen() {
             },
             mins,
           );
+        }
 
-          if (!scheduled) {
-            setResultMessage(
-              'Could not schedule follow-up because it would fall on the next day.',
-            );
-          }
+        if (fireAt == null) {
+          setResultMessage(FOLLOW_UP_INVALID_MESSAGE);
+        } else {
+          setResultMessage(
+            buildFollowUpMessage({
+              lead: `${habitNames} rescheduled.`,
+              minutes: mins,
+              fireAt,
+            }),
+          );
         }
 
         // Auto-navigate back so the rescheduled habit immediately appears on screen
@@ -433,17 +425,17 @@ export default function VoiceHabitScreen() {
   const getStatusText = () => {
     switch (status) {
       case 'idle':
-        return 'Tap the microphone to start your habit check-in';
+        return VOICE_LANE_COPY.habit.idle;
       case 'requesting':
         return 'Starting session...';
       case 'active':
         return isSpeaking ? 'Assistant is speaking...' : 'Listening...';
       case 'processing':
-        return 'Processing your response...';
+        return VOICE_LANE_COPY.habit.processingStatus;
       case 'completed':
         return resultMessage || 'Call completed';
       case 'error':
-        return 'Something went wrong. Please try again.';
+        return VOICE_LANE_COPY.habit.genericError;
       default:
         return '';
     }
@@ -458,8 +450,8 @@ export default function VoiceHabitScreen() {
       transcript={transcript}
       onPrimaryPress={status === 'active' ? stopVoiceCall : startVoiceCall}
       disablePrimary={status === 'requesting' || status === 'processing'}
-      processingText="Processing your habit check-in..."
-      doneButtonText="Back to Habits"
+      processingText={VOICE_LANE_COPY.habit.processingStrip}
+      doneButtonText={VOICE_LANE_COPY.habit.doneButton}
       onDonePress={navigateToHabits}
       onRetryPress={() => setStatus('idle')}
     />

@@ -10,6 +10,8 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { ASSISTANT_NAME } from '../../config/assistant';
+import { callColors, callFontFamily } from '../../theme/callTheme';
 
 export type CallStatus =
   | 'idle'
@@ -40,7 +42,6 @@ type ParsedTranscriptMessage = {
 };
 
 const CONTROLS_BASE_PADDING = 18;
-const CONTAINER_BASE_PADDING = 20;
 
 function parseTranscriptMessage(line: string): ParsedTranscriptMessage {
   const trimmed = line.trim();
@@ -186,7 +187,7 @@ export default function VoiceSessionScreen({
                 <View style={styles.headerAvatarInner} />
               </View>
               <View>
-                <Text style={styles.agentTitle}>AI Assistant</Text>
+                <Text style={styles.agentTitle}>{ASSISTANT_NAME}</Text>
                 <Text style={styles.sessionTitle}>{title}</Text>
               </View>
             </View>
@@ -267,7 +268,7 @@ export default function VoiceSessionScreen({
 
         {isProcessing && (
           <View style={styles.processingContainer}>
-            <ActivityIndicator size="small" color="#2563eb" />
+            <ActivityIndicator size="small" color={callColors.brand} />
             <Text style={styles.processingText}>{processingText}</Text>
           </View>
         )}
@@ -318,12 +319,12 @@ export default function VoiceSessionScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eef3f8',
+    backgroundColor: callColors.background,
   },
   panel: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: callColors.surface,
     borderRadius: 0,
     borderWidth: 0,
     overflow: 'hidden',
@@ -333,8 +334,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5eaf2',
-    backgroundColor: '#ffffff',
+    borderBottomColor: callColors.border,
+    backgroundColor: callColors.surface,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#e6f1fb',
+    backgroundColor: callColors.surfaceAvatar,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -359,23 +360,25 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#185fa5',
+    backgroundColor: callColors.brand,
   },
   agentTitle: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
-    color: '#5b6b81',
+    color: callColors.textMuted,
+    fontFamily: callFontFamily,
   },
   sessionTitle: {
     marginTop: 2,
     fontSize: 21,
     fontWeight: '700',
-    color: '#0f172a',
+    color: callColors.textPrimary,
+    fontFamily: callFontFamily,
   },
   timerPill: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: callColors.surfaceElevated,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -383,14 +386,14 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1e293b',
+    color: callColors.textSecondary,
   },
   statusRow: {
     marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#eff6ff',
+    backgroundColor: callColors.brandSoft,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -399,26 +402,26 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2563eb',
+    backgroundColor: callColors.brand,
   },
   statusLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1d4ed8',
+    color: callColors.brand,
   },
   subtitle: {
     fontSize: 12,
-    color: '#3b82f6',
+    color: callColors.textSecondary,
     flexShrink: 1,
   },
   transcriptSection: {
     flex: 1,
     minHeight: 220,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: callColors.background,
   },
   transcriptScroll: {
     flex: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: callColors.background,
   },
   transcriptContent: {
     paddingHorizontal: 14,
@@ -442,7 +445,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#e6f1fb',
+    backgroundColor: callColors.surfaceAvatar,
   },
   messageBubble: {
     maxWidth: '72%',
@@ -452,13 +455,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   assistantBubble: {
-    backgroundColor: '#ffffff',
-    borderColor: '#d8e3f2',
+    backgroundColor: callColors.bubbleAssistant,
+    borderColor: callColors.bubbleAssistantBorder,
     borderTopLeftRadius: 8,
   },
   userBubble: {
-    backgroundColor: '#2563eb',
-    borderColor: '#1d4ed8',
+    backgroundColor: callColors.bubbleUser,
+    borderColor: callColors.bubbleUserBorder,
     borderTopRightRadius: 8,
   },
   messageText: {
@@ -466,10 +469,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   assistantMessageText: {
-    color: '#0f172a',
+    color: callColors.onBubbleAssistant,
   },
   userMessageText: {
-    color: '#ffffff',
+    color: callColors.onBubbleUser,
     textAlign: 'right',
   },
   emptyStateWrap: {
@@ -481,13 +484,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1e293b',
+    color: callColors.textPrimary,
   },
   emptyStateBody: {
     marginTop: 6,
     fontSize: 14,
     lineHeight: 20,
-    color: '#64748b',
+    color: callColors.textMuted,
     textAlign: 'center',
   },
   processingContainer: {
@@ -497,21 +500,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#e5eaf2',
-    backgroundColor: '#f2f7ff',
+    borderTopColor: callColors.border,
+    backgroundColor: callColors.surfaceElevated,
   },
   processingText: {
     flex: 1,
     fontSize: 13,
-    color: '#334155',
+    color: callColors.textSecondary,
   },
   controlsBar: {
     padding: CONTROLS_BASE_PADDING,
     paddingBottom: CONTROLS_BASE_PADDING,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: '#e5eaf2',
-    backgroundColor: '#ffffff',
+    borderTopColor: callColors.border,
+    backgroundColor: callColors.surface,
   },
   primaryButton: {
     width: '100%',
@@ -527,13 +530,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   primaryButtonNeutral: {
-    backgroundColor: '#1d4ed8',
+    backgroundColor: callColors.brand,
   },
   primaryButtonDanger: {
-    backgroundColor: '#dc2626',
+    backgroundColor: callColors.decline,
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: callColors.onAccent,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -542,14 +545,14 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#ffffff',
+    borderColor: callColors.border,
+    backgroundColor: callColors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   secondaryButtonText: {
-    color: '#0f172a',
+    color: callColors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -557,13 +560,13 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 46,
     borderRadius: 12,
-    backgroundColor: '#d97706',
+    backgroundColor: callColors.warning,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   warningButtonText: {
-    color: '#ffffff',
+    color: callColors.onAccent,
     fontSize: 15,
     fontWeight: '700',
   },

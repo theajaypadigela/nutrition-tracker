@@ -34,12 +34,15 @@ export async function scheduleHabitReminder(habit: Habit): Promise<void> {
   await reconcileAfterHabitChange();
 }
 
+/**
+ * Arms the "call me back in N minutes" habit follow-up. Returns the absolute fire epoch (ms)
+ * the scheduler armed so the screen can show the exact time, or null on invalid input.
+ */
 export async function scheduleHabitReschedule(
   habit: Habit,
   rescheduleMinutes: number,
-): Promise<boolean> {
-  const fireAt = await rescheduleHabit(habit, rescheduleMinutes);
-  return fireAt != null;
+): Promise<number | null> {
+  return rescheduleHabit(habit, rescheduleMinutes);
 }
 
 /** Re-arms from server truth, pruning any triggers for a now-deleted habit. */
