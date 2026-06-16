@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 import com.habitbuilder.NutritionTracker.modules.food.FoodService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.AiJsonSupport;
 import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VoiceMealLogRequest;
 
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,6 +52,11 @@ public class VoiceLogService {
     @Value("${vapi.meal-assistant-id:${vapi.assistant-id:}}")
     private String vapiMealAssistantId;
 
+    // The dedicated meal id WITHOUT the shared fallback, so we can detect (and log) when meal
+    // calls are silently borrowing the generic VAPI_ASSISTANT_ID instead of their own assistant.
+    @Value("${vapi.meal-assistant-id:}")
+    private String dedicatedMealAssistantId;
+
     @Value("${vapi.habit-assistant-id:${vapi.assistant-id:}}")
     private String vapiHabitAssistantId;
 
@@ -63,6 +70,29 @@ public class VoiceLogService {
         this.sessionRepo = sessionRepo;
         this.objectMapper = objectMapper;
         this.aiTextService = aiTextService;
+    }
+
+    /**
+     * Surfaces the meal-assistant configuration at startup so a missing dedicated meal
+     * assistant is observable, not a silent accident. Meal and habit deliberately use two
+     * separate Vapi assistants (their voice/persona are aligned in the Vapi dashboard); this
+     * warns when meal has no dedicated id and is borrowing the shared VAPI_ASSISTANT_ID.
+     */
+    @PostConstruct
+    void logAssistantConfiguration() {
+        if (dedicatedMealAssistantId == null || dedicatedMealAssistantId.isBlank()) {
+            logger.warn(
+                    "Vapi meal assistant id not set (VAPI_MEAL_ASSISTANT_ID); meal calls fall back to the shared "
+                            + "VAPI_ASSISTANT_ID. Set a dedicated meal assistant to control the meal call persona/voice "
+                            + "independently of habit calls.");
+        } else {
+            logger.info("Vapi meal assistant configured via VAPI_MEAL_ASSISTANT_ID.");
+        }
+        if (vapiHabitAssistantId == null || vapiHabitAssistantId.isBlank()) {
+            logger.warn(
+                    "Vapi habit assistant id resolves empty; habit calls will fail until VAPI_HABIT_ASSISTANT_ID "
+                            + "(or VAPI_ASSISTANT_ID) is configured.");
+        }
     }
 
     /**
@@ -284,7 +314,7 @@ public class VoiceLogService {
         try {
             String prompt = buildTranscriptParsingPrompt(normalizedTranscript);
             String content = aiTextService.callRawPrompt(prompt);
-            String json = extractJson(content);
+            String json = AiJsonSupport.extractJson(content);
 
             JsonNode root = objectMapper.readTree(json);
             JsonNode mealsNode = root.path("meals");
@@ -365,30 +395,11 @@ public class VoiceLogService {
                 transcript);
     }
 
-    private String extractJson(String text) {
-        String cleaned = text.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
-        cleaned = cleaned.trim();
-        int start = cleaned.indexOf('{');
-        int end = cleaned.lastIndexOf('}');
-        if (start != -1 && end != -1 && end > start) {
-            return cleaned.substring(start, end + 1);
-        }
-        return cleaned;
-    }
-
     public MealTranscriptInterpretResponseDTO interpretMealTranscript(String transcript, String mealSlotId) {
         MealTranscriptInterpretResponseDTO response = new MealTranscriptInterpretResponseDTO();
         response.setShouldLogMeals(false);
         response.setRescheduleMinutes(null);
-        response.setRationale("no_transcript");
+        response.setRationale(AiJsonSupport.RATIONALE_NO_TRANSCRIPT);
 
         if (transcript == null || transcript.isBlank()) {
             return response;
@@ -408,9 +419,13 @@ public class VoiceLogService {
                         Rules:
                         1) shouldLogMeals = true when user actually provided meal/food details to be logged now.
                         2) shouldLogMeals = false when user asks to do it later, asks to be called/reminded later, or only confirms a later time.
-                        3) rescheduleMinutes should be set when user asks for delay or confirms delayed follow-up time; otherwise null.
+                        3) rescheduleMinutes should be set when user asks for a callback or follow-up call later.
+                           Extract the specific minutes when mentioned (e.g., "call me in 5 minutes" → 5,
+                           "remind me in an hour" → 60). If user asks to reschedule/call back without specifying
+                           a time, default to 30. Return null only when no reschedule was requested.
                         4) If both happened, keep shouldLogMeals=true and also set rescheduleMinutes.
                         5) If uncertain, choose shouldLogMeals=false and rescheduleMinutes=null.
+                        6) Never include markdown or extra text.
 
                         Context meal slot: %s
 
@@ -422,7 +437,7 @@ public class VoiceLogService {
 
         try {
             String modelText = aiTextService.callRawPrompt(prompt);
-            String json = extractJson(modelText);
+            String json = AiJsonSupport.extractJson(modelText);
             JsonNode root = objectMapper.readTree(json);
 
             boolean shouldLogMeals = root.path("shouldLogMeals").asBoolean(false);
@@ -435,13 +450,13 @@ public class VoiceLogService {
 
             response.setShouldLogMeals(shouldLogMeals);
             response.setRescheduleMinutes(rescheduleMinutes);
-            response.setRationale(root.path("rationale").asText("classified_by_ai"));
+            response.setRationale(root.path("rationale").asText(AiJsonSupport.RATIONALE_CLASSIFIED));
             return response;
         } catch (Exception e) {
             logger.warn("Meal transcript interpretation failed: {}", e.getMessage());
             response.setShouldLogMeals(false);
             response.setRescheduleMinutes(null);
-            response.setRationale("ai_interpretation_failed");
+            response.setRationale(AiJsonSupport.RATIONALE_FAILED);
             return response;
         }
     }

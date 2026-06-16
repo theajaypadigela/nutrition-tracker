@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habitbuilder.NutritionTracker.modules.nutrition.AiJsonSupport;
 import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 
 import java.time.LocalDate;
@@ -30,6 +31,11 @@ import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 public class HabitService {
 
     private static final Logger log = LoggerFactory.getLogger(HabitService.class);
+
+    // Fallback delay applied when the model classifies a check-in as "rescheduled" but gives no
+    // (or a non-positive) minute value. Without this, a RESCHEDULED entity could be stored with
+    // rescheduledTime=null, which the reminder cron's time-window query can never re-surface.
+    private static final int DEFAULT_RESCHEDULE_MINUTES = 15;
 
     private HabitRepository habitRepository;
     private HabitEntityRepository habitEntityRepository;
@@ -343,12 +349,14 @@ public class HabitService {
         } else if ("rescheduled".equals(status)) {
             habitEntity.setStatus(HabitStatus.RESCHEDULED);
             habitEntity.setCompletionTime(null);
-            if (result.getRescheduleMinutes() != null && result.getRescheduleMinutes() > 0) {
-                habitEntity.setRescheduledTime(
-                        LocalDateTime.now().plusMinutes(result.getRescheduleMinutes()));
-            } else {
-                habitEntity.setRescheduledTime(null);
-            }
+            // Always store a concrete rescheduledTime. A RESCHEDULED entity with a null time is
+            // never re-surfaced by HabitReminderScheduler's window query and shows no time in the
+            // Habits list, so fall back to a default delay when minutes are missing/non-positive.
+            int rescheduleMinutes =
+                    (result.getRescheduleMinutes() != null && result.getRescheduleMinutes() > 0)
+                            ? result.getRescheduleMinutes()
+                            : DEFAULT_RESCHEDULE_MINUTES;
+            habitEntity.setRescheduledTime(LocalDateTime.now().plusMinutes(rescheduleMinutes));
         } else {
             habitEntity.setStatus(HabitStatus.MISSED);
             habitEntity.setCompletionTime(null);
@@ -380,7 +388,7 @@ public class HabitService {
         response.setHabitStatus("not_completed");
 
         if (request == null || request.getTranscriptLines() == null || request.getTranscriptLines().isEmpty()) {
-            response.setRationale("No transcript provided");
+            response.setRationale(AiJsonSupport.RATIONALE_NO_TRANSCRIPT);
             return response;
         }
 
@@ -404,7 +412,10 @@ public class HabitService {
                    Examples: "call me in 10 minutes", "remind me after 15 mins", "check again in one hour",
                    "not now, later", or the user confirming a later time proposed by the assistant.
                 3) A reschedule request means the habit is not missed; it should be followed up later.
-                4) If status is rescheduled, provide rescheduleMinutes when inferable from transcript, else null.
+                4) If status is rescheduled, extract rescheduleMinutes from the transcript (e.g., "call me in 5
+                   minutes" → 5, "remind me in an hour" → 60). If the user asks to reschedule but does not
+                   mention a specific time, return 30 as the default. Only return null when status is NOT
+                   rescheduled.
                 5) If the user only declines without asking for a later call, choose not_completed.
                 6) If unsure, choose not_completed.
                 7) Never include markdown or extra text.
@@ -419,14 +430,14 @@ public class HabitService {
 
         try {
             String modelText = aiTextService.callRawPrompt(prompt);
-            String jsonText = extractJson(modelText);
+            String jsonText = AiJsonSupport.extractJson(modelText);
             JsonNode root = objectMapper.readTree(jsonText);
 
             String habitStatus = normalizeHabitStatus(root.path("habitStatus").asText(null));
             Integer rescheduleMinutes = root.path("rescheduleMinutes").isNumber()
                     ? root.path("rescheduleMinutes").asInt()
                     : null;
-            String rationale = root.path("rationale").asText("classified_by_ai");
+            String rationale = root.path("rationale").asText(AiJsonSupport.RATIONALE_CLASSIFIED);
 
             if (rescheduleMinutes != null && rescheduleMinutes <= 0) {
                 rescheduleMinutes = null;
@@ -442,34 +453,9 @@ public class HabitService {
             return response;
         } catch (Exception e) {
             log.warn("AI transcript interpretation failed: {}", e.getMessage());
-            response.setRationale("ai_interpretation_failed");
+            response.setRationale(AiJsonSupport.RATIONALE_FAILED);
             return response;
         }
-    }
-
-    private String extractJson(String text) {
-        if (text == null) {
-            return "{}";
-        }
-
-        String cleaned = text.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7).trim();
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3).trim();
-        }
-
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3).trim();
-        }
-
-        int start = cleaned.indexOf('{');
-        int end = cleaned.lastIndexOf('}');
-        if (start != -1 && end != -1 && end > start) {
-            return cleaned.substring(start, end + 1);
-        }
-
-        return cleaned;
     }
 
     private String normalizeHabitStatus(String raw) {
