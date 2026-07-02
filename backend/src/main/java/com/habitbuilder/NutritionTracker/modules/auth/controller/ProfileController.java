@@ -23,6 +23,12 @@ public class ProfileController {
         this.authService = authService;
     }
 
+    /** Age in years derived from DOB (with legacy-age fallback), as a String, or null. */
+    private static String ageString(User user) {
+        Integer age = user.getDerivedAge();
+        return age != null ? String.valueOf(age) : null;
+    }
+
     @GetMapping
     public ResponseEntity<?> getProfile() {
         try {
@@ -35,10 +41,11 @@ public class ProfileController {
                     currentUser.getId(),
                     currentUser.getName(),
                     currentUser.getEmail(),
-                    currentUser.getAge(),
+                    ageString(currentUser),
+                    currentUser.getDob(),
                     currentUser.getGender()
                 );
-                
+
                 return ResponseEntity.ok(response);
             }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -60,17 +67,19 @@ public class ProfileController {
                     user.getId(),
                     request.getName(),
                     request.getAge(),
+                    request.getDob(),
                     request.getGender()
                 );
-                
+
                 ProfileResponse response = new ProfileResponse(
                     updatedUser.getId(),
                     updatedUser.getName(),
                     updatedUser.getEmail(),
-                    updatedUser.getAge(),
+                    ageString(updatedUser),
+                    updatedUser.getDob(),
                     updatedUser.getGender()
                 );
-                
+
                 return ResponseEntity.ok(response);
             }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

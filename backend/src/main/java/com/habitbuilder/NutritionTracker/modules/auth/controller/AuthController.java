@@ -1,5 +1,6 @@
 package com.habitbuilder.NutritionTracker.modules.auth.controller;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -30,10 +31,16 @@ public class AuthController {
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
+    /** Age in years derived from DOB (with legacy-age fallback), as a String, or null. */
+    private static String ageString(User user) {
+        Integer age = user.getDerivedAge();
+        return age != null ? String.valueOf(age) : null;
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
         try {
-            service.register(request.getEmail(), request.getPassword(), request.getName(), request.getAge(),
+            service.register(request.getEmail(), request.getPassword(), request.getName(), request.getDob(),
                     request.getGender());
             return ResponseEntity.ok(Map.of("message", "User registered"));
         } catch (RuntimeException e) {
@@ -47,8 +54,8 @@ public class AuthController {
         try {
             User user = service.login(request.getEmail(), request.getPassword());
             String token = jwtTokenProvider.generateToken(user.getEmail());
-            return ResponseEntity.ok(new LoginResponse(user.getId(), user.getName(), user.getEmail(), user.getAge(),
-                    user.getGender(), token));
+            return ResponseEntity.ok(new LoginResponse(user.getId(), user.getName(), user.getEmail(), ageString(user),
+                    user.getDob(), user.getGender(), token));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Invalid email or password"));
@@ -64,13 +71,15 @@ public class AuthController {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
                 User user = (User) authentication.getPrincipal();
-                return ResponseEntity.ok(Map.of(
-                    "id", user.getId(),
-                    "name", user.getName(),
-                    "email", user.getEmail(),
-                    "age", user.getAge(),
-                    "gender", user.getGender()
-                ));
+                // HashMap (not Map.of) because age/dob may be null for some accounts.
+                Map<String, Object> me = new HashMap<>();
+                me.put("id", user.getId());
+                me.put("name", user.getName());
+                me.put("email", user.getEmail());
+                me.put("age", ageString(user));
+                me.put("dob", user.getDob());
+                me.put("gender", user.getGender());
+                return ResponseEntity.ok(me);
             }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("valid", false));

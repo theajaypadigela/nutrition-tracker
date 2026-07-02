@@ -10,6 +10,7 @@ public class LoginResponse {
     private String name;
     private String email;
     private String age;
+    private String dob;
     private String gender;
     private String token;
 }

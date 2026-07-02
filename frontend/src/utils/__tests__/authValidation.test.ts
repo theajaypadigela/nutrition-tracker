@@ -1,8 +1,11 @@
 import {
   validateEmail,
   validatePassword,
+  validateNewPassword,
   validateFullName,
   validateAge,
+  validateDob,
+  ageFromDob,
   validateGender,
 } from '../authValidation';
 
@@ -32,6 +35,58 @@ describe('validatePassword', () => {
       'Password must be at least 6 characters',
     );
     expect(validatePassword('123456').valid).toBe(true);
+  });
+});
+
+describe('validateNewPassword', () => {
+  it('requires a value', () => {
+    expect(validateNewPassword('').error).toBe('Password is required');
+  });
+  it('enforces the 8-char minimum', () => {
+    expect(validateNewPassword('1234567').error).toBe('Use at least 8 characters');
+    expect(validateNewPassword('12345678').valid).toBe(true);
+  });
+});
+
+describe('ageFromDob', () => {
+  it('computes whole years from an ISO date', () => {
+    const d = new Date();
+    const iso = `${d.getFullYear() - 30}-01-01`;
+    // 30 or 29 depending on whether Jan 1 has passed — always within [29, 30].
+    const age = ageFromDob(iso);
+    expect(age).not.toBeNull();
+    expect(age! >= 29 && age! <= 30).toBe(true);
+  });
+  it('returns null for unparseable input', () => {
+    expect(ageFromDob('not-a-date')).toBeNull();
+    expect(ageFromDob('')).toBeNull();
+  });
+});
+
+describe('validateDob', () => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  it('requires a value', () => {
+    expect(validateDob('').error).toBe('Date of birth is required');
+  });
+  it('rejects future dates', () => {
+    const future = new Date();
+    future.setFullYear(future.getFullYear() + 1);
+    expect(validateDob(iso(future)).error).toBe(
+      'Date of birth can’t be in the future',
+    );
+  });
+  it('rejects under-13', () => {
+    const young = new Date();
+    young.setFullYear(young.getFullYear() - 10);
+    expect(validateDob(iso(young)).error).toBe('You must be at least 13');
+  });
+  it('accepts an adult date of birth', () => {
+    const adult = new Date();
+    adult.setFullYear(adult.getFullYear() - 25);
+    expect(validateDob(iso(adult)).valid).toBe(true);
   });
 });
 

@@ -1,10 +1,39 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../ui/text';
-import { VStack } from '../ui/vstack';
-import { HStack } from '../ui/hstack';
-import { ChevronDown, ChevronUp, Edit2, Trash2 } from 'lucide-react-native';
+import { ChevronDown, Edit2, Trash2, Plus, Zap } from 'lucide-react-native';
 import { FoodItem } from './types';
+
+const T = {
+  ink: '#16241c',
+  inkSoft: '#52635a',
+  inkMuted: '#8a988f',
+  line: '#e7ede9',
+  lineSoft: '#f1f5f2',
+  green: '#0f7a3d',
+  greenSoft: '#e6f4ec',
+  purple: '#7c3aed',
+  low: '#e0573e',
+  lowSoft: '#fdeae3',
+  blue: '#2a64c4',
+  blueSoft: '#e7eefb',
+};
+
+const MEAL_TINTS: Record<string, [string, string]> = {
+  breakfast: ['#fff1d9', '#e08a16'],
+  lunch: ['#e6f4ec', '#0f9b54'],
+  snacks: ['#f0e9fb', '#7c3aed'],
+  snack: ['#f0e9fb', '#7c3aed'],
+  dinner: ['#e7eefb', '#2a64c4'],
+};
+
+const MEAL_ICONS: Record<string, string> = {
+  breakfast: '🌅',
+  lunch: '☀️',
+  snacks: '🍪',
+  snack: '🍪',
+  dinner: '🌙',
+};
 
 interface MealGroupProps {
   mealType: string;
@@ -13,6 +42,7 @@ interface MealGroupProps {
   onToggleExpand: () => void;
   onEdit: (item: FoodItem) => void;
   onDelete: (mealType: string, itemId: string) => void;
+  onAdd?: (mealType: string) => void;
 }
 
 export const MealGroup: React.FC<MealGroupProps> = ({
@@ -22,231 +52,288 @@ export const MealGroup: React.FC<MealGroupProps> = ({
   onToggleExpand,
   onEdit,
   onDelete,
+  onAdd,
 }) => {
   if (items.length === 0) return null;
 
+  const key = mealType.toLowerCase();
+  const tint = MEAL_TINTS[key] ?? ['#f1f5f2', '#52635a'];
+  const icon = MEAL_ICONS[key] ?? '🍽️';
   const mealCalories = items.reduce((sum, item) => sum + (item.calories || 0), 0);
-
-  const getMealIcon = (type: string) => {
-    const lowerType = type.toLowerCase();
-    switch (lowerType) {
-      case 'breakfast':
-        return '🌅';
-      case 'lunch':
-        return '☀️';
-      case 'snack':
-      case 'snacks':
-        return '🍎';
-      case 'dinner':
-      default:
-        return '🌙';
-    }
-  };
-
-  // Capitalize first letter for display
-  const displayMealType = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+  const displayName = mealType.charAt(0).toUpperCase() + mealType.slice(1);
 
   return (
-    <View className="w-full rounded-2xl border border-gray-200 flex justify-between mb-4 bg-white">
-      <Pressable onPress={onToggleExpand} style={{ width: '100%' }}>
-        <HStack
-          style={{
-            width: '100%',
-            padding: 24,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          {/* left content — allow to grow */}
-          <HStack
+    <View style={styles.card}>
+      {/* header */}
+      <TouchableOpacity
+        onPress={onToggleExpand}
+        style={styles.header}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.mealIcon, { backgroundColor: tint[0] }]}>
+          <Text style={styles.mealEmoji}>{icon}</Text>
+        </View>
+
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.mealName}>{displayName}</Text>
+          <Text style={styles.mealMeta} numberOfLines={1}>
+            {items.length} {items.length === 1 ? 'item' : 'items'} ·{' '}
+            {Math.round(mealCalories)} cal
+          </Text>
+        </View>
+
+        <View style={styles.headerRight}>
+          <View style={{ alignItems: 'flex-end', marginRight: 6 }}>
+            <Text style={[styles.calCount, { color: tint[1] }]}>
+              {Math.round(mealCalories)}
+            </Text>
+            <Text style={styles.calUnit}>KCAL</Text>
+          </View>
+          <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              flex: 1,
+              transform: [{ rotate: isExpanded ? '180deg' : '0deg' }],
             }}
           >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#d1fae5',
-              }}
-            >
-              <Text size="lg">{getMealIcon(mealType)}</Text>
-            </View>
-
-            <VStack style={{ flex: 1 }}>
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={{ fontWeight: '600', color: '#111827' }}
-              >
-                {displayMealType}
-              </Text>
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={{ fontSize: 12, color: '#9CA3AF' }}
-              >
-                {items.length} {items.length === 1 ? 'item' : 'items'}
-                {mealCalories > 0 && ` • ${mealCalories} cal`}
-              </Text>
-            </VStack>
-          </HStack>
-
-          {/* chevron should not overlap left content */}
-          <View style={{ marginLeft: 12 }}>
-            {isExpanded ? (
-              <ChevronUp size={20} color="#6B7280" />
-            ) : (
-              <ChevronDown size={20} color="#6B7280" />
-            )}
+            <ChevronDown size={18} color={T.inkMuted} strokeWidth={2.2} />
           </View>
-        </HStack>
-      </Pressable>
+        </View>
+      </TouchableOpacity>
 
-      {/* Expanded food items list */}
+      {/* expanded items */}
       {isExpanded && (
-        <View
-          style={{
-            paddingHorizontal: 12,
-            paddingBottom: 12,
-            borderTopWidth: 1,
-            borderTopColor: '#E5E7EB',
-            paddingTop: 12,
-          }}
-        >
-          {items.map(item => {
-            const hasMacros =
-              item.protein !== undefined ||
-              item.carbs !== undefined ||
-              item.fat !== undefined;
+        <View style={styles.body}>
+          <View style={styles.divider} />
+          <View style={styles.itemList}>
+            {items.map((item, idx) => {
+              const hasMacros =
+                item.protein !== undefined ||
+                item.carbs !== undefined ||
+                item.fat !== undefined;
 
-            return (
-              <View
-                key={item.id}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 12,
-                  backgroundColor: '#F9FAFB',
-                  marginBottom: 8,
-                }}
-              >
-                {/* Food item details */}
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  {/* Name and AI Logged badge */}
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                      marginBottom: 4,
-                    }}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      style={{
-                        fontSize: 14,
-                        fontWeight: '600',
-                        color: '#111827',
-                      }}
-                    >
-                      {item.name}
-                    </Text>
-                    <View
-                      style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 9999,
-                        backgroundColor: '#DBEAFE',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: '#3B82F6',
-                          fontWeight: '500',
-                        }}
-                      >
-                        AI Logged
+              return (
+                <View key={item.id} style={styles.item}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    {/* name + badge */}
+                    <View style={styles.itemNameRow}>
+                      <Text style={styles.itemName} numberOfLines={1}>
+                        {item.name}
                       </Text>
+                      {/* All AI-logged for now; could be toggled by a field on FoodItem */}
+                      <View style={styles.aiBadge}>
+                        <Zap size={8} color={T.purple} fill={T.purple} />
+                        <Text style={styles.aiBadgeText}>AI LOGGED</Text>
+                      </View>
                     </View>
+
+                    {/* qty + cal */}
+                    <Text style={styles.itemMeta}>
+                      {item.quantity} {item.servingSize}
+                      {item.calories ? ` · ${item.calories} cal` : ''}
+                    </Text>
+
+                    {/* macros */}
+                    {hasMacros && (
+                      <Text style={styles.itemMacros}>
+                        {item.protein !== undefined && `P ${fmtG(item.protein)}g`}
+                        {item.protein !== undefined && item.carbs !== undefined && ' · '}
+                        {item.carbs !== undefined && `C ${fmtG(item.carbs)}g`}
+                        {item.carbs !== undefined && item.fat !== undefined && ' · '}
+                        {item.fat !== undefined && `F ${fmtG(item.fat)}g`}
+                      </Text>
+                    )}
                   </View>
 
-                  {/* Quantity and calories */}
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: '#6B7280',
-                      marginBottom: 4,
-                    }}
-                  >
-                    {item.quantity} {item.servingSize}
-                    {item.calories && ` • ${item.calories} cal`}
-                  </Text>
-
-                  {/* Macros - only show if available */}
-                  {hasMacros && (
-                    <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-                      {item.protein !== undefined && `P: ${item.protein}g`}
-                      {item.protein !== undefined &&
-                        item.carbs !== undefined &&
-                        ' • '}
-                      {item.carbs !== undefined && `C: ${item.carbs}g`}
-                      {item.carbs !== undefined &&
-                        item.fat !== undefined &&
-                        ' • '}
-                      {item.fat !== undefined && `F: ${item.fat}g`}
-                    </Text>
-                  )}
+                  {/* action buttons */}
+                  <View style={styles.actions}>
+                    <TouchableOpacity
+                      onPress={() => onEdit(item)}
+                      style={[styles.miniBtn, { backgroundColor: T.blueSoft }]}
+                      activeOpacity={0.7}
+                    >
+                      <Edit2 size={15} color={T.blue} strokeWidth={2} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => onDelete(mealType, item.id)}
+                      style={[styles.miniBtn, { backgroundColor: T.lowSoft }]}
+                      activeOpacity={0.7}
+                    >
+                      <Trash2 size={15} color={T.low} strokeWidth={2} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+              );
+            })}
+          </View>
 
-                {/* Action buttons */}
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {/* Edit button */}
-                  <Pressable
-                    onPress={() => onEdit(item)}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 18,
-                      backgroundColor: '#DBEAFE',
-                    }}
-                  >
-                    <Edit2 size={15} color="#3B82F6" />
-                  </Pressable>
-
-                  {/* Delete button */}
-                  <Pressable
-                    onPress={() => onDelete(mealType, item.id)}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 18,
-                      backgroundColor: '#FEE2E2',
-                    }}
-                  >
-                    <Trash2 size={15} color="#EF4444" />
-                  </Pressable>
-                </View>
-              </View>
-            );
-          })}
+          {/* add button */}
+          {onAdd && (
+            <TouchableOpacity
+              onPress={() => onAdd(mealType)}
+              style={styles.addBtn}
+              activeOpacity={0.7}
+            >
+              <Plus size={15} color={T.green} strokeWidth={2.4} />
+              <Text style={styles.addBtnText}>
+                Add to {displayName.toLowerCase()}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
   );
 };
+
+function fmtG(v: number): string {
+  if (v >= 100) return v.toFixed(0);
+  if (v >= 10) return (Math.round(v * 10) / 10).toString().replace(/\.0$/, '');
+  return (Math.round(v * 10) / 10).toString();
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e7ede9',
+    overflow: 'hidden',
+    shadowColor: '#102818',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    paddingHorizontal: 16,
+  },
+  mealIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  mealEmoji: {
+    fontSize: 18,
+  },
+  mealName: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: T.ink,
+    letterSpacing: -0.2,
+  },
+  mealMeta: {
+    fontSize: 12,
+    color: T.inkMuted,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calCount: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  calUnit: {
+    fontSize: 10,
+    color: T.inkMuted,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  body: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: T.lineSoft,
+    marginHorizontal: 4,
+    marginBottom: 10,
+  },
+  itemList: {
+    gap: 8,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: T.lineSoft,
+    borderRadius: 14,
+    padding: 11,
+    paddingHorizontal: 12,
+  },
+  itemNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flexWrap: 'wrap',
+    marginBottom: 3,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: T.ink,
+    flexShrink: 1,
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#f0e9fb',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  aiBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: T.purple,
+    letterSpacing: 0.4,
+  },
+  itemMeta: {
+    fontSize: 12,
+    color: T.inkSoft,
+    fontWeight: '600',
+  },
+  itemMacros: {
+    fontSize: 11,
+    color: T.inkMuted,
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  actions: {
+    gap: 6,
+    flexShrink: 0,
+  },
+  miniBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    marginTop: 10,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#e7ede9',
+    borderRadius: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  addBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: T.green,
+  },
+});

@@ -6,11 +6,13 @@ import { MainTabNavigator } from './MainTabNavigator';
 import { useAuth } from '../context/AuthContext';
 import MealScheduleScreen from '../screens/main/MealScheduleScreen';
 import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealScheduleScreen';
+import OnboardingDoneScreen from '../screens/onboarding/OnboardingDoneScreen';
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
 import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import ReminderHealthScreen from '../screens/main/ReminderHealthScreen';
 import { navigationRef } from './navigationRef';
+import { ROUTES } from './routeNames';
 import type { VoiceHabitParams, VoiceMealLogParams } from './paramTypes';
 
 export { navigationRef };
@@ -22,6 +24,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   MealSchedule: undefined;
   OnboardingMealSchedule: undefined;
+  OnboardingDone: { callTime?: string } | undefined;
   Profile: undefined;
   ReminderHealth: undefined;
   VoiceMealLog: VoiceMealLogParams;
@@ -31,8 +34,21 @@ export type RootStackParamList = {
 const RootStack = createStackNavigator<RootStackParamList>();
 
 const AuthenticatedNavigator = () => {
+  // Fresh signups open on the one-time call-setup flow; everyone else on MainTabs.
+  // If a call time was already chosen during registration, skip straight to Done.
+  // needsOnboarding resets on app reload, so it only fires for the registering session.
+  const { needsOnboarding, onboardingCallTime } = useAuth();
+  const initialRoute = !needsOnboarding
+    ? ROUTES.MAIN_TABS
+    : onboardingCallTime
+    ? ROUTES.ONBOARDING_DONE
+    : ROUTES.ONBOARDING_MEAL_SCHEDULE;
   return (
-    <RootStack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
+    <RootStack.Navigator
+      id="RootStack"
+      initialRouteName={initialRoute}
+      screenOptions={{ headerShown: false }}
+    >
       <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
       <RootStack.Screen
         name="MealSchedule"
@@ -46,6 +62,10 @@ const AuthenticatedNavigator = () => {
       <RootStack.Screen
         name="OnboardingMealSchedule"
         component={OnboardingMealScheduleScreen}
+      />
+      <RootStack.Screen
+        name="OnboardingDone"
+        component={OnboardingDoneScreen}
       />
       <RootStack.Screen name="Profile" component={ProfileScreen} />
       <RootStack.Screen

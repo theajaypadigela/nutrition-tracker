@@ -23,16 +23,16 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
     }
 
-    public void register(String email, String password, String name, String age, String gender) {
+    public void register(String email, String password, String name, String dob, String gender) {
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("User already exists");
         }
 
-        User user = new User(); 
+        User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
         user.setName(name);
-        user.setAge(age);
+        user.setDob(dob);
         user.setGender(gender);
         user.setRole("USER");
 
@@ -49,20 +49,23 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public User updateProfile(String userId, String name, String age, String gender) {
+    public User updateProfile(String userId, String name, String age, String dob, String gender) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         if (name != null && !name.trim().isEmpty()) {
             user.setName(name);
         }
         if (age != null && !age.trim().isEmpty()) {
             user.setAge(age);
         }
+        if (dob != null && !dob.trim().isEmpty()) {
+            user.setDob(dob);
+        }
         if (gender != null && !gender.trim().isEmpty()) {
             user.setGender(gender);
         }
-        
+
         return userRepository.save(user);
     }
 

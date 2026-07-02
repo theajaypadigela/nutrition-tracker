@@ -29,6 +29,49 @@ export function validatePassword(password: string): ValidationResult {
   return ok;
 }
 
+/**
+ * Stricter rule for newly-created passwords (registration). Login keeps the lenient
+ * {@link validatePassword} (≥6) so accounts created before this rule can still sign in.
+ */
+export function validateNewPassword(password: string): ValidationResult {
+  if (!password) return { valid: false, error: 'Password is required' };
+  if (password.length < 8) {
+    return { valid: false, error: 'Use at least 8 characters' };
+  }
+  return ok;
+}
+
+/** Whole years from an ISO `yyyy-MM-dd` date of birth, or null if unparseable. */
+export function ageFromDob(iso: string): number | null {
+  if (!iso) return null;
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const monthDiff = today.getMonth() - d.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+/** Date of birth: required, a real past date, and at least 13 years old. */
+export function validateDob(iso: string): ValidationResult {
+  if (!iso) return { valid: false, error: 'Date of birth is required' };
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) {
+    return { valid: false, error: 'Enter a valid date' };
+  }
+  if (d.getTime() > Date.now()) {
+    return { valid: false, error: 'Date of birth can’t be in the future' };
+  }
+  const age = ageFromDob(iso);
+  if (age !== null && age < 13) {
+    return { valid: false, error: 'You must be at least 13' };
+  }
+  return ok;
+}
+
 export function validateFullName(name: string): ValidationResult {
   if (!name.trim()) return { valid: false, error: 'Full name is required' };
   return ok;

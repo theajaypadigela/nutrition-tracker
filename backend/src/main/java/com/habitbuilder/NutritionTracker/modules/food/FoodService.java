@@ -838,7 +838,7 @@ public class FoodService {
                         }
                         Units: calories=kcal, protein/carbs/fat/fiber/sugar=g, sodium/calcium/potassium/magnesium/zinc/iron=mg, vitamins A/D/E=mcg, vitamin C/K=mg.
                         """,
-                user.getAge(), user.getGender());
+                user.getDerivedAge(), user.getGender());
 
         try {
             String text = callAiRaw(prompt);
@@ -1016,7 +1016,7 @@ public class FoodService {
                         Example: [{"variant":"positive","message":"Great protein intake!"}]
                         No extra text, just the JSON array.
                         """,
-                user.getAge(), user.getGender(),
+                user.getDerivedAge(), user.getGender(),
                 avg.getCalories(), avg.getProtein(), avg.getCarbs(), avg.getFat(),
                 avg.getFiber(), avg.getSugar(), avg.getSodium(),
                 avoidedSection.length() > 0 ? "Foods to avoid:\n" + avoidedSection : "");

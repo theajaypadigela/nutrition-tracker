@@ -1,163 +1,118 @@
-import React, { useState, useMemo } from 'react';
-import { Text } from '../../components/ui/text';
+import React, { useMemo, useState } from 'react';
 import {
-  Input,
-  InputField,
-  InputSlot,
-  InputIcon,
-} from '../../components/ui/input';
-import { VStack } from '../../components/ui/vstack';
-import { ScrollView, RefreshControl } from 'react-native';
-import {
-  Select,
-  SelectBackdrop,
-  SelectContent,
-  SelectDragIndicator,
-  SelectDragIndicatorWrapper,
-  SelectIcon,
-  SelectInput,
-  SelectItem,
-  SelectPortal,
-  SelectTrigger,
-} from '../../components/ui/select';
-import { ChevronDownIcon } from '../../components/ui/icon';
-import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
-import { ButtonText, Button } from '../../components/ui/button';
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { ArrowLeft, Calendar, Mail, User } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuth } from '@/src/context/AuthContext';
 import {
+  BrandMark,
+  Hero,
+  Banner,
+  AuthTextField,
+  AuthPasswordField,
+  PickerField,
+  GenderChips,
+  AuthCheckbox,
+  PrimaryButton,
+  TextLink,
+  T,
+  R,
+  formatDob,
+} from '../../components/auth';
+import {
   validateEmail as validateEmailRule,
-  validatePassword as validatePasswordRule,
+  validateNewPassword as validatePasswordRule,
   validateFullName as validateFullNameRule,
-  validateAge as validateAgeRule,
+  validateDob as validateDobRule,
   validateGender as validateGenderRule,
 } from '../../utils/authValidation';
 
-const RegisterScreen = () => {
-  const [selectedGender, setSelectedGender] = useState('');
-  const [age, setAge] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [fullNameError, setFullNameError] = useState('');
-  const [ageError, setAgeError] = useState('');
-  const [genderError, setGenderError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [registerError, setRegisterError] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+type RegisterScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'Register'
+>;
 
+const GENDER_OPTIONS = [
+  { label: 'Female', value: 'female' },
+  { label: 'Male', value: 'male' },
+  { label: 'Non-binary', value: 'non_binary' },
+  { label: 'Prefer not to say', value: 'prefer_not_to_say' },
+];
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const toIsoDate = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+export default function RegisterScreen() {
+  const navigation = useNavigation<RegisterScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { register, isLoading } = useAuth();
 
-  const handleTogglePassword = () => {
-    setShowPassword(prevState => !prevState);
-  };
+  const [name, setName] = useState('');
+  const [dob, setDob] = useState(''); // ISO yyyy-MM-dd
+  const [gender, setGender] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [agree, setAgree] = useState(false);
 
-  const handleToggleConfirmPassword = () => {
-    setShowConfirmPassword(prevState => !prevState);
-  };
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [showDob, setShowDob] = useState(false);
+  const [registerError, setRegisterError] = useState('');
 
-  const handleConfirmPasswordBlur = () => {
-    if (confirmPassword && password && confirmPassword !== password) {
-      setConfirmPasswordError('Passwords do not match');
-    } else {
-      setConfirmPasswordError('');
+  const touch = (k: string) => setTouched(t => ({ ...t, [k]: true }));
+  const show = (k: string) => touched[k] || submitted;
+
+  const errs = useMemo(
+    () => ({
+      name: validateFullNameRule(name).error,
+      dob: validateDobRule(dob).error,
+      gender: validateGenderRule(gender).error,
+      email: validateEmailRule(email).error,
+      pw: validatePasswordRule(password).error,
+      confirm: !confirm
+        ? 'Please re-enter your password'
+        : confirm !== password
+        ? 'Passwords don’t match'
+        : '',
+      agree: !agree ? 'Please accept the terms to continue' : '',
+    }),
+    [name, dob, gender, email, password, confirm, agree],
+  );
+
+  const isValid = Object.values(errs).every(e => !e);
+
+  const onDateChange = (event: { type?: string }, selected?: Date) => {
+    setShowDob(false);
+    if (event.type === 'dismissed') return;
+    if (selected) {
+      setDob(toIsoDate(selected));
+      touch('dob');
     }
   };
-
-  const validateEmail = (email: string): boolean => {
-    const { valid, error } = validateEmailRule(email);
-    setEmailError(error);
-    return valid;
-  };
-
-  const handleEmailBlur = () => {
-    validateEmail(email);
-  };
-
-  const validateFullName = (name: string): boolean => {
-    const { valid, error } = validateFullNameRule(name);
-    setFullNameError(error);
-    return valid;
-  };
-
-  const handleFullNameBlur = () => {
-    validateFullName(fullName);
-  };
-
-  const validateAge = (age: string): boolean => {
-    const { valid, error } = validateAgeRule(age);
-    setAgeError(error);
-    return valid;
-  };
-
-  const handleAgeBlur = () => {
-    validateAge(age);
-  };
-
-  const validateGender = (gender: string): boolean => {
-    const { valid, error } = validateGenderRule(gender);
-    setGenderError(error);
-    return valid;
-  };
-
-  const validatePassword = (pwd: string): boolean => {
-    const { valid, error } = validatePasswordRule(pwd);
-    setPasswordError(error);
-    return valid;
-  };
-
-  const handlePasswordBlur = () => {
-    validatePassword(password);
-  };
-
-  const isFormValid = useMemo(() => {
-    return (
-      fullName.trim() !== '' &&
-      age !== '' &&
-      selectedGender !== '' &&
-      email !== '' &&
-      password !== '' &&
-      confirmPassword !== '' &&
-      password === confirmPassword &&
-      !fullNameError &&
-      !ageError &&
-      !genderError &&
-      !emailError &&
-      !passwordError &&
-      !confirmPasswordError
-    );
-  }, [
-    fullName,
-    age,
-    selectedGender,
-    email,
-    password,
-    confirmPassword,
-    fullNameError,
-    ageError,
-    genderError,
-    emailError,
-    passwordError,
-    confirmPasswordError,
-  ]);
 
   const handleRegister = async () => {
-    if (!isFormValid) {
-      return;
-    }
-
+    setSubmitted(true);
+    if (!isValid) return;
     setRegisterError('');
-
     try {
-      await register(fullName, email, password, age, selectedGender);
-      console.log('Registration successful');
-      // Navigation will be handled by AuthContext
+      await register(name.trim(), email.trim(), password, dob, gender);
+      // On success AuthContext flips needsOnboarding + isAuthenticated, so the
+      // authenticated navigator opens the call-setup flow — no manual navigation.
     } catch (error) {
-      console.error('Registration error:', error);
       setRegisterError(
         error instanceof Error
           ? error.message
@@ -166,237 +121,210 @@ const RegisterScreen = () => {
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setSelectedGender('');
-    setAge('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setFullName('');
-    setPasswordError('');
-    setConfirmPasswordError('');
-    setEmailError('');
-    setFullNameError('');
-    setAgeError('');
-    setGenderError('');
-    setRegisterError('');
-    setRefreshing(false);
-  };
+  const dobPickerValue = dob ? new Date(`${dob}T00:00:00`) : new Date(2000, 0, 1);
 
   return (
-    <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      <VStack className="flex-1 gap-6 items-center justify-center p-6">
-        <VStack className="items-center gap-6 space-y-4">
-          <VStack className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center">
-            <Activity size={32} stroke="white" strokeWidth={2.5} />
-          </VStack>
-          <VStack className="items-center gap-3 space-y-2">
-            <Text className="text-2xl font-semibold text-gray-900">
-              Create Account
-            </Text>
-            <Text className="text-lg text-gray-600">
-              Start Tracking Your Nutrition
-            </Text>
-          </VStack>
-        </VStack>
-        <VStack className="gap-2">
-          <Text>Full Name *</Text>
-          <Input
-            size="xl"
-            className={`
-                w-full px-4 h-14 rounded-xl border-2
-                text-gray-900 placeholder:text-gray-400
-                bg-white
-                ${fullNameError ? 'border-red-500' : 'border-gray-200'}
-              `}
-          >
-            <InputField
-              type="text"
-              value={fullName}
-              onChangeText={setFullName}
-              onBlur={handleFullNameBlur}
-              placeholder="Enter your name.."
-            />
-          </Input>
-          {fullNameError && (
-            <Text className="text-red-500 text-md ml-2">{fullNameError}</Text>
-          )}
-        </VStack>
-        <VStack className="gap-2">
-          <Text>Age *</Text>
-          <Input
-            size="xl"
-            className={`
-                w-full px-4 h-14 rounded-xl border-2
-                text-gray-900 placeholder:text-gray-400
-                bg-white
-                ${ageError ? 'border-red-500' : 'border-gray-200'}
-              `}
-          >
-            <InputField
-              value={age}
-              placeholder="Enter your age"
-              keyboardType="number-pad"
-              onChangeText={text => setAge(text.replace(/[^0-9]/g, ''))}
-              onBlur={handleAgeBlur}
-            />
-          </Input>
-          {ageError && (
-            <Text className="text-red-500 text-md ml-2">{ageError}</Text>
-          )}
-        </VStack>
-        <VStack className="gap-2">
-          <Text>Gender *</Text>
-          <Select
-            selectedValue={selectedGender}
-            onValueChange={value => {
-              setSelectedGender(value);
-              validateGender(value);
-            }}
-            className="w-full"
-          >
-            <SelectTrigger
-              className={`w-full px-4 h-14 rounded-xl border-2 bg-white ${genderError ? 'border-red-500' : 'border-gray-200'}`}
-            >
-              <SelectInput
-                placeholder="Select gender"
-                className="px-0 text-gray-900 placeholder:text-gray-400 flex-1"
-              />
-              <SelectIcon as={ChevronDownIcon} className="text-gray-500" />
-            </SelectTrigger>
-            <SelectPortal>
-              <SelectBackdrop />
-              <SelectContent>
-                <SelectDragIndicatorWrapper>
-                  <SelectDragIndicator />
-                </SelectDragIndicatorWrapper>
-                <SelectItem label="Male" value="male" />
-                <SelectItem label="Female" value="female" />
-                <SelectItem label="Other" value="other" />
-                <SelectItem
-                  label="Prefer not to say"
-                  value="prefer_not_to_say"
-                />
-              </SelectContent>
-            </SelectPortal>
-          </Select>
-          {genderError && (
-            <Text className="text-red-500 text-md ml-2">{genderError}</Text>
-          )}
-        </VStack>
-        <VStack className="gap-2">
-          <Text>Email *</Text>
-          <Input
-            size="xl"
-            className={`
-                w-full px-4 h-14 rounded-xl border-2
-                text-gray-900 placeholder:text-gray-400
-                bg-white
-                ${emailError ? 'border-red-500' : 'border-gray-200'}
-              `}
-          >
-            <InputField
-              type="text"
-              value={email}
-              onChangeText={setEmail}
-              onBlur={handleEmailBlur}
-              placeholder="Enter your email.."
-            />
-          </Input>
-          {emailError && (
-            <Text className="text-red-500 text-md ml-2">{emailError}</Text>
-          )}
-        </VStack>
-        <VStack className="gap-2">
-          <Text>Password *</Text>
-          <Input
-            size="xl"
-            className={`
-                w-full px-4 h-14 rounded-xl border-2
-                text-gray-900 placeholder:text-gray-400
-                bg-white
-                ${passwordError ? 'border-red-500' : 'border-gray-200'}
-              `}
-          >
-            <InputField
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChangeText={setPassword}
-              onBlur={handlePasswordBlur}
-            />
-            <InputSlot className="pr-8" onPress={handleTogglePassword}>
-              <InputIcon as={showPassword ? EyeIcon : EyeOffIcon} />
-            </InputSlot>
-          </Input>
-          {passwordError && (
-            <Text className="text-red-500 text-md ml-2">{passwordError}</Text>
-          )}
-        </VStack>
-
-        <VStack className="gap-2">
-          <Text>Confirm Password *</Text>
-          <Input
-            size="xl"
-            className={`
-                w-full px-4 h-14 rounded-xl border-2
-                text-gray-900 placeholder:text-gray-400
-                bg-white
-                ${confirmPasswordError ? 'border-red-500' : ''}
-              `}
-          >
-            <InputField
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              onBlur={handleConfirmPasswordBlur}
-              placeholder="Confirm your password"
-            />
-            <InputSlot className="pr-8" onPress={handleToggleConfirmPassword}>
-              <InputIcon as={showConfirmPassword ? EyeIcon : EyeOffIcon} />
-            </InputSlot>
-          </Input>
-          {confirmPasswordError && (
-            <Text className="text-red-500 text-md ml-2">
-              {confirmPasswordError}
-            </Text>
-          )}
-        </VStack>
-
-        {registerError && (
-          <VStack className="w-full bg-red-50 border border-red-200 rounded-xl p-4">
-            <Text className="text-red-600 text-center">{registerError}</Text>
-          </VStack>
-        )}
-
-        <Button
-          variant="solid"
-          size="xl"
-          className="w-full bg-emerald-500 rounded-xl"
-          isDisabled={!isFormValid || isLoading}
-          onPress={handleRegister}
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={T.greenMid} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ButtonText className="text-white font-medium">
-            {isLoading ? 'Registering...' : 'Register'}
-          </ButtonText>
-        </Button>
-
-        <Button variant="link" size="md" className="mt-3">
-          <ButtonText className="text-gray-600">
-            Already have an account?{' '}
-            <Text className="text-emerald-600 hover:text-emerald-700 font-medium">
-              Login
+          <Hero paddingTop={insets.top + 18}>
+            <View style={styles.brandRow}>
+              <Pressable
+                onPress={() => navigation.goBack()}
+                accessibilityRole="button"
+                accessibilityLabel="Back to login"
+                style={styles.backBtn}
+              >
+                <ArrowLeft size={20} color={T.white} />
+              </Pressable>
+              <BrandMark size={38} on="dark" />
+            </View>
+            <Text style={styles.title}>Create your account</Text>
+            <Text style={styles.subtitle}>
+              Start tracking your nutrition through a simple daily call.
             </Text>
-          </ButtonText>
-        </Button>
-      </VStack>
-    </ScrollView>
-  );
-};
+          </Hero>
 
-export default RegisterScreen;
+          <View style={styles.sheet}>
+            <View style={styles.fields}>
+              <AuthTextField
+                label="Full name"
+                icon={User}
+                value={name}
+                onChangeText={setName}
+                onBlur={() => touch('name')}
+                placeholder="e.g. Alex Morgan"
+                autoCapitalize="words"
+                autoComplete="name"
+                error={show('name') && errs.name}
+              />
+
+              <PickerField
+                label="Date of birth"
+                icon={Calendar}
+                value={formatDob(dob)}
+                placeholder="Select your date of birth"
+                active={showDob}
+                onPress={() => {
+                  setShowDob(true);
+                  touch('dob');
+                }}
+                error={show('dob') && errs.dob}
+              />
+
+              <GenderChips
+                label="Gender"
+                options={GENDER_OPTIONS}
+                value={gender}
+                onChange={v => {
+                  setGender(v);
+                  touch('gender');
+                }}
+                error={show('gender') && errs.gender}
+              />
+
+              <AuthTextField
+                label="Email"
+                icon={Mail}
+                value={email}
+                onChangeText={setEmail}
+                onBlur={() => touch('email')}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoComplete="email"
+                error={show('email') && errs.email}
+              />
+
+              <AuthPasswordField
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                onBlur={() => touch('pw')}
+                placeholder="Create a password"
+                autoComplete="password-new"
+                strength
+                error={show('pw') && errs.pw}
+                hint={!password ? 'At least 8 characters.' : undefined}
+              />
+
+              <AuthPasswordField
+                label="Confirm password"
+                value={confirm}
+                onChangeText={setConfirm}
+                onBlur={() => touch('confirm')}
+                placeholder="Re-enter your password"
+                autoComplete="password-new"
+                error={show('confirm') && errs.confirm}
+              />
+
+              <AuthCheckbox
+                checked={agree}
+                onChange={v => {
+                  setAgree(v);
+                  touch('agree');
+                }}
+                error={show('agree') && errs.agree}
+              >
+                I agree to Nourish’s{' '}
+                <Text style={styles.terms}>Terms of Service</Text> and{' '}
+                <Text style={styles.terms}>Privacy Policy</Text>.
+              </AuthCheckbox>
+
+              {registerError ? (
+                <Banner tone="error" title="Couldn’t create account">
+                  {registerError}
+                </Banner>
+              ) : null}
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <PrimaryButton onPress={handleRegister} loading={isLoading}>
+            {isLoading ? 'Creating account…' : 'Create account'}
+          </PrimaryButton>
+          <View style={styles.footerLinkRow}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TextLink onPress={() => navigation.navigate('Login')}>Log in</TextLink>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+
+      {showDob ? (
+        <DateTimePicker
+          value={dobPickerValue}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          maximumDate={new Date()}
+          onChange={onDateChange}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: T.greenMid },
+  flex: { flex: 1 },
+  scroll: { flexGrow: 1, backgroundColor: T.surface },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    color: T.white,
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -0.9,
+    marginTop: 20,
+  },
+  subtitle: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 14.5,
+    fontWeight: '500',
+    lineHeight: 21,
+    marginTop: 8,
+    maxWidth: 300,
+  },
+  sheet: {
+    flex: 1,
+    marginTop: -44,
+    backgroundColor: T.surface,
+    borderTopLeftRadius: R.xl,
+    borderTopRightRadius: R.xl,
+  },
+  fields: {
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 24,
+    gap: 18,
+  },
+  terms: { color: T.green, fontWeight: '700' },
+  footer: {
+    backgroundColor: T.surface,
+    borderTopWidth: 1,
+    borderTopColor: T.lineSoft,
+    paddingHorizontal: 22,
+    paddingTop: 14,
+  },
+  footerLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 13,
+  },
+  footerText: { fontSize: 13.5, fontWeight: '600', color: T.inkSoft },
+});

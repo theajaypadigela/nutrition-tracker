@@ -130,14 +130,14 @@ describe('AuthContext', () => {
     });
 
     await act(async () => {
-      await ctx.current().register('Bo', 'bo@x.io', 'pw', '22', 'm');
+      await ctx.current().register('Bo', 'bo@x.io', 'pw', '2000-05-15', 'm');
     });
 
     expect(mockAuthApi.register).toHaveBeenCalledWith(
       'Bo',
       'bo@x.io',
       'pw',
-      '22',
+      '2000-05-15',
       'm',
     );
     expect(mockAuthApi.login).toHaveBeenCalledWith('bo@x.io', 'pw');

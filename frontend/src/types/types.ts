@@ -3,7 +3,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  /** Whole years, derived server-side from {@link dob} (legacy-age fallback). Display only. */
   age?: string;
+  /** Date of birth in ISO `yyyy-MM-dd`. Source of truth for age. */
+  dob?: string;
   gender?: string;
 }
 

@@ -1,18 +1,18 @@
 import React, { useCallback } from 'react';
-import { Text } from '../../components/ui/text';
-import { VStack } from '../../components/ui/vstack';
-import { MealGroup } from '../../components/food-log/MealGroup';
-import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
 import {
-  ScrollView,
   View,
+  ScrollView,
   TouchableOpacity,
   Platform,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import AppBar from '../../components/AppBar';
-import NutritionDisplay from '../../components/food-log/NutritionDisplay';
+import { Text } from '../../components/ui/text';
+import { MealGroup } from '../../components/food-log/MealGroup';
+import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
+import { FoodLogHeader } from '../../components/food-log/FoodLogHeader';
+import { CheckinCard } from '../../components/food-log/CheckinCard';
+import { MacrosCard } from '../../components/food-log/MacrosCard';
 import {
   useNavigation,
   useFocusEffect,
@@ -28,12 +28,21 @@ import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
 import { navigateToVoiceMealLog } from '../../navigation/navigationUtils';
 import MealReminderSettings from '../../components/food-log/MealReminderSettings';
 
-type FoodLogNavigationProp = StackNavigationProp<
-  FoodStackParamList,
-  'FoodLog'
->;
-
+type FoodLogNavigationProp = StackNavigationProp<FoodStackParamList, 'FoodLog'>;
 type FoodLogRouteProp = RouteProp<FoodStackParamList, 'FoodLog'>;
+
+const DAILY_GOALS = { protein: 180, carbs: 250, fat: 70, sugar: 40 };
+const TARGET_CALORIES = 2500;
+
+function formatDateLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
 const FoodLogScreen = () => {
   const navigation = useNavigation<FoodLogNavigationProp>();
@@ -42,14 +51,12 @@ const FoodLogScreen = () => {
   const selectedDate = React.useMemo(() => {
     const todayKey = getTodayLocalDate();
     const requestedDate = route.params?.selectedDate;
-
     if (
       typeof requestedDate !== 'string' ||
       !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
     ) {
       return todayKey;
     }
-
     return requestedDate > todayKey ? todayKey : requestedDate;
   }, [route.params?.selectedDate]);
 
@@ -70,100 +77,175 @@ const FoodLogScreen = () => {
     deleteFood,
   } = useFoodLog(selectedDate);
 
-  // Reload on focus (e.g., after returning from VoiceMealLogScreen).
   useFocusEffect(
     useCallback(() => {
       reload();
     }, [reload]),
   );
 
+  const handleAdd = useCallback(
+    (_mealType: string) => {
+      navigation.navigate('ManualFoodLog', { selectedDate });
+    },
+    [navigation, selectedDate],
+  );
+
   return (
-    <View className="flex-1">
-      <AppBar title="Food Log" showProfileShortcut />
+    <View style={styles.root}>
+      {/* green gradient header */}
+      <FoodLogHeader
+        dateLabel={formatDateLabel(selectedDate)}
+        consumed={nutritionTotals.calories}
+        target={TARGET_CALORIES}
+        onBack={() => navigation.goBack()}
+      />
+
+      {/* content scrolls up over the header bottom */}
       <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <VStack className="w-full p-6">
-          {Boolean(mealRescheduleTime) && (
-            <View className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 gap-2">
-              <Clock size={16} color="#D97706" />
-              <Text className="text-amber-700 text-sm flex-1">
-                Meal logging call rescheduled for{' '}
-                <Text className="font-bold text-amber-800">
-                  {formatEpochTime12h(mealRescheduleTime)}
-                </Text>
+        {/* rescheduled call banner */}
+        {Boolean(mealRescheduleTime) && (
+          <View style={styles.rescheduleBanner}>
+            <Clock size={16} color="#D97706" strokeWidth={2} />
+            <Text style={styles.rescheduleText}>
+              Meal logging call rescheduled for{' '}
+              <Text style={styles.rescheduleTime}>
+                {formatEpochTime12h(mealRescheduleTime!)}
               </Text>
-            </View>
-          )}
-          {/* Manage the daily meal-logging reminder right here, where meals are logged. */}
-          <MealReminderSettings variant="card" />
-          <VStack>
-            <Text size="md" className="font-bold text-gray-500">
-              MEAL BREAKDOWN
             </Text>
-            {Object.entries(meals).map(([mealType, items]) => (
-              <MealGroup
-                key={mealType}
-                mealType={mealType}
-                items={items}
-                isExpanded={expandedMeal === mealType}
-                onToggleExpand={() => toggleMeal(mealType)}
-                onEdit={openEditor}
-                onDelete={deleteFood}
-              />
-            ))}
-          </VStack>
-          <NutritionDisplay
-            calories={nutritionTotals.calories}
-            targetCalories={2500}
-            totals={{
-              protein: nutritionTotals.protein,
-              carbs: nutritionTotals.carbs,
-              fat: nutritionTotals.fat,
-              sugar: nutritionTotals.sugar,
-            }}
-            dailyGoals={{
-              protein: 180,
-              carbs: 250,
-              fat: 70,
-              sugar: 40,
-            }}
-          />
-        </VStack>
-        <EditFoodDrawer
-          isOpen={showDrawer}
-          onClose={closeEditor}
-          onSave={saveFood}
-          initialData={selectedFood}
+          </View>
+        )}
+
+        {/* AI check-in card */}
+        <CheckinCard />
+
+        {/* meal-logging reminder — card variant, with time picker */}
+        <MealReminderSettings variant="card" />
+
+        {/* macros card */}
+        <MacrosCard
+          totals={{
+            protein: nutritionTotals.protein,
+            carbs: nutritionTotals.carbs,
+            fat: nutritionTotals.fat,
+            sugar: nutritionTotals.sugar,
+          }}
+          dailyGoals={DAILY_GOALS}
         />
+
+        {/* meals section header */}
+        <View style={styles.mealsHeader}>
+          <Text style={styles.mealsTitle}>Today's meals</Text>
+          <Text style={styles.mealsCal}>
+            {Math.round(nutritionTotals.calories)} / {TARGET_CALORIES} cal
+          </Text>
+        </View>
+
+        {/* meal groups */}
+        <View style={styles.mealList}>
+          {Object.entries(meals).map(([mealType, items]) => (
+            <MealGroup
+              key={mealType}
+              mealType={mealType}
+              items={items}
+              isExpanded={expandedMeal === mealType}
+              onToggleExpand={() => toggleMeal(mealType)}
+              onEdit={openEditor}
+              onDelete={deleteFood}
+              onAdd={handleAdd}
+            />
+          ))}
+        </View>
       </ScrollView>
 
-      {/* Voice Log Button — routes to the root-stack VoiceMealLog (single registration). */}
+      <EditFoodDrawer
+        isOpen={showDrawer}
+        onClose={closeEditor}
+        onSave={saveFood}
+        initialData={selectedFood}
+      />
+
+      {/* voice FAB */}
       <TouchableOpacity
         onPress={() => navigateToVoiceMealLog({ selectedDate })}
         style={styles.voiceFab}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
         <Mic size={24} stroke="white" strokeWidth={2.5} />
       </TouchableOpacity>
 
-      {/* Floating Action Button */}
+      {/* add FAB */}
       <TouchableOpacity
         onPress={() => navigation.navigate('ManualFoodLog', { selectedDate })}
-        style={styles.fab}
-        activeOpacity={0.8}
+        style={styles.addFab}
+        activeOpacity={0.85}
       >
-        <Plus size={28} stroke="white" strokeWidth={2.5} />
+        <Plus size={26} stroke="white" strokeWidth={2.4} />
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#eef2f0',
+  },
+  scroll: {
+    flex: 1,
+    marginTop: -44,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 120,
+    gap: 14,
+  },
+  rescheduleBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+  },
+  rescheduleText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#b45309',
+  },
+  rescheduleTime: {
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  mealsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+    paddingTop: 2,
+  },
+  mealsTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#16241c',
+    letterSpacing: -0.1,
+  },
+  mealsCal: {
+    fontSize: 12,
+    color: '#8a988f',
+    fontWeight: '700',
+  },
+  mealList: {
+    gap: 11,
+  },
   voiceFab: {
     position: 'absolute',
     right: 20,
@@ -174,26 +256,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#7c3aed',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowColor: '#7c3aed',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 22,
     elevation: 8,
   },
-  fab: {
+  addFab: {
     position: 'absolute',
     right: 20,
     bottom: Platform.OS === 'ios' ? 110 : 100,
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#059669',
+    backgroundColor: '#0f7a3d',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowColor: '#0f7a3d',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.42,
+    shadowRadius: 22,
     elevation: 8,
   },
 });

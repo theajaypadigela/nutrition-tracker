@@ -1,158 +1,331 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Switch,
   Alert,
   Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
   StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { ChevronRight, Clock, Phone, ShieldCheck, Sparkles } from 'lucide-react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import {
-  MealReminder,
   defaultSchedule,
   saveSchedule,
   scheduleAllAlarms,
 } from '../../services/mealScheduler';
 import notifee, { AuthorizationStatus } from '@notifee/react-native';
+import { ROUTES } from '../../navigation/routeNames';
+import {
+  PrimaryButton,
+  TextLink,
+  T,
+  R,
+  formatTime,
+} from '../../components/auth';
 
+/**
+ * One-time "daily check-in call" setup, shown right after registration. Visually the
+ * Nourish CallSetup design; functionally it keeps the existing scheduler core
+ * (saveSchedule + scheduleAllAlarms + notifee permission). On finish/skip it lands on
+ * the Done screen rather than jumping straight to MainTabs.
+ */
 export default function OnboardingMealScheduleScreen() {
   const navigation = useNavigation<any>();
-  const [reminder, setReminder] = useState<MealReminder>(defaultSchedule());
+  const insets = useSafeAreaInsets();
+  const base = defaultSchedule();
+  const [hour, setHour] = useState(base.hour);
+  const [minute, setMinute] = useState(base.minute);
+  const [hasPicked, setHasPicked] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const toggleEnabled = (val: boolean) =>
-    setReminder(prev => ({ ...prev, enabled: val }));
-
-  const updateTime = (date: Date) => {
-    setReminder(prev => ({
-      ...prev,
-      hour: date.getHours(),
-      minute: date.getMinutes(),
-    }));
+  const onTimeChange = (event: { type?: string }, selected?: Date) => {
     setShowPicker(false);
+    if (event.type === 'dismissed') return;
+    if (selected) {
+      setHour(selected.getHours());
+      setMinute(selected.getMinutes());
+      setHasPicked(true);
+    }
   };
 
-  const formatTime = (h: number, m: number) => {
-    const d = new Date();
-    d.setHours(h, m);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  const goToDone = (callTime?: string) =>
+    navigation.replace(ROUTES.ONBOARDING_DONE, { callTime });
 
-  const handleContinue = async () => {
-    // Schedule-and-flag, unified with the meal-settings & habit screens.
-    let notificationsDenied = false;
-    if (reminder.enabled) {
+  const handleSetTime = async () => {
+    if (!hasPicked) {
+      setShowPicker(true);
+      return;
+    }
+    setSaving(true);
+    try {
       const settings = await notifee.requestPermission();
-      notificationsDenied =
+      const denied =
         settings.authorizationStatus === AuthorizationStatus.DENIED;
+      await saveSchedule({ hour, minute, enabled: true });
+      await scheduleAllAlarms({ hour, minute, enabled: true });
+      if (denied) {
+        Alert.alert(
+          'Reminders are off',
+          'Your call time is saved, but it can’t ring until you enable notifications. You can fix this anytime from Profile → Reminder health.',
+        );
+      }
+      goToDone(formatTime(hour, minute));
+    } finally {
+      setSaving(false);
     }
-    await saveSchedule(reminder);
-    await scheduleAllAlarms(reminder);
-    if (notificationsDenied) {
-      Alert.alert(
-        'Reminders are off',
-        'Your meal reminder is saved, but it can’t ring until you enable notifications. You can fix this anytime from Profile → Reminder health.',
-      );
-    }
-    navigation.replace('MainTabs');
   };
+
+  const pickerValue = (() => {
+    const d = new Date();
+    d.setHours(hour, minute, 0, 0);
+    return d;
+  })();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Set Meal Reminder</Text>
-      <Text style={styles.subtitle}>
-        Set a daily time to get a call-style prompt to log your meals by voice
-        with your AI assistant. You can skip this and set it later in Profile.
-      </Text>
-
-      <View style={styles.card}>
-        <View style={styles.cardLeft}>
-          <Text style={styles.mealLabel}>Daily Reminder</Text>
-          <TouchableOpacity
-            onPress={() => reminder.enabled && setShowPicker(true)}
-            disabled={!reminder.enabled}
-          >
-            <Text
-              style={[
-                styles.timeText,
-                !reminder.enabled && styles.timeTextDisabled,
-              ]}
-            >
-              {formatTime(reminder.hour, reminder.minute)}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <Switch
-          value={reminder.enabled}
-          onValueChange={toggleEnabled}
-          trackColor={{ false: '#ccc', true: '#81C784' }}
-          thumbColor={reminder.enabled ? '#2e7d32' : '#f4f4f4'}
-        />
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={T.surface} />
+      <View style={[styles.skipRow, { paddingTop: insets.top + 14 }]}>
+        <TextLink color={T.inkSoft} onPress={() => goToDone()}>
+          Skip for now
+        </TextLink>
       </View>
 
-      {showPicker &&
-        (() => {
-          const d = new Date();
-          d.setHours(reminder.hour, reminder.minute);
-          return (
-            <DateTimePicker
-              value={d}
-              mode="time"
-              is24Hour={false}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, sel) => {
-                if (sel) updateTime(sel);
-                else setShowPicker(false);
-              }}
-            />
-          );
-        })()}
-
-      <TouchableOpacity onPress={handleContinue} style={styles.continueBtn}>
-        <Text style={styles.continueBtnText}>Continue →</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => navigation.replace('MainTabs')}
-        style={styles.skipBtn}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.skipBtnText}>Skip for now</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* concentric call rings */}
+        <View style={styles.ringsWrap}>
+          {[150, 116].map((sz, i) => (
+            <View
+              key={sz}
+              style={[
+                styles.ring,
+                {
+                  width: sz,
+                  height: sz,
+                  borderRadius: sz / 2,
+                  opacity: [0.14, 0.26][i],
+                },
+              ]}
+            />
+          ))}
+          <LinearGradient
+            colors={[T.greenMid, T.green, T.greenDeep]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={styles.ringCore}
+          >
+            <Phone size={34} color={T.white} />
+          </LinearGradient>
+          <View style={styles.sparkleBadge}>
+            <Sparkles size={15} color={T.green} fill={T.green} />
+          </View>
+        </View>
+
+        <View style={styles.headerBlock}>
+          <View style={styles.pill}>
+            <Text style={styles.pillText}>ONE LAST STEP</Text>
+          </View>
+          <Text style={styles.title}>When should we call you?</Text>
+          <Text style={styles.subtitle}>
+            Each day around this time, our assistant calls to ask what you ate —
+            then logs it all for you automatically.
+          </Text>
+        </View>
+
+        {/* time selector */}
+        <Pressable
+          onPress={() => setShowPicker(true)}
+          style={[
+            styles.timeSelect,
+            {
+              borderColor: hasPicked ? T.green : T.line,
+              backgroundColor: hasPicked ? T.surface : T.field,
+            },
+          ]}
+        >
+          <View style={styles.timeIcon}>
+            <Clock size={24} color={T.green} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.timeLabel}>PREFERRED TIME</Text>
+            <Text
+              style={[
+                styles.timeValue,
+                { color: hasPicked ? T.ink : T.inkMuted },
+              ]}
+            >
+              {hasPicked ? formatTime(hour, minute) : 'Tap to choose'}
+            </Text>
+          </View>
+          <ChevronRight size={20} color={T.inkMuted} />
+        </Pressable>
+
+        <View style={styles.noteRow}>
+          <ShieldCheck size={15} color={T.inkMuted} />
+          <Text style={styles.noteText}>
+            You can change or turn off calls anytime in Settings.
+          </Text>
+        </View>
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+        <PrimaryButton onPress={handleSetTime} loading={saving}>
+          {saving ? 'Saving…' : 'Set call time'}
+        </PrimaryButton>
+        <View style={styles.footerLink}>
+          <TextLink color={T.inkSoft} onPress={() => goToDone()}>
+            I’ll do this later
+          </TextLink>
+        </View>
+      </View>
+
+      {showPicker ? (
+        <DateTimePicker
+          value={pickerValue}
+          mode="time"
+          is24Hour={false}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onTimeChange}
+        />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8faf8' },
-  content: { padding: 28 },
-  title: { fontSize: 26, fontWeight: '700', marginBottom: 8, color: '#1a1a1a' },
-  subtitle: { color: '#666', marginBottom: 28, lineHeight: 20 },
-  card: {
+  root: { flex: 1, backgroundColor: T.surface },
+  skipRow: {
+    paddingHorizontal: 20,
+    alignItems: 'flex-end',
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 26,
+    paddingTop: 8,
+  },
+  ringsWrap: {
+    width: 150,
+    height: 150,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 6,
+  },
+  ring: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderColor: T.green,
+  },
+  ringCore: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: T.green,
+    shadowOpacity: 0.33,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 8,
+  },
+  sparkleBadge: {
+    position: 'absolute',
+    top: 30,
+    right: 30,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: T.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#08140e',
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  headerBlock: { alignItems: 'center', marginTop: 14 },
+  pill: {
+    backgroundColor: T.greenSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  pillText: {
+    color: T.greenDeep,
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  title: {
+    fontSize: 27,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    color: T.ink,
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 32,
+  },
+  subtitle: {
+    fontSize: 14.5,
+    fontWeight: '500',
+    color: T.inkSoft,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: 12,
+    maxWidth: 300,
+  },
+  timeSelect: {
+    marginTop: 26,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    gap: 14,
+    borderWidth: 1.6,
+    borderRadius: R.lg,
     padding: 18,
-    marginBottom: 12,
-    elevation: 2,
   },
-  cardLeft: { flex: 1 },
-  mealLabel: { fontSize: 17, fontWeight: '600', color: '#1a1a1a' },
-  timeText: { fontSize: 22, fontWeight: '700', color: '#2e7d32' },
-  timeTextDisabled: { color: '#bbb' },
-  continueBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 12,
-    padding: 16,
+  timeIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: R.md,
+    backgroundColor: T.greenSoft,
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
   },
-  continueBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  skipBtn: { marginTop: 14, alignItems: 'center' },
-  skipBtnText: { color: '#999', fontSize: 14 },
+  timeLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: T.inkMuted,
+    letterSpacing: 0.4,
+  },
+  timeValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginTop: 3,
+  },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  noteText: { fontSize: 12, fontWeight: '600', color: T.inkMuted },
+  footer: {
+    paddingHorizontal: 26,
+    paddingTop: 18,
+    gap: 12,
+  },
+  footerLink: { alignItems: 'center' },
 });

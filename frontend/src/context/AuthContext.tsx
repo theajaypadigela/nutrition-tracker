@@ -19,12 +19,25 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isInitializing: boolean;
   isLoading: boolean;
+  /**
+   * True for the duration of an app session right after a fresh registration, so the
+   * authenticated navigator opens on the one-time call-setup flow instead of MainTabs.
+   * Resets to false on app reload and once onboarding is finished.
+   */
+  needsOnboarding: boolean;
+  /**
+   * Formatted call time chosen during registration (e.g. "8:00 PM"), or null. When set,
+   * the onboarding gate skips Call Setup and opens directly on the Done screen.
+   */
+  onboardingCallTime: string | null;
+  setOnboardingCallTime: (t: string | null) => void;
+  completeOnboarding: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (
     name: string,
     email: string,
     password: string,
-    age: string,
+    dob: string,
     gender: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
@@ -39,10 +52,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [onboardingCallTime, setOnboardingCallTime] = useState<string | null>(
+    null,
+  );
+
+  const completeOnboarding = () => {
+    setNeedsOnboarding(false);
+    setOnboardingCallTime(null);
+  };
 
   const logout = async () => {
     await AsyncStorage.removeItem('token');
     setUser(null);
+    setNeedsOnboarding(false);
+    setOnboardingCallTime(null);
     // Cancel all local triggers and clear device-local reminder state on logout.
     await onLogoutReminders().catch(() => {});
   };
@@ -93,6 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         name: data.name,
         email: data.email,
         age: data.age,
+        dob: data.dob,
         gender: data.gender,
       });
 
@@ -107,14 +132,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     name: string,
     email: string,
     password: string,
-    age: string,
+    dob: string,
     gender: string,
   ) => {
     setIsLoading(true);
+    // Flag onboarding before login flips isAuthenticated, so the authenticated
+    // navigator mounts on the call-setup flow rather than MainTabs.
+    setNeedsOnboarding(true);
     try {
-      await authApi.register(name, email, password, age, gender);
+      await authApi.register(name, email, password, dob, gender);
 
       await login(email, password);
+    } catch (error) {
+      setNeedsOnboarding(false);
+      setOnboardingCallTime(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -138,6 +170,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         isAuthenticated: !!user,
         isInitializing,
         isLoading,
+        needsOnboarding,
+        onboardingCallTime,
+        setOnboardingCallTime,
+        completeOnboarding,
         login,
         register,
         logout,

@@ -11,7 +11,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.Collection;
 import java.util.List;
 
@@ -30,7 +32,11 @@ public class User implements UserDetails {
 
     private String name;
 
+    /** Legacy numeric age, kept as a fallback for accounts created before DOB capture. */
     private String age;
+
+    /** Date of birth in ISO {@code yyyy-MM-dd}. New source of truth for age. */
+    private String dob;
 
     private String gender;
 
@@ -43,6 +49,29 @@ public class User implements UserDetails {
     private boolean enabled = true;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    /**
+     * Age in whole years, derived at runtime. Prefers {@link #dob} (ISO {@code yyyy-MM-dd});
+     * falls back to the legacy {@link #age} field for accounts created before DOB capture.
+     * Returns {@code null} when neither is usable.
+     */
+    public Integer getDerivedAge() {
+        if (dob != null && !dob.isBlank()) {
+            try {
+                return Period.between(LocalDate.parse(dob.trim()), LocalDate.now()).getYears();
+            } catch (Exception ignored) {
+                // fall through to legacy age
+            }
+        }
+        if (age != null && !age.isBlank()) {
+            try {
+                return Integer.parseInt(age.trim());
+            } catch (Exception ignored) {
+                // not a number
+            }
+        }
+        return null;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

@@ -8,6 +8,7 @@ export interface LoginResponse {
   name: string;
   email: string;
   age?: string;
+  dob?: string;
   gender?: string;
 }
 
@@ -25,16 +26,16 @@ export const createAuthApi = (client: HttpClient = apiClient) => ({
       .post<LoginResponse>('/auth/login', { email, password })
       .then(r => r.data),
 
-  /** Create an account (POST /auth/register). */
+  /** Create an account (POST /auth/register). `dob` is ISO `yyyy-MM-dd`; the server derives age. */
   register: (
     name: string,
     email: string,
     password: string,
-    age: string,
+    dob: string,
     gender: string,
   ) =>
     client
-      .post('/auth/register', { name, email, password, age, gender })
+      .post('/auth/register', { name, email, password, dob, gender })
       .then(r => r.data),
 
   /** Update the current user's profile (PUT /profile); returns the updated user. */

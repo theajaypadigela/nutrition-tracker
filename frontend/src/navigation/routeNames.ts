@@ -6,6 +6,7 @@ export const ROUTES = {
   MAIN_TABS: 'MainTabs',
   MEAL_SCHEDULE: 'MealSchedule',
   ONBOARDING_MEAL_SCHEDULE: 'OnboardingMealSchedule',
+  ONBOARDING_DONE: 'OnboardingDone',
   PROFILE: 'Profile',
   REMINDER_HEALTH: 'ReminderHealth',
   VOICE_MEAL_LOG: 'VoiceMealLog',

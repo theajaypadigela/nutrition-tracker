@@ -30,12 +30,12 @@ describe('authApi', () => {
       password: 'pw',
     });
 
-    await api.register('Bo', 'bo@x.io', 'pw', '22', 'm');
+    await api.register('Bo', 'bo@x.io', 'pw', '2000-05-15', 'm');
     expect(client.post).toHaveBeenCalledWith('/auth/register', {
       name: 'Bo',
       email: 'bo@x.io',
       password: 'pw',
-      age: '22',
+      dob: '2000-05-15',
       gender: 'm',
     });
 
