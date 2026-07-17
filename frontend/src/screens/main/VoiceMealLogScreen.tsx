@@ -1,20 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Alert } from 'react-native';
-import Vapi from '@vapi-ai/react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { foodLogApi } from '../../services/api/foodLogApi';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
-import { initializeVapiClient } from '../../services/vapiSessionService';
 import { getTodayLocalDate } from '../../utils/date';
 import type { VoiceMealLogParams } from '../../navigation/paramTypes';
-import VoiceSessionScreen, {
-  CallStatus,
-} from '../../components/voice/VoiceSessionScreen';
+import VoiceSessionScreen from '../../components/voice/VoiceSessionScreen';
 import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
 import { buildFollowUpMessage, FOLLOW_UP_INVALID_MESSAGE } from '../../utils/followUp';
-import { toDebugJson } from '../../utils/debug';
-import { useMicrophonePermission } from '../../hooks/useMicrophonePermission';
+import { useVapiSession } from '../../hooks/useVapiSession';
 
 const VOICE_INTERPRET_TIMEOUT_MS = 60000;
 const VOICE_PARSE_TIMEOUT_MS = 120000;
@@ -48,123 +42,33 @@ export default function VoiceMealLogScreen() {
       snacks: 'Snacks',
       dinner: 'Dinner',
     }[mealSlotId ?? ''] ?? 'Meals';
-  const [status, setStatus] = useState<CallStatus>('idle');
-  const [transcript, setTranscript] = useState<string[]>([]);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [entriesLogged, setEntriesLogged] = useState(0);
   const [followUpMessage, setFollowUpMessage] = useState('');
-  const vapiRef = useRef<Vapi | null>(null);
-  const transcriptRef = useRef<string[]>([]);
   const isParsingTranscriptRef = useRef(false);
   const lastParsedTranscriptRef = useRef<{ transcript: string; at: number } | null>(null);
-  const lastVapiMessageRef = useRef<any | null>(null);
-  const structuredVapiOutputRef = useRef<any | null>(null);
 
-  const disposeVapiInstance = () => {
-    const current = vapiRef.current;
-    if (!current) {
-      return;
-    }
-
-    current.removeAllListeners();
-    try {
-      current.stop();
-    } catch {
-      // Ignore cleanup errors
-    }
-    vapiRef.current = null;
-  };
-
-  const registerVapiListeners = (vapi: Vapi) => {
-    vapi.on('call-start', () => {
-      console.log('[Vapi] Call started');
-      setStatus('active');
-      // Ensure microphone is unmuted when call starts
-      try {
-        vapi.setMuted(false);
-        console.log('[Vapi] Microphone unmuted');
-      } catch (e) {
-        console.warn('[Vapi] Could not unmute:', e);
-      }
-    });
-
-    vapi.on('call-end', () => {
-      console.log('[Vapi] Call ended');
-
-      if (structuredVapiOutputRef.current) {
-        console.log(
-          '[Vapi] Structured output captured at call end:',
-          toDebugJson(structuredVapiOutputRef.current),
-        );
-      } else if (lastVapiMessageRef.current) {
-        console.log(
-          '[Vapi] No explicit structured payload captured. Last Vapi message:',
-          toDebugJson(lastVapiMessageRef.current),
-        );
-      } else {
-        console.log('[Vapi] No Vapi messages were captured before call end');
-      }
-
-      parseMealsFromTranscript();
-    });
-
-    vapi.on('speech-start', () => {
-      console.log('[Vapi] Speech started (assistant speaking)');
-      setIsSpeaking(true);
-    });
-
-    vapi.on('speech-end', () => {
-      console.log('[Vapi] Speech ended');
-      setIsSpeaking(false);
-    });
-
-    vapi.on('error', e => {
-      console.error('[Vapi] Error:', e);
-      setStatus('error');
-    });
-
-    vapi.on('message', (msg: any) => {
-      lastVapiMessageRef.current = msg;
-
-      console.log(
-        '[Vapi] Message received:',
-        msg?.type,
-        msg?.role,
-        msg?.transcriptType,
-      );
-
-      if (
-        msg?.type === 'function-call' ||
-        msg?.type === 'tool-calls' ||
-        msg?.type === 'tool-calls-result' ||
-        msg?.message?.type === 'function-call'
-      ) {
-        structuredVapiOutputRef.current = msg;
-        console.log('[Vapi] Structured payload candidate:', toDebugJson(msg));
-      }
-
-      if (msg.type === 'transcript' && msg.transcriptType === 'final') {
-        const prefix = msg.role === 'assistant' ? 'Assistant: ' : 'You: ';
-        const line = `${prefix}${msg.transcript}`;
-        setTranscript(prev => [...prev, line]);
-        transcriptRef.current = [...transcriptRef.current, line];
-      }
-    });
-
-    vapi.on('volume-level', (volume: number) => {
-      // Log volume level periodically to debug mic input
-      if (volume > 0.01) {
-        console.log('[Vapi] Volume level:', volume.toFixed(3));
-      }
-    });
-  };
-
-  // Cleanup Vapi instance when leaving the screen.
-  useEffect(() => {
-    return () => {
-      disposeVapiInstance();
-    };
-  }, []);
+  const {
+    status,
+    setStatus,
+    transcript,
+    isSpeaking,
+    transcriptRef,
+    startSession: startVoiceLog,
+    stopSession: stopVoiceLog,
+  } = useVapiSession({
+    purpose: 'meal',
+    logTag: 'Vapi',
+    permissionDeniedMessage:
+      'Microphone access is needed to log meals by voice.',
+    getVariableValues: () => ({
+      name: user?.name ?? 'User',
+    }),
+    onSessionReset: () => {
+      setEntriesLogged(0);
+      setFollowUpMessage('');
+    },
+    onCallEnd: () => parseMealsFromTranscript(),
+  });
 
   // Auto-start the VAPI call when navigated from IncomingMealCallScreen accept
   useEffect(() => {
@@ -173,60 +77,6 @@ export default function VoiceMealLogScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
-
-  const requestMicPermission = useMicrophonePermission();
-
-  const startVoiceLog = useCallback(async () => {
-    setStatus('requesting');
-    setTranscript([]);
-    transcriptRef.current = [];
-    lastVapiMessageRef.current = null;
-    structuredVapiOutputRef.current = null;
-    setEntriesLogged(0);
-    setFollowUpMessage('');
-
-    const hasPermission = await requestMicPermission();
-    if (!hasPermission) {
-      Alert.alert(
-        'Permission Required',
-        'Microphone access is needed to log meals by voice.',
-      );
-      setStatus('idle');
-      return;
-    }
-
-    try {
-      disposeVapiInstance();
-      const { vapi, assistantId } = await initializeVapiClient('meal');
-      registerVapiListeners(vapi);
-      vapiRef.current = vapi;
-
-      console.log('[Vapi] Starting call with backend-issued session config');
-      await vapi.start(assistantId, {
-        variableValues: {
-          name: user?.name ?? 'User',
-        },
-      });
-      console.log('[Vapi] Call start initiated');
-    } catch (err) {
-      console.error('[Vapi] Failed to start voice session:', err);
-      Alert.alert('Error', 'Could not start voice session. Please try again.');
-      setStatus('error');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestMicPermission, user?.name]);
-
-  const stopVoiceLog = useCallback(() => {
-    const vapi = vapiRef.current;
-    if (!vapi) return;
-
-    try {
-      console.log('[Vapi] Stopping call');
-      vapi.stop();
-    } catch (err) {
-      console.error('[Vapi] Failed to stop voice session:', err);
-    }
-  }, []);
 
   const getFoodLogSnapshot = useCallback(async (logDate: string) => {
     try {
@@ -414,7 +264,14 @@ export default function VoiceMealLogScreen() {
     } finally {
       isParsingTranscriptRef.current = false;
     }
-  }, [getFoodLogSnapshot, mealSlotId, selectedDate, waitForNutritionEnrichment]);
+  }, [
+    getFoodLogSnapshot,
+    mealSlotId,
+    selectedDate,
+    setStatus,
+    transcriptRef,
+    waitForNutritionEnrichment,
+  ]);
 
   const getStatusText = () => {
     switch (status) {

@@ -21,9 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-
+import com.habitbuilder.NutritionTracker.common.CurrentUserProvider;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 
@@ -37,23 +35,26 @@ public class HabitService {
     // rescheduledTime=null, which the reminder cron's time-window query can never re-surface.
     private static final int DEFAULT_RESCHEDULE_MINUTES = 15;
 
-    private HabitRepository habitRepository;
-    private HabitEntityRepository habitEntityRepository;
-    private AiTextService aiTextService;
-    private ObjectMapper objectMapper;
-    private UserRepository userRepository;
+    private final HabitRepository habitRepository;
+    private final HabitEntityRepository habitEntityRepository;
+    private final AiTextService aiTextService;
+    private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     HabitService(
             HabitRepository habitRepository,
             HabitEntityRepository habitEntityRepository,
             AiTextService aiTextService,
             ObjectMapper objectMapper,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            CurrentUserProvider currentUserProvider) {
         this.habitRepository = habitRepository;
         this.habitEntityRepository = habitEntityRepository;
         this.aiTextService = aiTextService;
         this.objectMapper = objectMapper;
         this.userRepository = userRepository;
+        this.currentUserProvider = currentUserProvider;
     }
 
     public Habit addHabit(HabitDTO habitDto) {
@@ -96,13 +97,7 @@ public class HabitService {
     }
 
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
-            return user;
-        }
-
-        throw new IllegalStateException("User not authenticated");
+        return currentUserProvider.currentUser();
     }
 
     /** The user's timezone, falling back to the server zone when not yet known. */

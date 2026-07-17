@@ -1,10 +1,9 @@
 package com.habitbuilder.NutritionTracker.modules.mealschedule;
 
+import com.habitbuilder.NutritionTracker.common.CurrentUserProvider;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -15,20 +14,18 @@ public class MealScheduleService {
 
     private final MealScheduleRepository mealScheduleRepository;
     private final UserRepository userRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public MealScheduleService(MealScheduleRepository mealScheduleRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            CurrentUserProvider currentUserProvider) {
         this.mealScheduleRepository = mealScheduleRepository;
         this.userRepository = userRepository;
+        this.currentUserProvider = currentUserProvider;
     }
 
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication != null ? authentication.getPrincipal() : null;
-        if (principal instanceof User user) {
-            return user;
-        }
-        throw new IllegalStateException("User not authenticated");
+        return currentUserProvider.currentUser();
     }
 
     public Optional<MealSchedule> getForCurrentUser() {

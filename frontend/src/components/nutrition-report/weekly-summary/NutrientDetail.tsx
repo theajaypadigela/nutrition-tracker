@@ -3,8 +3,8 @@ import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, Plus, Check, AlertTriangle } from 'lucide-react-native';
 import { Text } from '../../ui/text';
+import { WeeklyNutrient } from '../../../types/nutrition';
 import {
-  WeeklyNutrient,
   statusOf,
   statusColorMap,
   weekDayLabels,

@@ -8,7 +8,8 @@ import {
 } from 'react-native';
 import { Search, X, SlidersHorizontal } from 'lucide-react-native';
 import { Text } from '../../ui/text';
-import { tokens, Status } from './tokens';
+import { Status } from '../../../types/nutrition';
+import { tokens } from './tokens';
 
 type FilterValue = 'all' | Status;
 type ValueMode = 'absolute' | 'percent';

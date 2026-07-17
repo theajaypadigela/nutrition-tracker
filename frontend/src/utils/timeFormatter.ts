@@ -48,3 +48,14 @@ export function formatClockTimeFromParts(hour: number, minute: number): string {
   d.setHours(hour, minute);
   return formatClockTime(d);
 }
+
+/**
+ * Locale clock time from an (hour, minute) pair with a NON-padded hour, e.g. "8:00 PM"
+ * (vs formatClockTimeFromParts' "08:00 PM"). Auth/onboarding call-time display; moved
+ * here from authTheme.formatTime — keep the `hour: 'numeric'` behavior.
+ */
+export function formatLocaleTimeFromParts(hour: number, minute: number): string {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}

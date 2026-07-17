@@ -28,18 +28,3 @@ public class Habit {
 
     private String userId;
 }
-
-@Getter
-@Setter
-class HabitDTO {
-    private String name;
-    private String[] repeatDays;
-    private String reminderTime;
-    private String reminderType;
-}
-
-@Getter
-@Setter
-class HabitCompletionDTO {
-    private String id;
-}

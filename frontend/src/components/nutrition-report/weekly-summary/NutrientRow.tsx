@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../../ui/text';
+import { WeeklyNutrient } from '../../../types/nutrition';
 import {
-  WeeklyNutrient,
   statusOf,
   statusLabel,
   statusColorMap,

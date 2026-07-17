@@ -12,55 +12,63 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import com.habitbuilder.NutritionTracker.modules.food.dto.AddFoodEntryRequest;
+import com.habitbuilder.NutritionTracker.modules.food.dto.DayLogResponse;
+import com.habitbuilder.NutritionTracker.modules.food.dto.FoodEntryResponse;
+import com.habitbuilder.NutritionTracker.modules.food.dto.InsightResponse;
+import com.habitbuilder.NutritionTracker.modules.food.dto.NutrientPreferenceResponse;
+import com.habitbuilder.NutritionTracker.modules.food.dto.NutrientSummary;
+import com.habitbuilder.NutritionTracker.modules.food.dto.SetAvoidRequest;
+import com.habitbuilder.NutritionTracker.modules.food.dto.SetTargetRequest;
+import com.habitbuilder.NutritionTracker.modules.food.dto.UpdateFoodEntryRequest;
+import com.habitbuilder.NutritionTracker.modules.food.dto.WeeklyNutritionReport;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.Valid;
 
 import java.util.List;
-import java.util.Map;
 import java.time.LocalDate;
-import java.time.Instant;
 
 @RestController
 @RequestMapping("/food")
 public class FoodController {
 
-    private FoodService foodService;
+    private final FoodLogService foodLogService;
+    private final NutritionReportService nutritionReportService;
+    private final NutrientPreferenceService nutrientPreferenceService;
+    private final NutritionInsightsService nutritionInsightsService;
 
-    FoodController(FoodService foodService) {
-        this.foodService = foodService;
+    FoodController(
+            FoodLogService foodLogService,
+            NutritionReportService nutritionReportService,
+            NutrientPreferenceService nutrientPreferenceService,
+            NutritionInsightsService nutritionInsightsService) {
+        this.foodLogService = foodLogService;
+        this.nutritionReportService = nutritionReportService;
+        this.nutrientPreferenceService = nutrientPreferenceService;
+        this.nutritionInsightsService = nutritionInsightsService;
     }
+
+    // ── Food log CRUD ─────────────────────────────────────────────────────────
 
     @PostMapping("/{date}/meals/{mealType}/entries")
     public ResponseEntity<List<FoodEntryResponse>> addEntries(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PathVariable String mealType,
             @RequestBody List<@Valid AddFoodEntryRequest> request) {
-        List<FoodEntryResponse> result = foodService.addFoodEntries(date, mealType, request);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(foodLogService.addFoodEntries(date, mealType, request));
     }
 
     @GetMapping("/{date}")
     public ResponseEntity<MealsResponse> getDayLog(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-
-        MealsResponse result = foodService.getDayLogAsMeals(date);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(foodLogService.getDayLogAsMeals(date));
     }
 
     @GetMapping
     public ResponseEntity<List<DayLogResponse>> getDayLogs(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-
-        List<DayLogResponse> result = foodService.getDayLogs(from, to);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(foodLogService.getDayLogs(from, to));
     }
 
     @PutMapping("/{date}/meals/entries/{id}")
@@ -68,38 +76,35 @@ public class FoodController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PathVariable String id,
             @RequestBody @Valid UpdateFoodEntryRequest request) {
-        MealsResponse result = foodService.updateEntry(date, id, request);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(foodLogService.updateEntry(date, id, request));
     }
 
     @DeleteMapping("/{date}/meals/entries/{id}")
     public ResponseEntity<MealsResponse> deleteEntry(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PathVariable String id) {
-        MealsResponse result = foodService.deleteEntry(date, id);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(foodLogService.deleteEntry(date, id));
     }
 
     @DeleteMapping("/meals/entries/{id}")
     public ResponseEntity<MealsResponse> deleteEntryById(@PathVariable String id) {
-        MealsResponse result = foodService.deleteEntryById(id);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(foodLogService.deleteEntryById(id));
     }
+
+    // ── Nutrition reports ─────────────────────────────────────────────────────
 
     @GetMapping("/nutrition/weekly")
     public ResponseEntity<WeeklyNutritionReport> getWeeklyNutritionReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        WeeklyNutritionReport report = foodService.getWeeklyNutritionReport(startDate, endDate);
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(nutritionReportService.getWeeklyNutritionReport(startDate, endDate));
     }
 
     @GetMapping("/nutrition/all")
     public ResponseEntity<List<NutrientSummary>> getAllNutrients(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<NutrientSummary> summaries = foodService.getAllNutrientsSummary(startDate, endDate);
-        return ResponseEntity.ok(summaries);
+        return ResponseEntity.ok(nutritionReportService.getAllNutrientsSummary(startDate, endDate));
     }
 
     // ── Nutrient Preferences ──────────────────────────────────────────────────
@@ -107,30 +112,26 @@ public class FoodController {
     @PostMapping("/nutrient/{nutrientId}/pin")
     public ResponseEntity<NutrientPreferenceResponse> togglePin(
             @PathVariable String nutrientId) {
-        NutrientPreferenceResponse result = foodService.togglePin(nutrientId);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(nutrientPreferenceService.togglePin(nutrientId));
     }
 
     @PutMapping("/nutrient/{nutrientId}/target")
     public ResponseEntity<NutrientPreferenceResponse> setCustomTarget(
             @PathVariable String nutrientId,
             @RequestBody SetTargetRequest request) {
-        NutrientPreferenceResponse result = foodService.setCustomTarget(nutrientId, request.getTarget());
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(nutrientPreferenceService.setCustomTarget(nutrientId, request.getTarget()));
     }
 
     @PutMapping("/nutrient/{nutrientId}/avoid")
     public ResponseEntity<NutrientPreferenceResponse> setAvoidedFoods(
             @PathVariable String nutrientId,
             @RequestBody SetAvoidRequest request) {
-        NutrientPreferenceResponse result = foodService.setAvoidedFoods(nutrientId, request.getFoods());
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(nutrientPreferenceService.setAvoidedFoods(nutrientId, request.getFoods()));
     }
 
     @GetMapping("/nutrient/preferences")
     public ResponseEntity<List<NutrientPreferenceResponse>> getPreferences() {
-        List<NutrientPreferenceResponse> prefs = foodService.getPreferences();
-        return ResponseEntity.ok(prefs);
+        return ResponseEntity.ok(nutrientPreferenceService.getPreferences());
     }
 
     // ── AI Insights ───────────────────────────────────────────────────────────
@@ -139,153 +140,6 @@ public class FoodController {
     public ResponseEntity<List<InsightResponse>> getAiInsights(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<InsightResponse> insights = foodService.getAiInsights(startDate, endDate);
-        return ResponseEntity.ok(insights);
+        return ResponseEntity.ok(nutritionInsightsService.getAiInsights(startDate, endDate));
     }
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class FoodEntryResponse {
-
-    private String id;
-    private String name;
-    private double quantity;
-    private String unit;
-    private String mealType;
-    private String nutritionResponse;
-    private Instant createdAt;
-    private Instant updatedAt;
-}
-
-@Data
-class AddFoodEntryRequest {
-
-    @NotBlank(message = "Food name is required")
-    private String name;
-
-    @NotNull(message = "Quantity is required")
-    @Positive(message = "Quantity must be positive")
-    private Double quantity;
-
-    @NotBlank(message = "Unit is required")
-    private String unit;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class MealEntriesResponse {
-
-    private String mealType;
-    private List<FoodEntryResponse> entries;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class DayLogResponse {
-
-    private String foodLogId;
-    private LocalDate date;
-    private List<MealEntriesResponse> meals;
-}
-
-
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class WeeklyNutritionReport {
-    private Double avgDailyCalories;
-    private NutritionTotals weeklyTotals;
-    private NutritionTotals weeklyAverage;
-    private List<DailyNutritionSummary> dailySummaries;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class DailyNutritionSummary {
-    private LocalDate date;
-    private NutritionTotals totals;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class TopFoodSource {
-    private String name;
-    private double amount;
-    private String unit;
-    private double contribution; // percentage
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class NutrientSummary {
-    private String id;
-    private String name;
-    private String unit;
-    private String category;   // macro | vitamin | mineral | other
-    private double value;      // average daily intake over the range
-    private double goal;       // AI-derived RDI for the user
-    private int pctDV;         // value/goal * 100
-    private String flag;       // low | ok | high
-    private double weeklyAvg;  // same as value for the range avg
-    private List<Double> trend; // one entry per day in range (0 if no data)
-    private List<TopFoodSource> topSources;
-    private boolean pinned;
-    private String avoidedFoods;
-    private Double customTarget;
-}
-
-@Data
-class UpdateFoodEntryRequest {
-
-    private String name;
-
-    @Positive(message = "Quantity must be positive")
-    private Double quantity;
-
-    private String unit;
-}
-
-@Data
-class SetTargetRequest {
-    private Double target;
-}
-
-@Data
-class SetAvoidRequest {
-    private List<String> foods;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class NutrientPreferenceResponse {
-    private String nutrientId;
-    private boolean pinned;
-    private Double customTarget;
-    private List<String> avoidedFoods;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class InsightResponse {
-    private String variant;   // positive | negative | neutral
-    private String message;
 }

@@ -1,46 +1,45 @@
+import {
+  neutral,
+  reportBlue,
+  reportGreen,
+  reportHeaderGradient,
+  reportNeutral,
+  reportStatus,
+} from '../../../theme/tokens';
+import { Direction, Status, WeeklyNutrient } from '../../../types/nutrition';
+import { getMondayWeekRange } from '../../../utils/weekRange';
+import { ALL_DAYS } from '../../../utils/daySelection';
+
+// Color values live in the shared token source (src/theme/tokens.ts).
 export const tokens = {
   // text
-  ink: '#0c1b22',
-  inkSoft: '#4a5d68',
-  inkMuted: '#7a8a93',
+  ink: reportNeutral.ink,
+  inkSoft: reportNeutral.inkSoft,
+  inkMuted: reportNeutral.inkMuted,
   // surfaces & lines
-  surface: '#ffffff',
-  bg: '#f4f8fa',
-  line: '#e3ebef',
-  lineSoft: '#eef2f5',
+  surface: neutral.white,
+  bg: reportNeutral.bg,
+  line: reportNeutral.line,
+  lineSoft: reportNeutral.lineSoft,
   // brand blue
-  primary: '#1769d6',
-  primarySoft: '#e7f0fc',
-  primaryDeep: '#0a3a82',
+  primary: reportBlue.base,
+  primarySoft: reportBlue.soft,
+  primaryDeep: reportBlue.deep,
   // brand green (health / good)
-  green: '#0e9b6d',
-  greenDeep: '#06624a',
-  greenSoft: '#dff5ec',
+  green: reportGreen.base,
+  greenDeep: reportGreen.deep,
+  greenSoft: reportGreen.soft,
   // status
-  good: '#0e9b6d',
-  goodSoft: '#dff5ec',
-  warn: '#d98a16',
-  warnSoft: '#fbf0db',
-  bad: '#dc3545',
-  badSoft: '#fbe5e7',
+  good: reportGreen.base,
+  goodSoft: reportGreen.soft,
+  warn: reportStatus.warn,
+  warnSoft: reportStatus.warnSoft,
+  bad: reportStatus.bad,
+  badSoft: reportStatus.badSoft,
 } as const;
 
-export const headerGradient = ['#0d4ea8', '#0a3a82', '#062a63'] as const;
+export const headerGradient = reportHeaderGradient;
 export const headerGradientLocations = [0, 0.55, 1] as const;
-
-export type Status = 'good' | 'warn' | 'bad';
-export type Direction = 'higher' | 'lower' | 'window';
-
-export interface WeeklyNutrient {
-  id: string;
-  name: string;
-  unit: string;
-  amount: number;
-  goal: number;
-  dir: Direction;
-  trend: number[];
-  category?: string;
-}
 
 export const statusColorMap: Record<Status, { fg: string; bg: string }> = {
   good: { fg: tokens.good, bg: tokens.goodSoft },
@@ -155,19 +154,17 @@ export function inferDirection(name: string, category?: string): Direction {
   return 'higher';
 }
 
+/** "Jun 29 – Jul 5" label for the Monday→Sunday week at `weekIdx` (0 = current). */
 export function weekRangeLabel(weekIdx: number, refDate: Date = new Date()): string {
-  const ref = new Date(refDate);
-  const day = ref.getDay();
-  const offsetToMon = day === 0 ? -6 : 1 - day;
-  const monday = new Date(ref);
-  monday.setDate(ref.getDate() + offsetToMon + weekIdx * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return `${fmt(monday)} – ${fmt(sunday)}`;
+  const { startDate, endDate } = getMondayWeekRange(weekIdx, refDate);
+  const fmt = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  return `${fmt(startDate)} – ${fmt(endDate)}`;
 }
 
 export function weekDayLabels(): string[] {
-  return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  return [...ALL_DAYS];
 }

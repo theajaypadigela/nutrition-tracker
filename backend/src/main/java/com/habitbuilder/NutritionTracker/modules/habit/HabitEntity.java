@@ -30,11 +30,3 @@ public class HabitEntity {
     private LocalDateTime rescheduledTime;
 
 }
-
-enum HabitStatus {
-    COMPLETED,
-    MISSED,
-    PENDING,
-    RESCHEDULED,
-    DECLINED
-}

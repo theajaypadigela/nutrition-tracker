@@ -26,8 +26,8 @@ import {
   TextLink,
   T,
   R,
-  formatTime,
 } from '../../components/auth';
+import { formatLocaleTimeFromParts } from '../../utils/timeFormatter';
 
 /**
  * One-time "daily check-in call" setup, shown right after registration. Visually the
@@ -76,7 +76,7 @@ export default function OnboardingMealScheduleScreen() {
           'Your call time is saved, but it can’t ring until you enable notifications. You can fix this anytime from Profile → Reminder health.',
         );
       }
-      goToDone(formatTime(hour, minute));
+      goToDone(formatLocaleTimeFromParts(hour, minute));
     } finally {
       setSaving(false);
     }
@@ -163,7 +163,7 @@ export default function OnboardingMealScheduleScreen() {
                 { color: hasPicked ? T.ink : T.inkMuted },
               ]}
             >
-              {hasPicked ? formatTime(hour, minute) : 'Tap to choose'}
+              {hasPicked ? formatLocaleTimeFromParts(hour, minute) : 'Tap to choose'}
             </Text>
           </View>
           <ChevronRight size={20} color={T.inkMuted} />

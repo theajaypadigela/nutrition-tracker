@@ -365,11 +365,13 @@ const styles = StyleSheet.create({
     height: 54,
   },
   fieldFocusRing: {
+    // iOS-only glow. Do NOT add `elevation` here: toggling Android elevation on
+    // focus recreates this View's native shadow node, which drops focus off the
+    // child TextInput (the "tap the field, it immediately unselects" bug).
     shadowColor: T.green,
     shadowOpacity: 0.18,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
   },
   input: {
     flex: 1,

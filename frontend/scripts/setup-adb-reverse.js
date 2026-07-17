@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 
 const { spawnSync } = require('child_process');
+const { resolveAndroidEnv } = require('./android-env');
 
 const REQUIRED_REVERSE_PORTS = ['5000', '8081'];
+const { env: ANDROID_ENV, adbPath: ADB_PATH } = resolveAndroidEnv();
 
 function runAdb(args, options = {}) {
-  const result = spawnSync('adb', args, {
+  const result = spawnSync(ADB_PATH, args, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    env: ANDROID_ENV,
   });
 
   const stdout = (result.stdout || '').trim();

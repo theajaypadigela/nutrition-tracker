@@ -69,7 +69,8 @@ class HabitServiceTest {
         AiTextService aiTextService = new AiTextService(List.of(new StubAiTextClient(response)), "stub");
         // These tests only exercise interpretVoiceTranscript, which uses the AI service +
         // object mapper; the repositories are not touched, so null is sufficient.
-        return new HabitService(null, null, aiTextService, new ObjectMapper(), null);
+        return new HabitService(null, null, aiTextService, new ObjectMapper(), null,
+                new com.habitbuilder.NutritionTracker.common.CurrentUserProvider());
     }
 
     private record StubAiTextClient(String response) implements AiTextClient {

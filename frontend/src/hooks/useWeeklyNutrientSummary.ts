@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { nutritionApi } from '../services/api/nutritionApi';
-import { AllNutrientSummary } from '../components/nutrition-report/types';
+import { AllNutrientSummary, Status, WeeklyNutrient } from '../types/nutrition';
 import {
-  WeeklyNutrient,
-  Status,
   inferDirection,
   scoreOf,
   statusOf,

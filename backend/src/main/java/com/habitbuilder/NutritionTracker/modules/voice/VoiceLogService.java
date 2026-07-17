@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
-import com.habitbuilder.NutritionTracker.modules.food.FoodService;
+import com.habitbuilder.NutritionTracker.modules.food.FoodLogService;
 import com.habitbuilder.NutritionTracker.modules.nutrition.AiJsonSupport;
 import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
@@ -39,7 +39,7 @@ public class VoiceLogService {
     public record VapiSessionConfig(String token, String assistantId, String purpose) {
     }
 
-    private final FoodService foodService;
+    private final FoodLogService foodLogService;
     private final UserRepository userRepository;
     private final VoiceMealSessionRepository sessionRepo;
     private final ObjectMapper objectMapper;
@@ -60,12 +60,12 @@ public class VoiceLogService {
     @Value("${vapi.habit-assistant-id:${vapi.assistant-id:}}")
     private String vapiHabitAssistantId;
 
-    public VoiceLogService(FoodService foodService,
+    public VoiceLogService(FoodLogService foodLogService,
             UserRepository userRepository,
             VoiceMealSessionRepository sessionRepo,
             ObjectMapper objectMapper,
             AiTextService aiTextService) {
-        this.foodService = foodService;
+        this.foodLogService = foodLogService;
         this.userRepository = userRepository;
         this.sessionRepo = sessionRepo;
         this.objectMapper = objectMapper;
@@ -139,7 +139,7 @@ public class VoiceLogService {
                         return;
                     }
 
-                    foodService.addFoodEntryForUser(
+                    foodLogService.addFoodEntryForUser(
                             userId, logDate, mealType,
                             entry.getFoodName(),
                             entry.getQuantity() != null ? entry.getQuantity() : 1.0,
@@ -279,7 +279,7 @@ public class VoiceLogService {
 
     /**
      * Parses a voice call transcript using the LLM to extract meal entries,
-     * then logs them via FoodService for the authenticated user.
+     * then logs them via FoodLogService for the authenticated user.
      * Not @Transactional so each addFoodEntryForUser call auto-commits,
      * allowing the @Async nutrition enrichment to see the committed rows.
      */
@@ -335,7 +335,7 @@ public class VoiceLogService {
                             : null;
 
                     if (!foodName.isEmpty()) {
-                        foodService.addFoodEntryForUser(userId, effectiveLogDate, mealType,
+                        foodLogService.addFoodEntryForUser(userId, effectiveLogDate, mealType,
                                 foodName, quantity, unit, standardQuantity, standardUnit);
                         totalEntries++;
                     }

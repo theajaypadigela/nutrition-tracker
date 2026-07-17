@@ -1,20 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Alert } from 'react-native';
-import Vapi from '@vapi-ai/react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { habitApi } from '../../services/api/habitApi';
 import { Habit, HabitVoiceResult } from '../../types/types';
 import { scheduleHabitReschedule } from '../../services/habitScheduler';
-import { initializeVapiClient } from '../../services/vapiSessionService';
 import type { VoiceHabitParams } from '../../navigation/paramTypes';
-import VoiceSessionScreen, {
-  CallStatus,
-} from '../../components/voice/VoiceSessionScreen';
+import VoiceSessionScreen from '../../components/voice/VoiceSessionScreen';
 import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
 import { buildFollowUpMessage, FOLLOW_UP_INVALID_MESSAGE } from '../../utils/followUp';
-import { toDebugJson } from '../../utils/debug';
-import { useMicrophonePermission } from '../../hooks/useMicrophonePermission';
+import { useVapiSession } from '../../hooks/useVapiSession';
 
 
 /** Uses backend Gemini interpretation to infer completion/reschedule intent. */
@@ -87,18 +81,47 @@ export default function VoiceHabitScreen() {
   const habitTime: string = route.params?.habitTime ?? '';
   const autoStart: boolean = route.params?.autoStart === true;
 
-  const [status, setStatus] = useState<CallStatus>('idle');
-  const [transcript, setTranscript] = useState<string[]>([]);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
-  const vapiRef = useRef<Vapi | null>(null);
-  const transcriptRef = useRef<string[]>([]);
-  const structuredVapiOutputRef = useRef<any | null>(null);
 
   // All pending habits for this time slot (fetched from backend)
   const [slotHabits, setSlotHabits] = useState<Habit[]>([]);
   const slotHabitsRef = useRef<Habit[]>([]);
   const autoStartTriggeredRef = useRef(false);
+
+  const {
+    status,
+    setStatus,
+    transcript,
+    isSpeaking,
+    transcriptRef,
+    startSession: startVoiceCall,
+    stopSession: stopVoiceCall,
+  } = useVapiSession({
+    purpose: 'habit',
+    logTag: 'VapiHabit',
+    permissionDeniedMessage:
+      'Microphone access is needed for your habit check-in by voice.',
+    getVariableValues: () => {
+      // Build a primary habit name plus full list for multi-habit calls
+      const habits = slotHabitsRef.current;
+      const primaryHabitName =
+        habits[0]?.name ?? (habitName.trim().length > 0 ? habitName : 'Habit');
+      const allHabitNames =
+        habits.length > 0
+          ? habits.map(h => h.name).join(', ')
+          : habitName;
+
+      return {
+        name: user?.name ?? 'User',
+        habit: primaryHabitName,
+        habit_name: primaryHabitName,
+        habits: allHabitNames,
+        habit_time: habitTime,
+      };
+    },
+    onSessionReset: () => setResultMessage(''),
+    onCallEnd: () => processHabitResult(),
+  });
 
   // Fetch all pending habits for the time slot
   useEffect(() => {
@@ -161,133 +184,6 @@ export default function VoiceHabitScreen() {
       ? 'Habit Check-in'
       : slotHabits[0]?.name ?? habitName;
 
-  const disposeVapiInstance = () => {
-    const current = vapiRef.current;
-    if (!current) {
-      return;
-    }
-
-    current.removeAllListeners();
-    try {
-      current.stop();
-    } catch {
-      // Ignore cleanup errors
-    }
-    vapiRef.current = null;
-  };
-
-  const registerVapiListeners = (vapi: Vapi) => {
-    vapi.on('call-start', () => {
-      console.log('[VapiHabit] Call started');
-      setStatus('active');
-      try {
-        vapi.setMuted(false);
-      } catch (e) {
-        console.warn('[VapiHabit] Could not unmute:', e);
-      }
-    });
-
-    vapi.on('call-end', () => {
-      if (structuredVapiOutputRef.current) {
-        console.log(
-          '[VapiHabit] Structured output captured at call end:',
-          toDebugJson(structuredVapiOutputRef.current),
-        );
-      }
-      processHabitResult();
-    });
-
-    vapi.on('speech-start', () => {
-      setIsSpeaking(true);
-    });
-
-    vapi.on('speech-end', () => {
-      setIsSpeaking(false);
-    });
-
-    vapi.on('error', e => {
-      console.error('[VapiHabit] Error:', e);
-      setStatus('error');
-    });
-
-    vapi.on('message', (msg: any) => {
-      if (
-        msg?.type === 'function-call' ||
-        msg?.type === 'tool-calls' ||
-        msg?.type === 'tool-calls-result' ||
-        msg?.message?.type === 'function-call'
-      ) {
-        structuredVapiOutputRef.current = msg;
-      }
-
-      if (msg.type === 'transcript' && msg.transcriptType === 'final') {
-        const prefix = msg.role === 'assistant' ? 'Assistant: ' : 'You: ';
-        const line = `${prefix}${msg.transcript}`;
-        setTranscript(prev => [...prev, line]);
-        transcriptRef.current = [...transcriptRef.current, line];
-      }
-    });
-  };
-
-  // Cleanup Vapi instance when leaving the screen.
-  useEffect(() => {
-    return () => {
-      disposeVapiInstance();
-    };
-  }, []);
-
-  const requestMicPermission = useMicrophonePermission();
-
-  const startVoiceCall = useCallback(async () => {
-    setStatus('requesting');
-    setTranscript([]);
-    transcriptRef.current = [];
-    structuredVapiOutputRef.current = null;
-    setResultMessage('');
-
-    const hasPermission = await requestMicPermission();
-    if (!hasPermission) {
-      Alert.alert(
-        'Permission Required',
-        'Microphone access is needed for your habit check-in by voice.',
-      );
-      setStatus('idle');
-      return;
-    }
-
-    // Build a primary habit name plus full list for multi-habit calls
-    const habits = slotHabitsRef.current;
-    const primaryHabitName =
-      habits[0]?.name ?? (habitName.trim().length > 0 ? habitName : 'Habit');
-    const allHabitNames =
-      habits.length > 0
-        ? habits.map(h => h.name).join(', ')
-        : habitName;
-
-    try {
-      disposeVapiInstance();
-      const { vapi, assistantId } = await initializeVapiClient('habit');
-      registerVapiListeners(vapi);
-      vapiRef.current = vapi;
-
-      await vapi.start(assistantId, {
-        variableValues: {
-          name: user?.name ?? 'User',
-          habit: primaryHabitName,
-          habit_name: primaryHabitName,
-          habits: allHabitNames,
-          habit_time: habitTime,
-        },
-      });
-      console.log('[VapiHabit] Call start initiated');
-    } catch (err) {
-      console.error('[VapiHabit] Failed to start voice session:', err);
-      Alert.alert('Error', 'Could not start voice session. Please try again.');
-      setStatus('error');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestMicPermission, user?.name, habitName, habitTime]);
-
   // Auto-start only when we have resolved a concrete habit context.
   useEffect(() => {
     const hasRouteHabitName = habitName.trim().length > 0 && habitName !== 'Habit';
@@ -304,16 +200,6 @@ export default function VoiceHabitScreen() {
     autoStartTriggeredRef.current = true;
     startVoiceCall();
   }, [autoStart, status, habitName, slotHabits, startVoiceCall]);
-
-  const stopVoiceCall = useCallback(() => {
-    const vapi = vapiRef.current;
-    if (!vapi) return;
-    try {
-      vapi.stop();
-    } catch (err) {
-      console.error('[VapiHabit] Failed to stop voice session:', err);
-    }
-  }, []);
 
   const navigateToHabits = useCallback(() => {
     (navigation as any).navigate('MainTabs', { screen: 'Habits' });
@@ -420,7 +306,7 @@ export default function VoiceHabitScreen() {
       console.error('[VapiHabit] Failed to process result:', err);
       setStatus('error');
     }
-  }, [habitTime, navigateToHabits]);
+  }, [habitTime, navigateToHabits, setStatus, transcriptRef]);
 
   const getStatusText = () => {
     switch (status) {

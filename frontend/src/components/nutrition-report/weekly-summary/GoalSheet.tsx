@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { X, Plus, Minus } from 'lucide-react-native';
 import { Text } from '../../ui/text';
-import { tokens, WeeklyNutrient, fmtNum } from './tokens';
+import { WeeklyNutrient } from '../../../types/nutrition';
+import { tokens, fmtNum } from './tokens';
 
 interface Props {
   visible: boolean;

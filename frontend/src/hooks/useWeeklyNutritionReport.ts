@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { nutritionApi } from '../services/api/nutritionApi';
-import {
-  Insight,
-  AllNutrientSummary,
-} from '../components/nutrition-report/types';
+import { Insight, AllNutrientSummary } from '../types/nutrition';
 import { WeeklyNutritionReport } from '../types/types';
 import { DAYS_IN_WEEK, getCurrentSundayToSaturdayRange } from '../utils/weekRange';
 

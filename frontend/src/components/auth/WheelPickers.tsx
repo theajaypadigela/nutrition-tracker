@@ -15,7 +15,8 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { T, R, formatTime } from './authTheme';
+import { T, R } from './authTheme';
+import { formatLocaleTimeFromParts } from '../../utils/timeFormatter';
 import { ageFromDob } from '../../utils/authValidation';
 import { PrimaryButton, TextLink, Banner } from './AuthControls';
 
@@ -352,7 +353,7 @@ export function TimePickerSheet({
       subtitle="Nourish’s assistant will call around this time each day."
       footer={
         <PrimaryButton onPress={() => onSelect(picked)}>
-          {`Set call time · ${formatTime(picked.hour, picked.minute)}`}
+          {`Set call time · ${formatLocaleTimeFromParts(picked.hour, picked.minute)}`}
         </PrimaryButton>
       }
     >

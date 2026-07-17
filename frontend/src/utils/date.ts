@@ -32,3 +32,27 @@ export const isSameLocalCalendarDay = (left: Date, right: Date): boolean =>
   left.getFullYear() === right.getFullYear() &&
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate();
+
+export const getOrdinal = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
+/** Human-friendly label for a YYYY-MM-DD string: "Today", "Yesterday", or "3rd July 2026". */
+export const formatDate = (dateString: string): string => {
+  const date = parseLocalDateString(dateString);
+  const today = new Date();
+  const yesterday = addDaysToLocalDate(today, -1);
+
+  if (isSameLocalCalendarDay(date, today)) {
+    return 'Today';
+  } else if (isSameLocalCalendarDay(date, yesterday)) {
+    return 'Yesterday';
+  } else {
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'long' });
+    const year = date.getFullYear();
+    return `${getOrdinal(day)} ${month} ${year}`;
+  }
+};

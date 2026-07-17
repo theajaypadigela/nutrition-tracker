@@ -3,30 +3,33 @@
  * `auth-data.jsx` `AUTH_TOKENS` palette. Shared by every auth/onboarding screen
  * and primitive so the look stays consistent. Plain values (not NativeWind) because
  * the design relies on precise gradients, focus rings, and radii.
+ * Color values come from the shared token source (src/theme/tokens.ts).
  */
+import { authNeutral, authStatus, brandGreen, neutral } from '../../theme/tokens';
+
 export const T = {
-  ink: '#0d1f16',
-  inkSoft: '#48584f',
-  inkMuted: '#8a988f',
-  line: '#e3eae5',
-  lineSoft: '#eef3f0',
-  field: '#f5f8f6',
-  surface: '#ffffff',
-  bg: '#eaf0ec',
+  ink: authNeutral.ink,
+  inkSoft: authNeutral.inkSoft,
+  inkMuted: authNeutral.inkMuted,
+  line: authNeutral.line,
+  lineSoft: authNeutral.lineSoft,
+  field: authNeutral.field,
+  surface: neutral.white,
+  bg: authNeutral.bg,
   // brand green
-  green: '#0f7a3d',
-  greenMid: '#1b9750',
-  greenDeep: '#0a4d27',
-  greenDark: '#06351b',
-  greenSoft: '#e6f4ec',
-  greenSoft2: '#d6ecdf',
+  green: brandGreen.base,
+  greenMid: brandGreen.mid,
+  greenDeep: brandGreen.deep,
+  greenDark: brandGreen.dark,
+  greenSoft: brandGreen.soft,
+  greenSoft2: brandGreen.soft2,
   // status
-  danger: '#d24b4b',
-  dangerSoft: '#fcecec',
-  warn: '#cf8a1a',
-  warnSoft: '#fbf1dd',
-  ok: '#0f9b54',
-  white: '#ffffff',
+  danger: authStatus.danger,
+  dangerSoft: authStatus.dangerSoft,
+  warn: authStatus.warn,
+  warnSoft: authStatus.warnSoft,
+  ok: authStatus.ok,
+  white: neutral.white,
 } as const;
 
 /** Corner radii, mirroring the design's `--r-*` scale (base 16). */
@@ -46,7 +49,7 @@ export interface PwStrength {
 
 /** Password strength heuristic, ported from the design's `pwStrength`. */
 export function pwStrength(pw: string): PwStrength {
-  if (!pw) return { score: 0, label: '', color: '#cdd6d0', pct: 0 };
+  if (!pw) return { score: 0, label: '', color: authStatus.strengthEmpty, pct: 0 };
   let s = 0;
   if (pw.length >= 8) s++;
   if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
@@ -73,11 +76,4 @@ export function formatDob(iso: string): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-/** Format an hour/minute pair as a 12-hour time string, e.g. "8:00 PM". */
-export function formatTime(hour: number, minute: number): string {
-  const d = new Date();
-  d.setHours(hour, minute, 0, 0);
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }

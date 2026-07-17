@@ -29,7 +29,8 @@ class MealScheduleServiceTest {
     void setUp() {
         scheduleRepo = mock(MealScheduleRepository.class);
         userRepo = mock(UserRepository.class);
-        service = new MealScheduleService(scheduleRepo, userRepo);
+        service = new MealScheduleService(scheduleRepo, userRepo,
+                new com.habitbuilder.NutritionTracker.common.CurrentUserProvider());
 
         user = new User();
         user.setId("u1");

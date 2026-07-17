@@ -8,10 +8,6 @@ import {
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import {
-  Activity,
-  Apple,
-  Check,
-  Plus,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
@@ -21,22 +17,14 @@ import AppBar from '../../components/AppBar';
 
 import { HStack } from '../../components/ui/hstack';
 import { VStack } from '../../components/ui/vstack';
-import { Divider } from '../../components/ui/divider';
 import { Text } from '../../components/ui/text';
-import { CloseIcon, Icon } from '../../components/ui/icon';
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerHeader,
-} from '../../components/ui/drawer';
+import HabitList from '../../components/dashboard/HabitList';
+import MealSlotSection from '../../components/dashboard/MealSlotSection';
+import DayDetailDrawer from '../../components/dashboard/DayDetailDrawer';
 
 import {
-  addDaysToLocalDate,
+  formatDate,
   getTodayLocalDate,
-  isSameLocalCalendarDay,
   parseLocalDateString,
 } from '../../utils/date';
 import { useDashboard } from '../../hooks/useDashboard';
@@ -140,29 +128,6 @@ const DashBoardScreen = () => {
 
     return marked;
   }, [selectedDate, todayKey]);
-
-  const getOrdinal = (n: number) => {
-    const s = ['th', 'st', 'nd', 'rd'];
-    const v = n % 100;
-    return n + (s[(v - 20) % 10] || s[v] || s[0]);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = parseLocalDateString(dateString);
-    const today = new Date();
-    const yesterday = addDaysToLocalDate(today, -1);
-
-    if (isSameLocalCalendarDay(date, today)) {
-      return 'Today';
-    } else if (isSameLocalCalendarDay(date, yesterday)) {
-      return 'Yesterday';
-    } else {
-      const day = date.getDate();
-      const month = date.toLocaleString('default', { month: 'long' });
-      const year = date.getFullYear();
-      return `${getOrdinal(day)} ${month} ${year}`;
-    }
-  };
 
   const handleDayPress = (day: DateData) => {
     if (day.dateString > todayKey) {
@@ -325,490 +290,47 @@ const DashBoardScreen = () => {
             />
           </View>
 
-          <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
-            <HStack className="flex items-center justify-between">
-              <HStack className="items-center gap-2">
-                <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                  <Activity size={18} stroke="#059669" strokeWidth={2.5} />
-                </View>
-                <Text size="xl" className="font-semibold text-gray-900">
-                  Habits for {selectedDateLabel}
-                </Text>
-              </HStack>
-              {isSelectedDateToday ? (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('HabitCreation' as any)}
-                  className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center"
-                >
-                  <Plus size={18} color="#FFFFFF" strokeWidth={2.7} />
-                </TouchableOpacity>
-              ) : null}
-            </HStack>
+          <HabitList
+            selectedDateLabel={selectedDateLabel}
+            isSelectedDateToday={isSelectedDateToday}
+            isPastSelectedDate={isPastSelectedDate}
+            incompleteHabitLabel={incompleteHabitLabel}
+            totalHabits={totalHabits}
+            completedHabits={completedHabits}
+            habitProgress={habitProgress}
+            completedHabitItems={completedHabitItems}
+            incompleteHabitItems={incompleteHabitItems}
+            onCreateHabit={() => navigation.navigate('HabitCreation' as any)}
+          />
 
-            {totalHabits === 0 ? (
-              <View className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                <Text className="text-base font-semibold text-gray-900 mb-1">
-                  No habits scheduled
-                </Text>
-                <Text className={`text-sm text-gray-600 ${isSelectedDateToday ? 'mb-3' : ''}`}>
-                  {isSelectedDateToday
-                    ? 'Add a habit to start tracking progress for this date.'
-                    : 'Habits can only be created for today.'}
-                </Text>
-                {isSelectedDateToday ? (
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('HabitCreation' as any)}
-                    className="self-start rounded-lg bg-emerald-600 px-4 py-2"
-                  >
-                    <Text className="text-white font-semibold">Create Habit</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ) : (
-              <>
-                <HStack className="justify-between items-baseline mb-3">
-                  <Text className="text-base font-semibold text-gray-900">Habits</Text>
-                  <Text className="text-xs text-gray-400">
-                    {completedHabits} of {totalHabits} complete
-                  </Text>
-                </HStack>
-
-                <View className="w-full h-1 bg-emerald-50 rounded-full overflow-hidden mb-4">
-                  <View
-                    className="h-full bg-emerald-600 rounded-full"
-                    style={{ width: `${habitProgress * 100}%` }}
-                  />
-                </View>
-
-                <VStack className="gap-2">
-                  <HStack className="items-center gap-1.5 mb-2">
-                    <View className="w-[5px] h-[5px] rounded-full bg-emerald-600" />
-                    <Text className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
-                      Completed
-                    </Text>
-                  </HStack>
-
-                  {completedHabitItems.length === 0 ? (
-                    <Text className="text-sm text-gray-500">No completed habits yet.</Text>
-                  ) : (
-                    completedHabitItems.map((item, index) => (
-                      <HStack
-                        key={`completed-${item.id}`}
-                        className={`items-center gap-3 py-2.5 ${
-                          index < completedHabitItems.length - 1 ? 'border-b border-gray-100' : ''
-                        }`}
-                      >
-                        <View className="w-[18px] h-[18px] rounded-full bg-emerald-600 items-center justify-center flex-shrink-0">
-                          <Check size={9} color="#FFFFFF" strokeWidth={2.5} />
-                        </View>
-                        <Text className="flex-1 text-[13px] text-gray-900">{item.name}</Text>
-                        <View className="rounded-full bg-emerald-50 px-2.5 py-[3px]">
-                          <Text className="text-[10px] font-medium text-emerald-600">Done</Text>
-                        </View>
-                      </HStack>
-                    ))
-                  )}
-                </VStack>
-
-                <View className="h-[0.5px] bg-gray-100 my-3.5" />
-
-                <VStack className="gap-2">
-                  <HStack className="items-center gap-1.5 mb-2">
-                    <View className="w-[5px] h-[5px] rounded-full bg-red-300" />
-                    <Text className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
-                      {incompleteHabitLabel}
-                    </Text>
-                  </HStack>
-
-                  {incompleteHabitItems.length === 0 ? (
-                    <Text className="text-sm text-gray-500">Nothing in {incompleteHabitLabel.toLowerCase()}.</Text>
-                  ) : (
-                    incompleteHabitItems.map((item, index) => (
-                      <HStack
-                        key={`incomplete-${item.id}`}
-                        className={`items-center gap-3 py-2.5 ${
-                          index < incompleteHabitItems.length - 1 ? 'border-b border-gray-100' : ''
-                        }`}
-                      >
-                        <View className="w-[18px] h-[18px] rounded-full border border-red-300 flex-shrink-0" />
-                        <Text className="flex-1 text-[13px] text-gray-400">{item.name}</Text>
-                        <View className="rounded-full bg-rose-50 px-2.5 py-[3px]">
-                          <Text className="text-[10px] font-medium text-rose-500">
-                            {isPastSelectedDate ? 'Missed' : 'Pending'}
-                          </Text>
-                        </View>
-                      </HStack>
-                    ))
-                  )}
-                </VStack>
-              </>
-            )}
-          </VStack>
-
-          <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
-            <HStack className="flex items-center gap-2">
-              <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Apple size={18} stroke="#059669" strokeWidth={2.5} />
-              </View>
-              <Text size="xl" className="font-semibold text-gray-900">
-                Food for {selectedDateLabel}
-              </Text>
-            </HStack>
-
-            <HStack className="gap-1.5 mb-4">
-              {dailyMacroSummaryItems.map(item => (
-                <View
-                  key={item.label}
-                  className={`flex-1 rounded-xl py-2 px-1 items-center ${
-                    item.green
-                      ? 'bg-emerald-50 border border-emerald-100'
-                      : 'bg-gray-50 border border-gray-100'
-                  }`}
-                >
-                  <Text className={`text-sm font-semibold ${item.green ? 'text-emerald-600' : 'text-gray-900'}`}>
-                    {item.value}
-                  </Text>
-                  <Text className="text-[10px] text-gray-400 mt-0.5">{item.label}</Text>
-                </View>
-              ))}
-            </HStack>
-
-            {foodLogs.length === 0 ? (
-              <View className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                <Text className="text-base font-semibold text-gray-900 mb-1">
-                  No food logged
-                </Text>
-                <Text
-                  className={`text-sm text-gray-600 ${canLogFoodForSelectedDate ? 'mb-3' : ''}`}
-                >
-                  {canLogFoodForSelectedDate
-                    ? 'Add meals to see calories and macros for this date.'
-                    : 'Food can only be logged for today or past dates.'}
-                </Text>
-                {canLogFoodForSelectedDate ? (
-                  <TouchableOpacity
-                    onPress={handleLogFoodPress}
-                    className="self-start rounded-lg bg-blue-600 px-4 py-2"
-                  >
-                    <Text className="text-white font-semibold">Log Food</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ) : (
-              <>
-                <HStack className="justify-between items-center">
-                  <Text size="2xl" className="font-bold text-gray-900">
-                    {Math.round(foodTotals.calories).toLocaleString()}
-                  </Text>
-                  <Text className="text-gray-600">calories</Text>
-                </HStack>
-
-                <Divider className="h-[1px] bg-gray-200" />
-
-                <HStack className="justify-between items-center">
-                  <VStack>
-                    <Text className="text-gray-600">Protein</Text>
-                    <Text className="text-gray-900 font-bold">
-                      {Math.round(foodTotals.protein)}g
-                    </Text>
-                  </VStack>
-
-                  <VStack>
-                    <Text className="text-gray-600">Carbs</Text>
-                    <Text className="text-gray-900 font-bold">
-                      {Math.round(foodTotals.carbs)}g
-                    </Text>
-                  </VStack>
-
-                  <VStack>
-                    <Text className="text-gray-600">Fats</Text>
-                    <Text className="text-gray-900 font-bold">
-                      {Math.round(foodTotals.fat)}g
-                    </Text>
-                  </VStack>
-                </HStack>
-              </>
-            )}
-
-            <Divider className="h-[1px] bg-gray-200" />
-
-            <VStack className="gap-2">
-              <HStack className="items-center gap-1.5 mb-2">
-                <View className="w-[5px] h-[5px] rounded-full bg-emerald-600" />
-                <Text className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
-                  Logged
-                </Text>
-              </HStack>
-
-              {loggedMealItems.length === 0 ? (
-                <Text className="text-sm text-gray-500">No meals logged for this date.</Text>
-              ) : (
-                <View className="flex-row flex-wrap gap-2 mb-3">
-                  {loggedMealItems.map(slot => {
-                    const mealFoods = normalizedMeals[slot.key] || [];
-                    const mealProt = mealFoods.reduce((s, f) => s + (f.protein || 0), 0);
-                    const mealCarbs = mealFoods.reduce((s, f) => s + (f.carbs || 0), 0);
-                    const mealFat = mealFoods.reduce((s, f) => s + (f.fat || 0), 0);
-                    const isExpanded = expandedMeal === slot.key;
-
-                    return (
-                      <TouchableOpacity
-                      key={`logged-${slot.key}`}
-                      activeOpacity={0.85}
-                      onPress={() => toggleMeal(slot.key)}
-                      className={`w-[48%] rounded-xl bg-emerald-50 p-3 ${
-                        isExpanded
-                          ? 'border-[1.5px] border-emerald-500'
-                          : 'border border-emerald-100'
-                      }`}
-                    >
-                      <HStack className="justify-between items-center mb-2">
-                        <View className="w-[7px] h-[7px] rounded-full bg-emerald-600" />
-                        <View className="rounded-full bg-emerald-100 px-2 py-0.5">
-                          <Text className="text-[10px] font-medium text-emerald-600">
-                            {slot.count} item{slot.count === 1 ? '' : 's'}
-                          </Text>
-                        </View>
-                      </HStack>
-                      <Text className="text-[13px] font-semibold text-gray-900">{slot.label}</Text>
-
-                      <HStack className="gap-2 mt-1.5">
-                        <Text className="text-[10px] text-gray-500">
-                          P <Text className="text-emerald-600 font-medium">{Math.round(mealProt)}g</Text>
-                        </Text>
-                        <Text className="text-[10px] text-gray-500">
-                          C <Text className="text-emerald-600 font-medium">{Math.round(mealCarbs)}g</Text>
-                        </Text>
-                        <Text className="text-[10px] text-gray-500">
-                          F <Text className="text-emerald-600 font-medium">{Math.round(mealFat)}g</Text>
-                        </Text>
-                      </HStack>
-
-                      <HStack className="items-center gap-1 mt-1.5">
-                        <ChevronRight size={9} color="#9ca3af" strokeWidth={2} />
-                        <Text className="text-[10px] text-gray-400">
-                          {isExpanded ? 'Tap to close' : 'Tap to view'}
-                        </Text>
-                      </HStack>
-                    </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            </VStack>
-
-            {expandedMealDetails ? (
-              <View className="rounded-2xl border border-emerald-100 overflow-hidden mb-3">
-                <View className="bg-emerald-50 px-3.5 py-2.5 border-b border-emerald-100">
-                  <Text className="text-[13px] font-semibold text-emerald-700">
-                    {expandedMealDetails.slotLabel} breakdown
-                  </Text>
-                </View>
-
-                <HStack className="border-b border-gray-100">
-                  {expandedMealDetails.macroItems.map((m, i, arr) => (
-                    <View
-                      key={m.label}
-                      className={`flex-1 items-center py-2.5 ${i < arr.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <Text className="text-sm font-semibold text-gray-900">{m.value}</Text>
-                      <Text className="text-[10px] text-gray-400 mt-0.5">{m.label}</Text>
-                    </View>
-                  ))}
-                </HStack>
-
-                {expandedMealDetails.mealFoods.map((food, index) => (
-                  <View
-                    key={food.id}
-                    className={`px-3.5 py-2.5 ${index < expandedMealDetails.mealFoods.length - 1 ? 'border-b border-gray-100' : ''}`}
-                  >
-                    <HStack className="justify-between items-start">
-                      <Text className="text-[13px] text-gray-900 flex-1 mr-2">{food.name}</Text>
-                      <Text className="text-[12px] text-gray-400">{Math.round(food.calories || 0)} cal</Text>
-                    </HStack>
-                    <HStack className="gap-3 mt-1">
-                      <Text className="text-[10px] text-gray-400">
-                        P <Text className="text-gray-600 font-medium">{Math.round(food.protein || 0)}g</Text>
-                      </Text>
-                      <Text className="text-[10px] text-gray-400">
-                        C <Text className="text-gray-600 font-medium">{Math.round(food.carbs || 0)}g</Text>
-                      </Text>
-                      <Text className="text-[10px] text-gray-400">
-                        F <Text className="text-gray-600 font-medium">{Math.round(food.fat || 0)}g</Text>
-                      </Text>
-                    </HStack>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            <VStack className="gap-2">
-              <HStack className="items-center gap-1.5 mb-2">
-                <View className="w-[5px] h-[5px] rounded-full bg-red-300" />
-                <Text className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
-                  {missingMealLabel}
-                </Text>
-              </HStack>
-
-              {missingMealItems.length === 0 ? (
-                <Text className="text-sm text-gray-500">No missed meals.</Text>
-              ) : (
-                <View className="flex-row flex-wrap gap-2">
-                  {missingMealItems.map(slot => (
-                    <View
-                      key={`missing-${slot.key}`}
-                      className="w-[48%] rounded-xl bg-gray-50 border border-gray-100 p-3"
-                    >
-                      <HStack className="justify-between items-center mb-2">
-                        <View className="w-[7px] h-[7px] rounded-full border border-red-300" />
-                      </HStack>
-                      <Text className="text-[13px] font-semibold text-gray-400">{slot.label}</Text>
-                      <Text className="text-[10px] font-medium text-rose-400 mt-1">
-                        {isPastSelectedDate ? 'Missed' : 'Not logged'}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </VStack>
-          </VStack>
+          <MealSlotSection
+            selectedDateLabel={selectedDateLabel}
+            isPastSelectedDate={isPastSelectedDate}
+            canLogFoodForSelectedDate={canLogFoodForSelectedDate}
+            missingMealLabel={missingMealLabel}
+            dailyMacroSummaryItems={dailyMacroSummaryItems}
+            foodLogs={foodLogs}
+            foodTotals={foodTotals}
+            normalizedMeals={normalizedMeals}
+            loggedMealItems={loggedMealItems}
+            missingMealItems={missingMealItems}
+            expandedMeal={expandedMeal}
+            onToggleMeal={toggleMeal}
+            expandedMealDetails={expandedMealDetails}
+            onLogFood={handleLogFoodPress}
+          />
         </VStack>
       </ScrollView>
 
       {isSelectedDateToday ? (
-        <Drawer
+        <DayDetailDrawer
           isOpen={showDrawer}
-          size="lg"
-          anchor="bottom"
           onClose={() => setShowDrawer(false)}
-        >
-          <DrawerBackdrop className="bg-black/40" />
-
-          <DrawerContent className="p-0 rounded-t-3xl bg-white">
-            <DrawerHeader className="p-6 border-b border-gray-200 pb-3">
-              <Text size="xl" className="font-bold text-gray-900">
-                {selectedDate ? formatDate(selectedDate) : 'Select a date'}
-              </Text>
-
-              <Text className="text-sm text-gray-600 mt-1">
-                Daily details and completion status
-              </Text>
-
-              <DrawerCloseButton>
-                <Icon as={CloseIcon} />
-              </DrawerCloseButton>
-            </DrawerHeader>
-
-            <DrawerBody className="p-6">
-              <VStack className="gap-6">
-                <Text size="lg" className="text-gray-800 font-bold">
-                  Habits
-                </Text>
-
-                <VStack className="gap-2">
-                  {habits.length === 0 ? (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                      <Text className="text-sm text-gray-700">
-                        No habits to review for this date.
-                      </Text>
-                    </View>
-                  ) : (
-                    habits.map(item => (
-                      <HStack
-                        key={item.id}
-                        className="p-4 bg-gray-100 rounded-lg gap-4 items-center"
-                      >
-                        {item.completed ? (
-                          <View className="w-[20px] h-[20px] rounded-full bg-gray-900 items-center justify-center">
-                            <Check size={10} color="#FFFFFF" strokeWidth={2.5} />
-                          </View>
-                        ) : (
-                          <View className="w-[20px] h-[20px] rounded-full border border-gray-300" />
-                        )}
-
-                        <Text className="rounded-lg text-gray-900 font-medium">
-                          {item.name}
-                        </Text>
-                      </HStack>
-                    ))
-                  )}
-                </VStack>
-
-                <Text size="lg" className="text-gray-800 font-bold">
-                  Food Log
-                </Text>
-
-                <HStack className="w-full bg-emerald-50 rounded-xl p-3 mb-3">
-                  <HStack className="justify-between w-full">
-                    <View className="flex-1 flex-col items-center gap-1">
-                      <Text className="text-xs text-gray-600">Calories</Text>
-                      <Text className="text-sm font-semibold text-gray-900">
-                        {Math.round(foodTotals.calories)} cal
-                      </Text>
-                    </View>
-
-                    <View className="flex-1 flex-col items-center gap-1">
-                      <Text className="text-xs text-gray-600">Protein</Text>
-                      <Text className="text-sm font-semibold text-gray-900">
-                        {Math.round(foodTotals.protein)}g
-                      </Text>
-                    </View>
-
-                    <View className="flex-1 flex-col items-center gap-1">
-                      <Text className="text-xs text-gray-600">Carbs</Text>
-                      <Text className="text-sm font-semibold text-gray-900">
-                        {Math.round(foodTotals.carbs)}g
-                      </Text>
-                    </View>
-
-                    <View className="flex-1 flex-col items-center gap-1">
-                      <Text className="text-xs text-gray-600">Fats</Text>
-                      <Text className="text-sm font-semibold text-gray-900">
-                        {Math.round(foodTotals.fat)}g
-                      </Text>
-                    </View>
-                  </HStack>
-                </HStack>
-
-                <VStack className="gap-2">
-                  {foodLogs.length === 0 ? (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                      <Text className="text-sm text-gray-700">
-                        No meals logged for this date.
-                      </Text>
-                    </View>
-                  ) : (
-                    foodLogs.map(food => (
-                      <View key={food.id} className="p-3 rounded-xl bg-gray-50">
-                        <Text className="text-sm font-medium text-gray-900 mb-1">
-                          {food.name}
-                        </Text>
-
-                        <HStack className="gap-4">
-                          <Text className="text-xs text-gray-600">
-                            {Math.round(food.calories || 0)} cal
-                          </Text>
-
-                          <Text className="text-xs text-gray-600">
-                            P: {Math.round(food.protein || 0)}g
-                          </Text>
-
-                          <Text className="text-xs text-gray-600">
-                            C: {Math.round(food.carbs || 0)}g
-                          </Text>
-
-                          <Text className="text-xs text-gray-600">
-                            F: {Math.round(food.fat || 0)}g
-                          </Text>
-                        </HStack>
-                      </View>
-                    ))
-                  )}
-                </VStack>
-              </VStack>
-            </DrawerBody>
-          </DrawerContent>
-        </Drawer>
+          title={selectedDate ? formatDate(selectedDate) : 'Select a date'}
+          habits={habits}
+          foodTotals={foodTotals}
+          foodLogs={foodLogs}
+        />
       ) : null}
     </View>
   );

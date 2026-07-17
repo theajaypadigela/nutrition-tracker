@@ -10,5 +10,7 @@ public interface FoodLogRepository extends MongoRepository<FoodLog, String> {
 
     Optional<FoodLog> findByUserIdAndLogDate(String userId, LocalDate logDate);
 
-    List<FoodLog> findByUserIdAndLogDateBetweenOrderByLogDateAsc(String userId, LocalDate from, LocalDate to);
+    // Spring Data Mongo's "Between" is exclusive on both bounds; reports need inclusive [from, to].
+    List<FoodLog> findByUserIdAndLogDateGreaterThanEqualAndLogDateLessThanEqualOrderByLogDateAsc(
+            String userId, LocalDate from, LocalDate to);
 }
