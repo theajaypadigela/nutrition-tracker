@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useCallback } from 'react';
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -14,11 +13,6 @@ import { ChevronRight, Clock, Phone, ShieldCheck, Sparkles } from 'lucide-react-
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import {
-  defaultMealSchedule,
-  saveMealSchedule,
-} from '../../services/notifications/reminderService';
-import notifee, { AuthorizationStatus } from '@notifee/react-native';
 import { ROUTES } from '../../navigation/routeNames';
 import {
   PrimaryButton,
@@ -26,65 +20,35 @@ import {
   T,
   R,
 } from '../../components/auth';
-import { formatLocaleTimeFromParts } from '../../utils/timeFormatter';
+import { useOnboardingMealScheduleForm } from '../../hooks/useOnboardingMealScheduleForm';
 
 /**
  * One-time "daily check-in call" setup, shown right after registration. Visually the
  * Nourish CallSetup design; functionally it keeps the existing scheduler core
- * (saveMealSchedule + notifee permission). On finish/skip it lands on
- * the Done screen rather than jumping straight to MainTabs.
+ * (saveMealSchedule + notifee permission), now owned by
+ * useOnboardingMealScheduleForm. On finish/skip it lands on the Done screen rather
+ * than jumping straight to MainTabs.
  */
 export default function OnboardingMealScheduleScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const base = defaultMealSchedule();
-  const [hour, setHour] = useState(base.hour);
-  const [minute, setMinute] = useState(base.minute);
-  const [hasPicked, setHasPicked] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
-  const [saving, setSaving] = useState(false);
 
-  const onTimeChange = (event: { type?: string }, selected?: Date) => {
-    setShowPicker(false);
-    if (event.type === 'dismissed') return;
-    if (selected) {
-      setHour(selected.getHours());
-      setMinute(selected.getMinutes());
-      setHasPicked(true);
-    }
-  };
+  const goToDone = useCallback(
+    (callTime?: string) =>
+      navigation.replace(ROUTES.ONBOARDING_DONE, { callTime }),
+    [navigation],
+  );
 
-  const goToDone = (callTime?: string) =>
-    navigation.replace(ROUTES.ONBOARDING_DONE, { callTime });
-
-  const handleSetTime = async () => {
-    if (!hasPicked) {
-      setShowPicker(true);
-      return;
-    }
-    setSaving(true);
-    try {
-      const settings = await notifee.requestPermission();
-      const denied =
-        settings.authorizationStatus === AuthorizationStatus.DENIED;
-      await saveMealSchedule({ hour, minute, enabled: true });
-      if (denied) {
-        Alert.alert(
-          'Reminders are off',
-          'Your call time is saved, but it can’t ring until you enable notifications. You can fix this anytime from Profile → Reminder health.',
-        );
-      }
-      goToDone(formatLocaleTimeFromParts(hour, minute));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const pickerValue = (() => {
-    const d = new Date();
-    d.setHours(hour, minute, 0, 0);
-    return d;
-  })();
+  const {
+    hasPicked,
+    showPicker,
+    saving,
+    pickerValue,
+    formattedTime,
+    openPicker,
+    onTimeChange,
+    submit,
+  } = useOnboardingMealScheduleForm({ onSaved: goToDone });
 
   return (
     <View style={styles.root}>
@@ -141,7 +105,7 @@ export default function OnboardingMealScheduleScreen() {
 
         {/* time selector */}
         <Pressable
-          onPress={() => setShowPicker(true)}
+          onPress={openPicker}
           style={[
             styles.timeSelect,
             {
@@ -153,7 +117,7 @@ export default function OnboardingMealScheduleScreen() {
           <View style={styles.timeIcon}>
             <Clock size={24} color={T.green} />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.timeTextBlock}>
             <Text style={styles.timeLabel}>PREFERRED TIME</Text>
             <Text
               style={[
@@ -161,7 +125,7 @@ export default function OnboardingMealScheduleScreen() {
                 { color: hasPicked ? T.ink : T.inkMuted },
               ]}
             >
-              {hasPicked ? formatLocaleTimeFromParts(hour, minute) : 'Tap to choose'}
+              {hasPicked ? formattedTime : 'Tap to choose'}
             </Text>
           </View>
           <ChevronRight size={20} color={T.inkMuted} />
@@ -176,7 +140,7 @@ export default function OnboardingMealScheduleScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-        <PrimaryButton onPress={handleSetTime} loading={saving}>
+        <PrimaryButton onPress={submit} loading={saving}>
           {saving ? 'Saving…' : 'Set call time'}
         </PrimaryButton>
         <View style={styles.footerLink}>
@@ -252,6 +216,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
+  timeTextBlock: { flex: 1 },
   headerBlock: { alignItems: 'center', marginTop: 14 },
   pill: {
     backgroundColor: T.greenSoft,

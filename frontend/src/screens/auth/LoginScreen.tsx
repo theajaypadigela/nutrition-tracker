@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -13,7 +13,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
-import { useAuth } from '@/src/context/AuthContext';
 import {
   BrandMark,
   Wordmark,
@@ -26,10 +25,7 @@ import {
   T,
   R,
 } from '../../components/auth';
-import {
-  validateEmail as validateEmailRule,
-  validatePassword as validatePasswordRule,
-} from '../../utils/authValidation';
+import { useLoginForm } from '../../hooks/useLoginForm';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -39,42 +35,20 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<
 export function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const insets = useSafeAreaInsets();
-  const { login, isLoading } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [loginError, setLoginError] = useState('');
-
-  const validateEmail = (value: string): boolean => {
-    const { valid, error } = validateEmailRule(value);
-    setEmailError(error);
-    return valid;
-  };
-
-  const validatePassword = (value: string): boolean => {
-    const { valid, error } = validatePasswordRule(value);
-    setPasswordError(error);
-    return valid;
-  };
-
-  const loginUser = async () => {
-    const emailOk = validateEmail(email);
-    const pwOk = validatePassword(password);
-    if (!emailOk || !pwOk) return;
-
-    setLoginError('');
-    try {
-      await login(email, password);
-    } catch (error) {
-      setLoginError(
-        error instanceof Error
-          ? error.message
-          : 'Incorrect email or password. Please try again.',
-      );
-    }
-  };
+  const {
+    email,
+    password,
+    emailError,
+    passwordError,
+    loginError,
+    isLoading,
+    changeEmail,
+    changePassword,
+    blurEmail,
+    blurPassword,
+    submit,
+  } = useLoginForm();
 
   return (
     <View style={styles.root}>
@@ -100,7 +74,7 @@ export function LoginScreen() {
           </Hero>
 
           <View style={styles.sheet}>
-            <View style={{ gap: 18 }}>
+            <View style={styles.fieldStack}>
               {loginError ? (
                 <Banner tone="error" title="Sign-in failed">
                   {loginError}
@@ -111,11 +85,8 @@ export function LoginScreen() {
                 label="Email"
                 icon={Mail}
                 value={email}
-                onChangeText={v => {
-                  setEmail(v);
-                  if (loginError) setLoginError('');
-                }}
-                onBlur={() => validateEmail(email)}
+                onChangeText={changeEmail}
+                onBlur={blurEmail}
                 placeholder="you@example.com"
                 keyboardType="email-address"
                 autoComplete="email"
@@ -125,17 +96,14 @@ export function LoginScreen() {
               <AuthPasswordField
                 label="Password"
                 value={password}
-                onChangeText={v => {
-                  setPassword(v);
-                  if (loginError) setLoginError('');
-                }}
-                onBlur={() => validatePassword(password)}
+                onChangeText={changePassword}
+                onBlur={blurPassword}
                 placeholder="Enter your password"
                 autoComplete="password"
                 error={passwordError}
               />
 
-              <PrimaryButton onPress={loginUser} loading={isLoading}>
+              <PrimaryButton onPress={submit} loading={isLoading}>
                 {isLoading ? 'Signing in…' : 'Log in'}
               </PrimaryButton>
             </View>
@@ -186,6 +154,7 @@ const styles = StyleSheet.create({
     paddingTop: 26,
     paddingBottom: 30,
   },
+  fieldStack: { gap: 18 },
   createBlock: { marginTop: 26 },
   dividerRow: {
     flexDirection: 'row',
