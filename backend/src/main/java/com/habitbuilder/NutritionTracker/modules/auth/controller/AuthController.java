@@ -6,10 +6,9 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import com.habitbuilder.NutritionTracker.common.CurrentUserProvider;
 import com.habitbuilder.NutritionTracker.modules.auth.service.AuthService;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.dto.AuthRequest;
@@ -25,10 +24,14 @@ public class AuthController {
 
     private final AuthService service;
     private final JwtTokenProvider jwtTokenProvider;
+    private final CurrentUserProvider currentUserProvider;
 
-    public AuthController(AuthService service, JwtTokenProvider jwtTokenProvider) {
+    public AuthController(AuthService service,
+            JwtTokenProvider jwtTokenProvider,
+            CurrentUserProvider currentUserProvider) {
         this.service = service;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.currentUserProvider = currentUserProvider;
     }
 
     /** Age in years derived from DOB (with legacy-age fallback), as a String, or null. */
@@ -65,24 +68,28 @@ public class AuthController {
         }
     }
 
+    /**
+     * Token probe on a {@code permitAll} path: an anonymous caller gets
+     * {@code {valid: false}} rather than an error, because the client uses this to decide
+     * whether a stored token is still good.
+     */
     @GetMapping("/me")
     public ResponseEntity<?> validateToken() {
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
-                User user = (User) authentication.getPrincipal();
-                // HashMap (not Map.of) because age/dob may be null for some accounts.
-                Map<String, Object> me = new HashMap<>();
-                me.put("id", user.getId());
-                me.put("name", user.getName());
-                me.put("email", user.getEmail());
-                me.put("age", ageString(user));
-                me.put("dob", user.getDob());
-                me.put("gender", user.getGender());
-                return ResponseEntity.ok(me);
-            }
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("valid", false));
+            return currentUserProvider.findCurrentUser()
+                    .<ResponseEntity<?>>map(user -> {
+                        // HashMap (not Map.of) because age/dob may be null for some accounts.
+                        Map<String, Object> me = new HashMap<>();
+                        me.put("id", user.getId());
+                        me.put("name", user.getName());
+                        me.put("email", user.getEmail());
+                        me.put("age", ageString(user));
+                        me.put("dob", user.getDob());
+                        me.put("gender", user.getGender());
+                        return ResponseEntity.ok(me);
+                    })
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("valid", false)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("valid", false));

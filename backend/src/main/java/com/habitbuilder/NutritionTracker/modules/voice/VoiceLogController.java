@@ -1,5 +1,6 @@
 package com.habitbuilder.NutritionTracker.modules.voice;
 
+import com.habitbuilder.NutritionTracker.common.CurrentUserProvider;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.nutrition.AiProviderException;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptParseRequestDTO;
@@ -14,12 +15,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/food")
@@ -28,12 +28,14 @@ public class VoiceLogController {
     private static final Logger logger = LoggerFactory.getLogger(VoiceLogController.class);
 
     private final VoiceLogService voiceLogService;
+    private final CurrentUserProvider currentUserProvider;
 
     @Value("${vapi.webhook-secret:}")
     private String vapiWebhookSecret;
 
-    public VoiceLogController(VoiceLogService voiceLogService) {
+    public VoiceLogController(VoiceLogService voiceLogService, CurrentUserProvider currentUserProvider) {
         this.voiceLogService = voiceLogService;
+        this.currentUserProvider = currentUserProvider;
     }
 
     /**
@@ -89,10 +91,11 @@ public class VoiceLogController {
     @GetMapping("/voice/session")
     public ResponseEntity<?> getVapiSessionConfig(
             @RequestParam(value = "purpose", defaultValue = "meal") String purpose) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+        Optional<User> authenticated = currentUserProvider.findCurrentUser();
+        if (authenticated.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        User user = authenticated.get();
 
         try {
             VoiceLogService.VapiSessionConfig config = voiceLogService
@@ -122,10 +125,11 @@ public class VoiceLogController {
      */
     @GetMapping("/voice/token")
     public ResponseEntity<Map<String, String>> getVapiCallToken() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+        Optional<User> authenticated = currentUserProvider.findCurrentUser();
+        if (authenticated.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        User user = authenticated.get();
 
         String token = voiceLogService.generateVapiToken(user.getId());
         return ResponseEntity.ok()
@@ -141,10 +145,11 @@ public class VoiceLogController {
     @PostMapping("/voice-log/parse-transcript")
     public ResponseEntity<Map<String, Object>> parseTranscriptAndLog(
             @RequestBody MealTranscriptParseRequestDTO body) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+        Optional<User> authenticated = currentUserProvider.findCurrentUser();
+        if (authenticated.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        User user = authenticated.get();
 
         String transcript = body.getTranscript();
         if (transcript == null || transcript.trim().isEmpty()) {
@@ -199,8 +204,7 @@ public class VoiceLogController {
     @PostMapping("/voice-log/interpret-transcript")
     public ResponseEntity<?> interpretMealTranscript(
             @RequestBody MealTranscriptInterpretRequestDTO body) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof User)) {
+        if (currentUserProvider.findCurrentUser().isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
