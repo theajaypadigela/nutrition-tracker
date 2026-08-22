@@ -22,6 +22,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -201,6 +202,20 @@ public class VoiceLogController {
                         aiProviderException.getMessage());
                 return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                         .body(Map.of("error", "AI service is temporarily busy. Please try again in a few seconds."));
+            }
+
+            // An accurate status the service already decided on (a missing user, a malformed
+            // request) belongs to the client rather than being flattened into a 500. The body
+            // stays this endpoint's own {error: ...} shape, because the voice screen renders
+            // that string to the user — the uniform error contract's "Not Found" reason phrase
+            // would read as copy. Ordered after the AI check on purpose: a retryable provider
+            // failure must still answer 503.
+            if (e instanceof ResponseStatusException statusException) {
+                logger.warn("Transcript parse rejected for user {}: {}", user.getId(), statusException.getReason());
+                return ResponseEntity.status(statusException.getStatusCode())
+                        .body(Map.of("error", statusException.getReason() != null
+                                ? statusException.getReason()
+                                : "Failed to process meals from conversation"));
             }
 
             logger.error("Failed to parse transcript for user {}: {}", user.getId(), e.getMessage(), e);
