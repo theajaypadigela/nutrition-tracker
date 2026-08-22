@@ -18,13 +18,12 @@
  *     is armable even before (or without) a successful round-trip to the server.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Habit } from '../../types/types';
 import { habitApi } from '../api/habitApi';
+import { createJsonArrayStore } from '../storage/jsonStore';
+import { StorageKeys } from '../storage/storageKeys';
 import { reminderLog } from './logger';
 import { resolveDeviceTimeZone } from './time';
-
-const STORAGE_KEY = 'habit_definitions_v1';
 
 /** Minimal shape guard: the fields the scheduler reads must be present and well-typed. */
 function isValidHabit(value: unknown): value is Habit {
@@ -42,39 +41,34 @@ function isValidHabit(value: unknown): value is Habit {
   );
 }
 
+const store = createJsonArrayStore<Habit>(
+  StorageKeys.habitDefinitions,
+  isValidHabit,
+  {
+    // A wrong-shaped cache is cleared rather than left to be re-read every launch.
+    clearWhenInvalid: true,
+    onReadFailure: (reason, error) =>
+      reason === 'wrong-shape'
+        ? reminderLog.warn('habit.cache_corrupt', 'Habit cache was not an array; clearing')
+        : reminderLog.warn('habit.cache_read_failed', 'Habit cache read failed', {
+            error: String(error),
+          }),
+    // Swallowed: a cache write failure must not break the create/delete flow that
+    // triggered it. The next successful server fetch repairs the cache.
+    onWriteFailure: error =>
+      reminderLog.warn('habit.cache_write_failed', 'Habit cache write failed', {
+        error: String(error),
+      }),
+  },
+);
+
 /** Reads the cached habit set. Corrupted storage returns [] (never throws). */
 export async function loadHabitsCached(): Promise<Habit[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      reminderLog.warn('habit.cache_corrupt', 'Habit cache was not an array; clearing');
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      return [];
-    }
-    return parsed.filter(isValidHabit);
-  } catch (e) {
-    reminderLog.warn('habit.cache_read_failed', 'Habit cache read failed', {
-      error: String(e),
-    });
-    return [];
-  }
+  return store.readAll();
 }
 
 export async function saveHabitsCached(habits: Habit[]): Promise<void> {
-  try {
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(habits.filter(isValidHabit)),
-    );
-  } catch (e) {
-    reminderLog.warn('habit.cache_write_failed', 'Habit cache write failed', {
-      error: String(e),
-    });
-  }
+  await store.writeAll(habits);
 }
 
 /** Inserts or replaces one habit in the cache (used by the create/edit flow). */
@@ -99,7 +93,7 @@ export async function removeHabitCached(habitId: string): Promise<void> {
 
 /** Clears the cache entirely (called on logout so habits never leak across accounts). */
 export async function clearHabitsCached(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  await store.clear().catch(() => {});
 }
 
 /**

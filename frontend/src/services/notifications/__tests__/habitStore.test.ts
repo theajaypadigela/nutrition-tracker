@@ -9,6 +9,7 @@ import {
   fetchHabitsFromServer,
 } from '../habitStore';
 import { Habit } from '../../../types/types';
+import { StorageKeys } from '../../storage/storageKeys';
 
 jest.mock('../../../api/client', () => ({
   __esModule: true,
@@ -71,7 +72,7 @@ describe('habitStore cache', () => {
   });
 
   it('treats a corrupt (non-array) cached value as empty', async () => {
-    await AsyncStorage.setItem('habit_definitions_v1', JSON.stringify({ not: 'an array' }));
+    await AsyncStorage.setItem(StorageKeys.habitDefinitions, JSON.stringify({ not: 'an array' }));
     expect(await loadHabitsCached()).toEqual([]);
   });
 });
