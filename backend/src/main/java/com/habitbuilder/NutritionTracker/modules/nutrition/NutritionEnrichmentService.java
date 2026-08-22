@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -65,12 +66,26 @@ public class NutritionEnrichmentService {
             // Check cache first
             Optional<NutritionCache> cachedNutrition = nutritionCacheRepository.findByEntryHash(entryHash);
 
-            NutritionResponse nutritionResponse;
+            NutritionResponse nutritionResponse = null;
             if (cachedNutrition.isPresent()) {
-                logger.info("Found cached nutrition data for hash: {}", entryHash);
-                nutritionResponse = objectMapper.readValue(cachedNutrition.get().getPayload(), NutritionResponse.class);
-                nutritionDetails.setApiResponse(cachedNutrition.get().getPayload());
-            } else {
+                NutritionCache cached = cachedNutrition.get();
+                try {
+                    NutritionResponse candidate = objectMapper.readValue(cached.getPayload(), NutritionResponse.class);
+                    if (candidate.isCacheable()) {
+                        logger.info("Found cached nutrition data for hash: {}", entryHash);
+                        nutritionResponse = candidate;
+                        nutritionDetails.setApiResponse(cached.getPayload());
+                    } else {
+                        logger.warn("Discarding invalid all-zero nutrition cache entry: hash={}", entryHash);
+                        nutritionCacheRepository.delete(cached);
+                    }
+                } catch (JsonProcessingException exception) {
+                    logger.warn("Discarding unparseable nutrition cache entry: hash={}", entryHash);
+                    nutritionCacheRepository.delete(cached);
+                }
+            }
+
+            if (nutritionResponse == null) {
                 // Get raw response first and store it
                 String rawApiResponse = null;
                 try {
@@ -106,12 +121,15 @@ public class NutritionEnrichmentService {
 
             logger.info("Successfully enriched nutrition for food entry: {}", foodEntry.getName());
 
+        } catch (NutritionParseException e) {
+            logger.error("Invalid nutrition response for food entry {}: {}", foodEntry.getName(), e.getMessage());
+            handleEnrichmentError(nutritionDetails, e.getFullDetails(), true);
         } catch (GeminiApiException e) {
-            logger.error("Gemini API error for food entry {}: {} - Raw response: {}", foodEntry.getName(), e.getMessage(), e.getRawResponse());
-            handleEnrichmentError(nutritionDetails, e.getFullDetails());
+            logger.error("AI provider error for food entry: errorType={}", e.getClass().getSimpleName());
+            handleEnrichmentError(nutritionDetails, e.getFullDetails(), false);
         } catch (Exception e) {
             logger.error("Error enriching food entry: {}", foodEntry.getName(), e);
-            handleEnrichmentError(nutritionDetails, "Exception: " + e.getMessage());
+            handleEnrichmentError(nutritionDetails, "Exception: " + e.getMessage(), false);
         }
     }
 
@@ -137,6 +155,10 @@ public class NutritionEnrichmentService {
     }
 
     private void cacheNutritionResponse(String entryHash, NutritionResponse response) {
+        if (!response.isCacheable()) {
+            logger.info("Skipping cache write for an all-zero nutrition response");
+            return;
+        }
         try {
             NutritionCache cache = new NutritionCache();
             cache.setEntryHash(entryHash);
@@ -148,11 +170,11 @@ public class NutritionEnrichmentService {
         }
     }
 
-    private void handleEnrichmentError(NutritionDetails details, String errorMessage) {
+    private void handleEnrichmentError(NutritionDetails details, String errorMessage, boolean terminal) {
         details.setRetryCount(details.getRetryCount() + 1);
         details.setEnrichmentError(errorMessage);
 
-        if (details.getRetryCount() >= MAX_RETRY_COUNT) {
+        if (terminal || details.getRetryCount() >= MAX_RETRY_COUNT) {
             details.setEnrichmentStatus("failed");
         } else {
             details.setEnrichmentStatus("pending");
@@ -162,7 +184,12 @@ public class NutritionEnrichmentService {
     }
 
     private String generateEntryHash(String name, double quantity, String unit) {
-        String input = String.format("%s|%.2f|%s", name.toLowerCase().trim(), quantity, unit.toLowerCase().trim());
+        String input = String.format(
+                Locale.ROOT,
+                "%s|%.2f|%s",
+                name.toLowerCase(Locale.ROOT).trim(),
+                quantity,
+                unit.toLowerCase(Locale.ROOT).trim());
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));

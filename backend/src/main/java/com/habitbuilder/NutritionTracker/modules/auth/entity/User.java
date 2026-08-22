@@ -41,6 +41,9 @@ public class User implements UserDetails {
     private String gender;
 
     @Column(nullable = false)
+    private String timezone = "UTC";
+
+    @Column(nullable = false)
     private String role;
 
     @Column(nullable = false)

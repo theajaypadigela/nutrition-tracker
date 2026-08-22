@@ -23,28 +23,33 @@ import AppBar from '../../components/AppBar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/MainTabNavigator';
-import useApi from '@/src/hooks/useApi';
 import { cancelHabitReminder } from '../../services/habitScheduler';
+import { habitApi } from '../../features/habits/api/habitApi';
+import { useApiOperation } from '../../features/api/useApiOperation';
+import { reconcileReminders } from '../../services/reminderCoordinator';
+import { useAuth } from '../../context/AuthContext';
 
 const HabitScreen = () => {
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
-
-  const { loading, request } = useApi<Habit[]>();
+  const { user } = useAuth();
 
   const [habits, setHabits] = useState<Habit[]>([]);
+  const { execute: executeHabitRequest, loading } = useApiOperation();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHabits = useCallback(async () => {
     try {
-      const fetchedHabits = await request({ url: '/habit/today' });
+      const fetchedHabits = await executeHabitRequest(signal =>
+        habitApi.getToday({ signal }),
+      );
       setHabits(fetchedHabits || []);
     } catch (err) {
       console.error('Error fetching habits:', err);
     } finally {
       setIsInitialLoad(false);
     }
-  }, [request]);
+  }, [executeHabitRequest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,11 +72,25 @@ const HabitScreen = () => {
         ),
       );
 
-      await request({
-        url: `/habit/${id}/toggle`,
-        method: 'POST',
-        data: { habit: habits.find(habit => habit.id === id) },
-      });
+      await executeHabitRequest(signal =>
+        habitApi.toggle(
+          id,
+          {
+            habit: habits.find(habit => habit.id === id),
+          },
+          { signal },
+        ),
+      );
+      if (user?.id) {
+        try {
+          await reconcileReminders(user.id);
+        } catch (reminderError) {
+          console.warn(
+            'Habit was updated, but reminder reconciliation will retry on foreground:',
+            reminderError,
+          );
+        }
+      }
     } catch (err) {
       console.error('Error toggling habit:', err);
     }
@@ -84,11 +103,22 @@ const HabitScreen = () => {
   async function deleteHabit(id: string): Promise<void> {
     try {
       setHabits(prev => prev.filter(habit => habit.id !== id));
-      await cancelHabitReminder(id);
-      await request({
-        url: `/habit/${id}`,
-        method: 'DELETE',
-      });
+      await executeHabitRequest(signal => habitApi.delete(id, { signal }));
+      try {
+        await cancelHabitReminder(id);
+      } catch (reminderError) {
+        console.warn('Failed to cancel deleted habit reminder:', reminderError);
+      }
+      if (user?.id) {
+        try {
+          await reconcileReminders(user.id);
+        } catch (reminderError) {
+          console.warn(
+            'Habit was deleted, but reminder reconciliation will retry on foreground:',
+            reminderError,
+          );
+        }
+      }
     } catch (err) {
       console.error('Error deleting habit:', err);
     }

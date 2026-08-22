@@ -5,12 +5,10 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
-  Dimensions,
   Vibration,
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import notifee from '@notifee/react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -28,8 +26,7 @@ import Animated, {
   SharedValue,
 } from 'react-native-reanimated';
 import { Phone, PhoneOff } from 'lucide-react-native';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { cancelDisplayedMealNotifications } from '../../services/mealScheduler';
 
 // ─── Design Constants ────────────────────────────────────────────────────────
 const AVATAR_SIZE = 140;
@@ -165,8 +162,7 @@ export default function IncomingMealCallScreen() {
     if (vibrationInterval.current) {
       clearInterval(vibrationInterval.current);
     }
-    notifee.cancelNotification('meal-alarm-daily').catch(() => {});
-    notifee.cancelNotification('meal-reschedule-once').catch(() => {});
+    cancelDisplayedMealNotifications().catch(() => {});
   }, []);
 
   const handleAccept = useCallback(() => {

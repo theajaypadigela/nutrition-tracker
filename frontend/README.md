@@ -1,5 +1,33 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+## Build configuration
+
+Release bundles require these values in the environment that runs Metro. They
+are compiled into the JavaScript bundle; keep credentials in the build system's
+secret store rather than a tracked file.
+
+| Variable                            | Purpose                                                    |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `NUTRITION_API_BASE_URL`            | Reachable HTTPS backend URL, including any API path prefix |
+| `NUTRITION_VAPI_PUBLIC_KEY`         | Vapi client public key                                     |
+| `NUTRITION_VAPI_MEAL_ASSISTANT_ID`  | Meal logging assistant identifier                          |
+| `NUTRITION_VAPI_HABIT_ASSISTANT_ID` | Habit check-in assistant identifier                        |
+
+For example:
+
+```sh
+NUTRITION_API_BASE_URL=https://api.example.com/ \
+NUTRITION_VAPI_PUBLIC_KEY=... \
+NUTRITION_VAPI_MEAL_ASSISTANT_ID=... \
+NUTRITION_VAPI_HABIT_ASSISTANT_ID=... \
+npm run android -- --mode release
+```
+
+The release bundle fails when a value is absent or when the API URL is not
+HTTPS. Debug builds default to `10.0.2.2:8080` on Android emulators and
+`localhost:8080` on iOS; the developer settings override remains available only
+when `__DEV__` is true. Reset Metro's cache after changing a build value.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

@@ -14,6 +14,7 @@ import {
   Plus,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import AppBar from '../../components/AppBar';
 
 import { HStack } from '../../components/ui/hstack';
@@ -32,25 +33,29 @@ import {
 } from '../../components/ui/drawer';
 
 import { DashboardResponse, FoodItem, Habit } from '../../types/types';
-import apiClient from '../../api/client';
+import { dashboardApi } from '../../features/dashboard/api/dashboardApi';
+import { formatLocalDate } from '../../shared/date-time/localDate';
+import type { MainTabParamList } from '../../navigation/MainTabNavigator';
+
+type DashboardNavigationProp = BottomTabNavigationProp<
+  MainTabParamList,
+  'Home'
+>;
 
 const DashBoardScreen = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<DashboardNavigationProp>();
   const [showDrawer, setShowDrawer] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<string>(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
+  const [selectedDate, setSelectedDate] = React.useState<string>(() =>
+    formatLocalDate(),
+  );
   const [dashboardData, setDashboardData] =
     React.useState<DashboardResponse | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const response = await apiClient.get<DashboardResponse>(
-        `/dashboard/${selectedDate}`,
-      );
-      setDashboardData(response.data);
+      const response = await dashboardApi.getForDate(selectedDate);
+      setDashboardData(response);
     } catch (error) {
       console.error('Failed to fetch dashboard data', error);
     }
@@ -139,7 +144,7 @@ const DashBoardScreen = () => {
                 </Text>
               </HStack>
               <TouchableOpacity
-                onPress={() => navigation.navigate('HabitCreation' as any)}
+                onPress={() => navigation.navigate('HabitCreation')}
                 className="w-8 h-8 rounded-full bg-emerald-500 items-center justify-center"
               >
                 <Plus size={16} color="#FFFFFF" strokeWidth={2.5} />

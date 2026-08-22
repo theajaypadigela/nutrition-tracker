@@ -1,0 +1,11 @@
+{
+  "$comment": [
+    "Inline eslint-disable suppressions, per rule. These counts may only go",
+    "down: `npm run lint:debt` fails if one grows, if a new rule appears here",
+    "without a baseline, or if a count drops without the baseline following it.",
+    "docs/lint-debt.md records why each suppression exists and what removes it."
+  ],
+  "suppressions": {
+    "react-hooks/exhaustive-deps": 9
+  }
+}

@@ -2,16 +2,18 @@ package com.habitbuilder.NutritionTracker.modules.voice;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
+import com.habitbuilder.NutritionTracker.common.api.ApiError;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -21,12 +23,16 @@ public class VoiceLogController {
     private static final Logger logger = LoggerFactory.getLogger(VoiceLogController.class);
 
     private final VoiceLogService voiceLogService;
+    private final VapiWebhookSecretPolicy webhookSecretPolicy;
+    private final int maxMealsPerCall;
 
-    @Value("${vapi.webhook-secret:}")
-    private String vapiWebhookSecret;
-
-    public VoiceLogController(VoiceLogService voiceLogService) {
+    public VoiceLogController(
+            VoiceLogService voiceLogService,
+            VapiWebhookSecretPolicy webhookSecretPolicy,
+            @org.springframework.beans.factory.annotation.Value("${vapi.webhook.max-meals:20}") int maxMealsPerCall) {
         this.voiceLogService = voiceLogService;
+        this.webhookSecretPolicy = webhookSecretPolicy;
+        this.maxMealsPerCall = maxMealsPerCall;
     }
 
     /**
@@ -40,9 +46,7 @@ public class VoiceLogController {
             @RequestHeader(value = "X-Vapi-Secret", required = false) String secret,
             @RequestBody VapiWebhookRequest webhookRequest) {
 
-        // Validate webhook secret if configured
-        if (vapiWebhookSecret != null && !vapiWebhookSecret.isEmpty()
-                && !vapiWebhookSecret.equals(secret)) {
+        if (!webhookSecretPolicy.accepts(secret)) {
             logger.warn("Vapi webhook request rejected — invalid secret");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -53,6 +57,13 @@ public class VoiceLogController {
 
                 VapiWebhookRequest.FunctionCall fn = webhookRequest.getMessage().getFunctionCall();
                 if (fn != null && "submit_meal_log".equals(fn.getName())) {
+                    if (exceedsMealLimit(fn.getParameters())) {
+                        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                                .body(new ApiError(
+                                        HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                                        "TOO_MANY_MEALS",
+                                        "Webhook meal count exceeds the configured limit"));
+                    }
                     Map<String, Object> callMetadata = webhookRequest.getCall() != null
                             ? webhookRequest.getCall().getMetadata()
                             : null;
@@ -60,16 +71,34 @@ public class VoiceLogController {
                     voiceLogService.processVoiceMealLog(
                             fn.getParameters(),
                             webhookRequest.getCall() != null ? webhookRequest.getCall().getTranscript() : null,
+                            webhookRequest.getCall() != null ? webhookRequest.getCall().getId() : null,
                             callMetadata);
                 }
             }
         } catch (Exception e) {
-            logger.error("Error processing Vapi webhook: {}", e.getMessage(), e);
+            logger.error("Vapi webhook application processing failed: errorType={}",
+                    e.getClass().getSimpleName());
             // Still return 200 to prevent Vapi retries for application errors
         }
 
         // Must return 200 quickly — Vapi will retry on non-2xx
         return ResponseEntity.ok(Map.of("result", "logged"));
+    }
+
+    private boolean exceedsMealLimit(Map<String, Object> parameters) {
+        if (parameters == null || !(parameters.get("meals") instanceof Map<?, ?> meals)) {
+            return false;
+        }
+        int count = 0;
+        for (Object entries : meals.values()) {
+            if (entries instanceof java.util.Collection<?> collection) {
+                count += collection.size();
+                if (count > maxMealsPerCall) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -80,7 +109,7 @@ public class VoiceLogController {
     public ResponseEntity<Map<String, String>> getVapiCallToken() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
         String token = voiceLogService.generateVapiToken(user.getId());
@@ -97,17 +126,16 @@ public class VoiceLogController {
             @RequestBody Map<String, String> body) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
         String transcript = body.get("transcript");
         if (transcript == null || transcript.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Transcript is required"));
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
         String normalizedTranscript = transcript.trim();
-        String loweredTranscript = normalizedTranscript.toLowerCase();
+        String loweredTranscript = normalizedTranscript.toLowerCase(Locale.ROOT);
         boolean hasDelayIntent = loweredTranscript.contains("call me in")
                 || loweredTranscript.contains("remind me in")
                 || loweredTranscript.contains("in 5 min")
@@ -116,16 +144,10 @@ public class VoiceLogController {
         logger.info("Received meal transcript parse request: userId={}, chars={}, delayIntentDetected={}",
                 user.getId(), normalizedTranscript.length(), hasDelayIntent);
 
-        try {
-            int entriesLogged = voiceLogService.parseTranscriptAndLogMeals(
-                    user.getId(), normalizedTranscript);
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "entriesLogged", entriesLogged));
-        } catch (Exception e) {
-            logger.error("Failed to parse transcript for user {}: {}", user.getId(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to process meals from conversation"));
-        }
+        int entriesLogged = voiceLogService.parseTranscriptAndLogMeals(
+                user.getId(), normalizedTranscript);
+        return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "entriesLogged", entriesLogged));
     }
 }

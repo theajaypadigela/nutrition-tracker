@@ -2,16 +2,44 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert, Platform } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
+import { formatLocalDate } from '../../shared/date-time/localDate';
 import { scheduleMealReschedule } from '../../services/mealScheduler';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
+import { foodLogApi } from '../../features/food-log/api/foodLogApi';
+import { voiceApi } from '../../features/voice/api/voiceApi';
+import { getVapiConfiguration } from '../../config/buildConfig';
+import {
+  finishVoiceSession,
+  waitForVoiceCallEnd,
+} from '../../services/voiceSessionLifecycle';
+import { getEnrichmentPresentation } from '../../features/food-log/enrichmentStatus';
 
-const VAPI_PUBLIC_KEY = 'ee6c4930-dd4c-416e-9c58-090b8b46eee5';
-const VAPI_ASSISTANT_ID = 'b544afb0-dd75-4922-be50-e080e01db1b0';
+type VoiceMealLogRoute = RouteProp<
+  {
+    VoiceMealLog: { mealSlotId?: string; autoStart?: boolean } | undefined;
+  },
+  'VoiceMealLog'
+>;
+
+interface VoiceMealFunctionParameters {
+  reschedule_minutes?: number | string;
+  delay_minutes?: number | string;
+  delayMinutes?: number | string;
+}
+
+interface VoiceMealMessage {
+  type?: string;
+  role?: string;
+  transcriptType?: string;
+  transcript?: string;
+  functionCall?: {
+    parameters?: VoiceMealFunctionParameters;
+  };
+}
 
 function extractDelayFromText(text: string): number | null {
   const lowered = text.toLowerCase();
@@ -53,7 +81,7 @@ function extractDelayMinutes(lines: string[]): number | null {
 
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();
-  const route = useRoute<any>();
+  const route = useRoute<VoiceMealLogRoute>();
   const { user } = useAuth();
   const mealSlotId: string | undefined = route.params?.mealSlotId;
   const autoStart: boolean = route.params?.autoStart === true;
@@ -72,12 +100,41 @@ export default function VoiceMealLogScreen() {
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
   const delayMinutesRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
+  const vapiAssistantIdRef = useRef<string | null>(null);
+  const persistCapturedResultRef = useRef<() => Promise<void>>(
+    async () => undefined,
+  );
+  const finalizationPromiseRef = useRef<Promise<void> | null>(null);
+  const callEndPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  const resolveCallEndRef = useRef<(() => void) | null>(null);
+
+  const finalizeCapturedResult = useCallback((): Promise<void> => {
+    if (!finalizationPromiseRef.current) {
+      finalizationPromiseRef.current = persistCapturedResultRef.current();
+    }
+    return finalizationPromiseRef.current;
+  }, []);
 
   // Wire up Vapi events
   useEffect(() => {
+    isMountedRef.current = true;
+
+    let vapiConfiguration: ReturnType<typeof getVapiConfiguration>;
+    try {
+      vapiConfiguration = getVapiConfiguration('meal');
+    } catch (error) {
+      console.error('[Vapi] Build configuration error:', error);
+      setStatus('error');
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
+
     // Create a fresh Vapi instance for this screen
-    const vapi = new Vapi(VAPI_PUBLIC_KEY);
+    const vapi = new Vapi(vapiConfiguration.publicKey);
     vapiRef.current = vapi;
+    vapiAssistantIdRef.current = vapiConfiguration.assistantId;
 
     vapi.on('call-start', () => {
       console.log('[Vapi] Call started');
@@ -93,7 +150,11 @@ export default function VoiceMealLogScreen() {
 
     vapi.on('call-end', () => {
       console.log('[Vapi] Call ended');
-      parseMealsFromTranscript();
+      resolveCallEndRef.current?.();
+      resolveCallEndRef.current = null;
+      finalizeCapturedResult().catch(error => {
+        console.error('[Vapi] Failed to persist call transcript:', error);
+      });
     });
 
     vapi.on('speech-start', () => {
@@ -111,7 +172,7 @@ export default function VoiceMealLogScreen() {
       setStatus('error');
     });
 
-    vapi.on('message', (msg: any) => {
+    vapi.on('message', (msg: VoiceMealMessage) => {
       console.log(
         '[Vapi] Message received:',
         msg?.type,
@@ -159,16 +220,16 @@ export default function VoiceMealLogScreen() {
     });
 
     return () => {
-      vapi.removeAllListeners();
-      try {
-        vapi.stop();
-      } catch {
-        // Ignore cleanup errors
-      }
+      isMountedRef.current = false;
       vapiRef.current = null;
+      vapiAssistantIdRef.current = null;
+      finishVoiceSession(vapi, finalizeCapturedResult, () =>
+        waitForVoiceCallEnd(callEndPromiseRef.current),
+      ).catch(error => {
+        console.warn('[Vapi] Voice session teardown failed:', error);
+      });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [finalizeCapturedResult]);
 
   // Auto-start the VAPI call when navigated from IncomingMealCallScreen accept
   useEffect(() => {
@@ -198,6 +259,10 @@ export default function VoiceMealLogScreen() {
     setEntriesLogged(0);
     setFollowUpMessage('');
     delayMinutesRef.current = null;
+    finalizationPromiseRef.current = null;
+    callEndPromiseRef.current = new Promise(resolve => {
+      resolveCallEndRef.current = resolve;
+    });
 
     const hasPermission = await requestMicPermission();
     if (!hasPermission) {
@@ -216,9 +281,16 @@ export default function VoiceMealLogScreen() {
       return;
     }
 
+    const assistantId = vapiAssistantIdRef.current;
+    if (!assistantId) {
+      console.error('[Vapi] Meal assistant configuration is unavailable');
+      setStatus('error');
+      return;
+    }
+
     try {
-      console.log('[Vapi] Starting call with assistant:', VAPI_ASSISTANT_ID);
-      await vapi.start(VAPI_ASSISTANT_ID, {
+      console.log('[Vapi] Starting configured meal assistant call');
+      await vapi.start(assistantId, {
         metadata: { userId: user?.id ?? '' },
         variableValues: {
           name: user?.name ?? 'User',
@@ -248,7 +320,7 @@ export default function VoiceMealLogScreen() {
   // Poll for nutrition data to ensure enrichment has completed
   const waitForNutritionEnrichment = useCallback(
     async (expectedNewEntries: number) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = formatLocalDate();
       const maxAttempts = 12;
       const delayMs = 1500;
 
@@ -256,13 +328,17 @@ export default function VoiceMealLogScreen() {
       let initialEnrichedCount = 0;
       let initialTotalCount = 0;
       try {
-        const initialRes = await apiClient.get(`/food/${today}`);
-        const meals = initialRes.data?.meals || {};
-        const initialItems = Object.values(meals).flat() as any[];
+        const initialResponse = await foodLogApi.getForDate(today);
+        const meals = initialResponse.meals || {};
+        const initialItems = Object.values(meals).flat();
         initialTotalCount = initialItems.length;
         initialEnrichedCount = Object.values(meals)
           .flat()
-          .filter((item: any) => item.calories != null).length;
+          .filter(item =>
+            item.enrichmentStatus
+              ? getEnrichmentPresentation(item.enrichmentStatus).isTerminal
+              : item.calories != null,
+          ).length;
       } catch {
         // Ignore initial check errors
       }
@@ -273,13 +349,17 @@ export default function VoiceMealLogScreen() {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
           await new Promise(resolve => setTimeout(resolve, delayMs));
-          const res = await apiClient.get(`/food/${today}`);
-          const meals = res.data?.meals || {};
-          const currentItems = Object.values(meals).flat() as any[];
+          const response = await foodLogApi.getForDate(today);
+          const meals = response.meals || {};
+          const currentItems = Object.values(meals).flat();
           const currentTotalCount = currentItems.length;
           const currentEnrichedCount = Object.values(meals)
             .flat()
-            .filter((item: any) => item.calories != null).length;
+            .filter(item =>
+              item.enrichmentStatus
+                ? getEnrichmentPresentation(item.enrichmentStatus).isTerminal
+                : item.calories != null,
+            ).length;
 
           // Wait for all newly created entries from this session to get nutrition values.
           if (
@@ -308,11 +388,11 @@ export default function VoiceMealLogScreen() {
   const parseMealsFromTranscript = useCallback(async () => {
     const lines = transcriptRef.current;
     if (lines.length === 0) {
-      setStatus('completed');
+      if (isMountedRef.current) setStatus('completed');
       return;
     }
 
-    setStatus('processing');
+    if (isMountedRef.current) setStatus('processing');
     const transcriptDelay = extractDelayMinutes(lines);
     const delayMinutes = delayMinutesRef.current ?? transcriptDelay;
 
@@ -325,34 +405,33 @@ export default function VoiceMealLogScreen() {
     try {
       const fullTranscript = lines.join('\n');
       console.log('[VoiceMealLog] Sending transcript to backend for parsing');
-      const response = await apiClient.post(
-        '/food/voice-log/parse-transcript',
-        {
-          transcript: fullTranscript,
-        },
-      );
-      const count = response.data?.entriesLogged ?? 0;
-      setEntriesLogged(count);
+      const response = await voiceApi.parseMealTranscript({
+        transcript: fullTranscript,
+      });
+      const count = response.entriesLogged ?? 0;
+      if (isMountedRef.current) setEntriesLogged(count);
       console.log('[VoiceMealLog] Logged', count, 'meal entries');
 
       // Wait for nutrition enrichment to complete (poll for a few seconds)
-      if (count > 0) {
+      if (count > 0 && isMountedRef.current) {
         console.log('[VoiceMealLog] Waiting for nutrition enrichment...');
         await waitForNutritionEnrichment(count);
       }
 
       if (delayMinutes != null && delayMinutes > 0) {
-        const scheduled = await scheduleMealReschedule(delayMinutes);
+        const scheduled = user?.id
+          ? await scheduleMealReschedule(delayMinutes, user.id)
+          : false;
         if (scheduled) {
           const message = `Follow-up call scheduled in ${delayMinutes} minute${delayMinutes === 1 ? '' : 's'} (today only).`;
-          setFollowUpMessage(message);
+          if (isMountedRef.current) setFollowUpMessage(message);
           console.log('[VoiceMealLog] Meal follow-up scheduled:', {
             delayMinutes,
           });
         } else {
           const message =
             'Could not schedule follow-up because it would fall on the next day.';
-          setFollowUpMessage(message);
+          if (isMountedRef.current) setFollowUpMessage(message);
           console.log(
             '[VoiceMealLog] Skipped follow-up scheduling due to current-day rule.',
             { delayMinutes },
@@ -360,12 +439,14 @@ export default function VoiceMealLogScreen() {
         }
       }
 
-      setStatus('completed');
+      if (isMountedRef.current) setStatus('completed');
     } catch (err) {
       console.error('[VoiceMealLog] Failed to parse transcript:', err);
-      setStatus('error');
+      if (isMountedRef.current) setStatus('error');
     }
-  }, [waitForNutritionEnrichment]);
+  }, [user?.id, waitForNutritionEnrichment]);
+
+  persistCapturedResultRef.current = parseMealsFromTranscript;
 
   const getStatusText = () => {
     switch (status) {

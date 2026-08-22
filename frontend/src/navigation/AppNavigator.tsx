@@ -14,8 +14,6 @@ import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealSc
 import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
 import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
 
-export const navigationRef = createNavigationContainerRef();
-
 export type RootStackParamList = {
   MainTabs: undefined;
   IncomingMealCall: { mealSlotId: string; autoAccept?: boolean };
@@ -35,6 +33,9 @@ export type RootStackParamList = {
     autoStart?: boolean;
   };
 };
+
+export const navigationRef =
+  createNavigationContainerRef<RootStackParamList>();
 
 const RootStack = createStackNavigator<RootStackParamList>();
 

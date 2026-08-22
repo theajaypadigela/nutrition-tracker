@@ -1,5 +1,8 @@
 package com.habitbuilder.NutritionTracker.modules.auth.service;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
+
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
 import com.habitbuilder.NutritionTracker.security.jwt.JwtTokenProvider;
@@ -23,9 +26,9 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
     }
 
-    public void register(String email, String password, String name, String age, String gender) {
+    public void register(String email, String password, String name, String age, String gender, String timezone) {
         if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("User already exists");
+            throw new UserAlreadyExistsException();
         }
 
         User user = new User(); 
@@ -34,6 +37,7 @@ public class AuthService {
         user.setName(name);
         user.setAge(age);
         user.setGender(gender);
+        user.setTimezone(normalizeTimezone(timezone, true));
         user.setRole("USER");
 
         userRepository.save(user);
@@ -49,7 +53,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public User updateProfile(Long userId, String name, String age, String gender) {
+    public User updateProfile(Long userId, String name, String age, String gender, String timezone) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
@@ -62,6 +66,9 @@ public class AuthService {
         if (gender != null && !gender.trim().isEmpty()) {
             user.setGender(gender);
         }
+        if (timezone != null && !timezone.isBlank()) {
+            user.setTimezone(normalizeTimezone(timezone, false));
+        }
         
         return userRepository.save(user);
     }
@@ -69,5 +76,19 @@ public class AuthService {
     public User getUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private String normalizeTimezone(String timezone, boolean useDefaultWhenBlank) {
+        if (timezone == null || timezone.isBlank()) {
+            if (useDefaultWhenBlank) {
+                return "UTC";
+            }
+            throw new IllegalArgumentException("Timezone is required");
+        }
+        try {
+            return ZoneId.of(timezone.trim()).getId();
+        } catch (DateTimeException exception) {
+            throw new IllegalArgumentException("Timezone must be a valid IANA zone", exception);
+        }
     }
 }

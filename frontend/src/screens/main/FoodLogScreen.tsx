@@ -1,14 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Text } from '../../components/ui/text';
 import { VStack } from '../../components/ui/vstack';
 import { MealGroup } from '../../components/food-log/MealGroup';
 import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
-import {
-  FoodItem,
-  Meals,
-  MealsResponse,
-  NutritionTotals,
-} from '../../types/types';
+import { FoodItem, Meals, NutritionTotals } from '../../types/types';
 import {
   ScrollView,
   View,
@@ -18,11 +13,13 @@ import {
   RefreshControl,
 } from 'react-native';
 import AppBar from '../../components/AppBar';
-import useApi from '../../hooks/useApi';
 import NutritionDisplay from '../../components/food-log/NutritionDisplay';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Plus, Mic } from 'lucide-react-native';
+import { formatLocalDate } from '../../shared/date-time/localDate';
+import { foodLogApi } from '../../features/food-log/api/foodLogApi';
+import { useApiOperation } from '../../features/api/useApiOperation';
 
 // Use a local type to avoid a circular import with FoodStackNavigator
 type FoodLogNavigationProp = StackNavigationProp<
@@ -35,14 +32,10 @@ const FoodLogScreen = () => {
   const [expandedMeal, setExpandedMeal] = useState<string | null>('breakfast');
   const [showDrawer, setShowDrawer] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-
-  const { data, request } = useApi<MealsResponse>();
+  const { execute: executeFoodRequest } = useApiOperation();
 
   // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
+  const getTodayDate = () => formatLocalDate();
 
   const [selectedDate] = useState(getTodayDate());
   const [refreshing, setRefreshing] = useState(false);
@@ -64,16 +57,38 @@ const FoodLogScreen = () => {
     sodium: 0,
   });
 
+  const foodItems = Object.values(meals).flat();
+  const hasPendingNutrition = foodItems.some(
+    item =>
+      item.enrichmentStatus === 'pending' ||
+      item.enrichmentStatus === 'in_progress',
+  );
+  const hasFailedNutrition = foodItems.some(
+    item => item.enrichmentStatus === 'failed',
+  );
+
   const loadFoodLog = useCallback(async () => {
     try {
-      await request({
-        url: `/food/${selectedDate}`,
-        method: 'GET',
-      });
+      const response = await executeFoodRequest(signal =>
+        foodLogApi.getForDate(selectedDate, { signal }),
+      );
+      if (response.meals) {
+        setMeals(response.meals);
+        console.log(
+          'Fetched meals:',
+          response.meals,
+          'for date:',
+          selectedDate,
+        );
+      }
+      if (response.totals) {
+        setNutritionTotals(response.totals);
+        console.log('Nutrition totals:', response.totals);
+      }
     } catch (error) {
       console.error('Failed to load food log:', error);
     }
-  }, [selectedDate, request]);
+  }, [executeFoodRequest, selectedDate]);
 
   // Reload data when the screen gains focus (e.g., after returning from VoiceMealLogScreen)
   useFocusEffect(
@@ -82,7 +97,7 @@ const FoodLogScreen = () => {
     }, [loadFoodLog]),
   );
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadFoodLog();
   }, [loadFoodLog]);
 
@@ -91,17 +106,6 @@ const FoodLogScreen = () => {
     await loadFoodLog();
     setRefreshing(false);
   };
-
-  useEffect(() => {
-    if (data?.meals) {
-      setMeals(data.meals);
-      console.log('Fetched meals:', data.meals, 'for date:', selectedDate);
-    }
-    if (data?.totals) {
-      setNutritionTotals(data.totals);
-      console.log('Nutrition totals:', data.totals);
-    }
-  }, [data, selectedDate]);
 
   const handleEditFood = async (item: FoodItem) => {
     setSelectedFood(item);
@@ -116,15 +120,18 @@ const FoodLogScreen = () => {
     if (!selectedFood) return;
 
     try {
-      const response = await request({
-        url: `/food/${selectedDate}/meals/entries/${selectedFood.id}`,
-        method: 'PUT',
-        data: {
-          name,
-          quantity: parseFloat(quantity),
-          unit: servingSize,
-        },
-      });
+      const response = await executeFoodRequest(signal =>
+        foodLogApi.updateEntry(
+          selectedDate,
+          selectedFood.id,
+          {
+            name,
+            quantity: parseFloat(quantity),
+            unit: servingSize,
+          },
+          { signal },
+        ),
+      );
 
       // Refresh data from backend response
       if (response?.meals) {
@@ -143,10 +150,9 @@ const FoodLogScreen = () => {
 
   const handleDeleteFood = async (mealType: string, itemId: string) => {
     try {
-      const response = await request({
-        url: `/food/${selectedDate}/meals/entries/${itemId}`,
-        method: 'DELETE',
-      });
+      const response = await executeFoodRequest(signal =>
+        foodLogApi.deleteEntry(selectedDate, itemId, { signal }),
+      );
 
       // Refresh data from backend response
       if (response?.meals) {
@@ -189,22 +195,40 @@ const FoodLogScreen = () => {
               />
             ))}
           </VStack>
-          <NutritionDisplay
-            calories={nutritionTotals.calories}
-            targetCalories={2500}
-            totals={{
-              protein: nutritionTotals.protein,
-              carbs: nutritionTotals.carbs,
-              fat: nutritionTotals.fat,
-              sugar: nutritionTotals.sugar,
-            }}
-            dailyGoals={{
-              protein: 180,
-              carbs: 250,
-              fat: 70,
-              sugar: 40,
-            }}
-          />
+          {hasPendingNutrition ? (
+            <VStack className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <Text className="font-semibold text-amber-800">
+                Estimating nutrition totals…
+              </Text>
+              <Text size="sm" className="mt-1 text-amber-700">
+                Totals will appear when every pending item has been estimated.
+              </Text>
+            </VStack>
+          ) : (
+            <NutritionDisplay
+              calories={nutritionTotals.calories}
+              targetCalories={2500}
+              totals={{
+                protein: nutritionTotals.protein,
+                carbs: nutritionTotals.carbs,
+                fat: nutritionTotals.fat,
+                sugar: nutritionTotals.sugar,
+              }}
+              dailyGoals={{
+                protein: 180,
+                carbs: 250,
+                fat: 70,
+                sugar: 40,
+              }}
+            />
+          )}
+          {hasFailedNutrition && (
+            <VStack className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <Text className="font-medium text-red-700">
+                Some items couldn’t be estimated. Totals exclude those items.
+              </Text>
+            </VStack>
+          )}
         </VStack>
         <EditFoodDrawer
           isOpen={showDrawer}

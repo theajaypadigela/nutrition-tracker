@@ -1,4 +1,15 @@
 import { ReactNode } from 'react';
+import type {
+  InsightVariant,
+  NutrientFlag,
+} from '../../features/nutrition-report/api/contracts';
+
+export type {
+  AllNutrientSummary,
+  InsightVariant,
+  NutrientFlag,
+  TopFoodSource,
+} from '../../features/nutrition-report/api/contracts';
 
 // ============================================================
 // Simple current/goal pair — used by macro & micro summary cards
@@ -69,38 +80,8 @@ export interface Nutrition {
 }
 
 // ============================================================
-// All-nutrients API response (GET /food/nutrition/all)
-// ============================================================
-
-export interface TopFoodSource {
-  name: string;
-  amount: number;
-  unit: string;
-  contribution: number; // percentage
-}
-
-export interface AllNutrientSummary {
-  id: string;
-  name: string;
-  unit: string;
-  category: string; // macro | vitamin | mineral | other
-  value: number; // avg daily intake over date range
-  goal: number; // AI-derived RDI
-  pctDV: number;
-  flag: NutrientFlag;
-  weeklyAvg: number;
-  trend: number[];
-  topSources: TopFoodSource[];
-  pinned?: boolean;
-  avoidedFoods?: string;
-  customTarget?: number;
-}
-
-// ============================================================
 // Detailed nutrient data (for drawer / detail view)
 // ============================================================
-
-export type NutrientFlag = 'low' | 'high' | 'none' | 'ok';
 
 export interface NutrientDetailData {
   id: string;
@@ -129,8 +110,6 @@ export interface FoodSource {
 // ============================================================
 // Insights
 // ============================================================
-
-export type InsightVariant = 'positive' | 'negative' | 'neutral';
 
 export interface Insight {
   variant: InsightVariant;

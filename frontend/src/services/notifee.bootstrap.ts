@@ -2,11 +2,12 @@ import notifee, {
   AndroidImportance,
   AndroidVisibility,
 } from '@notifee/react-native';
+import { NOTIFICATION_CHANNEL_IDS } from '../app/notifications/contracts';
 
 export async function setupNotifeeChannels() {
   // Channel for meal logging call notifications (full-screen call style)
   await notifee.createChannel({
-    id: 'meal-call-v2',
+    id: NOTIFICATION_CHANNEL_IDS.mealCall,
     name: 'Meal Logging Calls',
     description: 'Full-screen incoming call notifications for meal logging',
     importance: AndroidImportance.HIGH,
@@ -20,7 +21,7 @@ export async function setupNotifeeChannels() {
 
   // Channel for habit voice call notifications
   await notifee.createChannel({
-    id: 'habit-call-v1',
+    id: NOTIFICATION_CHANNEL_IDS.habitCall,
     name: 'Habit Voice Reminders',
     description: 'Full-screen incoming call notifications for habit reminders',
     importance: AndroidImportance.HIGH,
@@ -34,7 +35,7 @@ export async function setupNotifeeChannels() {
 
   // Channel for regular habit push notifications
   await notifee.createChannel({
-    id: 'habit-push-v1',
+    id: NOTIFICATION_CHANNEL_IDS.habitPush,
     name: 'Habit Push Reminders',
     description: 'Standard push notifications for habit reminders',
     importance: AndroidImportance.HIGH,

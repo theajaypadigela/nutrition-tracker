@@ -1,0 +1,9 @@
+{
+  "$comment": [
+    "Findings accepted despite the npm audit gate. The gate fails on any",
+    "moderate-or-higher finding that is not listed here, and also fails on an",
+    "entry that is no longer reported, so this file cannot rot.",
+    "Each entry needs: package, advisory, severity, reason, reviewOn (ISO date)."
+  ],
+  "accepted": []
+}

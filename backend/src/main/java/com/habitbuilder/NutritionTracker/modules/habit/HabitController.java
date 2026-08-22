@@ -25,6 +25,11 @@ public class HabitController {
         return habitService.addHabit(param);
     }
 
+    @GetMapping
+    public List<Habit> getAllHabits() {
+        return habitService.getAllHabits();
+    }
+
     @GetMapping("/today")
     public List<HabitWithCompletionDTO> getpresentDayHabits() {
         return habitService.getPresentDayHabits();

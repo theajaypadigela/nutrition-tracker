@@ -88,7 +88,7 @@ export function LoginScreen() {
     setLoginError('');
 
     // Developer bypass — handled entirely at the frontend level
-    if (email === 'dev@gmail.com' && password === '123456') {
+    if (__DEV__ && email === 'dev@gmail.com' && password === '123456') {
       navigation.navigate('DeveloperSettings');
       return;
     }

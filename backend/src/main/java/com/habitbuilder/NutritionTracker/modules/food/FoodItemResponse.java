@@ -14,6 +14,7 @@ public class FoodItemResponse {
     private String name;
     private String quantity;
     private String servingSize;
+    private String enrichmentStatus;
     private Double calories;
     private Double protein;
     private Double carbs;

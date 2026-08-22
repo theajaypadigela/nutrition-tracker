@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface HabitRepository extends JpaRepository<Habit, Long> {
 
+      List<Habit> findByUser_IdOrderByIdAsc(Long userId);
+
       @Query(value = """
                       SELECT *
                       FROM habits

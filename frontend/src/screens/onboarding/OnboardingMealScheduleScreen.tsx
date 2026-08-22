@@ -18,9 +18,11 @@ import {
   scheduleAllAlarms,
 } from '../../services/mealScheduler';
 import notifee, { AuthorizationStatus } from '@notifee/react-native';
+import { useAuth } from '../../context/AuthContext';
 
 export default function OnboardingMealScheduleScreen() {
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
   const [reminder, setReminder] = useState<MealReminder>(defaultSchedule());
   const [showPicker, setShowPicker] = useState(false);
 
@@ -43,6 +45,7 @@ export default function OnboardingMealScheduleScreen() {
   };
 
   const handleContinue = async () => {
+    if (!user?.id) return;
     const settings = await notifee.requestPermission();
     if (settings.authorizationStatus === AuthorizationStatus.DENIED) {
       Alert.alert(
@@ -50,8 +53,8 @@ export default function OnboardingMealScheduleScreen() {
         'You can enable reminders later in Profile → Meal Reminders.',
       );
     }
-    await saveSchedule(reminder);
-    await scheduleAllAlarms(reminder);
+    await saveSchedule(reminder, user.id);
+    await scheduleAllAlarms(reminder, user.id);
     navigation.replace('MainTabs');
   };
 

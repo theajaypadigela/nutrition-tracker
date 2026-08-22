@@ -26,6 +26,9 @@ public class VoiceMealSession {
 
     private LocalDate logDate;
 
+    @Column(name = "provider_call_id", unique = true)
+    private String providerCallId;
+
     @Column(columnDefinition = "TEXT")
     private String rawTranscript;
 

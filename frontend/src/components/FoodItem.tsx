@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { Edit2, Trash2 } from 'lucide-react-native';
 import { Text } from './ui/text';
 import { FoodItem as FoodItemType } from '../types/types';
+import { getEnrichmentPresentation } from '../features/food-log/enrichmentStatus';
 
 interface FoodItemProps {
   item: FoodItemType;
@@ -15,6 +16,8 @@ export const FoodItem: React.FC<FoodItemProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const enrichment = getEnrichmentPresentation(item.enrichmentStatus);
+
   return (
     <View
       style={{
@@ -54,17 +57,17 @@ export const FoodItem: React.FC<FoodItemProps> = ({
               paddingHorizontal: 8,
               paddingVertical: 2,
               borderRadius: 9999,
-              backgroundColor: '#DBEAFE',
+              backgroundColor: enrichment.backgroundColor,
             }}
           >
             <Text
               style={{
                 fontSize: 10,
-                color: '#3B82F6',
+                color: enrichment.textColor,
                 fontWeight: '500',
               }}
             >
-              AI Logged
+              {enrichment.label}
             </Text>
           </View>
         </View>
@@ -77,13 +80,18 @@ export const FoodItem: React.FC<FoodItemProps> = ({
             marginBottom: 4,
           }}
         >
-          {item.quantity} {item.servingSize} • {item.calories} cal
+          {item.quantity} {item.servingSize}
+          {enrichment.showNutrition && item.calories !== undefined
+            ? ` • ${item.calories} cal`
+            : ''}
         </Text>
 
         {/* Macros */}
-        <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-          P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
-        </Text>
+        {enrichment.showNutrition && (
+          <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+            P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
+          </Text>
+        )}
       </View>
 
       {/* Action buttons */}

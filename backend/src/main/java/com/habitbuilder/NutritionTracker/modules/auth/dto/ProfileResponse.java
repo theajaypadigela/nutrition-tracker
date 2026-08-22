@@ -11,4 +11,5 @@ public class ProfileResponse {
     private String email;
     private String age;
     private String gender;
+    private String timezone;
 }

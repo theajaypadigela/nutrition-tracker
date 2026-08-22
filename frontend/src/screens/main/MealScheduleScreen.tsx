@@ -18,15 +18,19 @@ import {
   scheduleAllAlarms,
   defaultSchedule,
 } from '../../services/mealScheduler';
+import { useAuth } from '../../context/AuthContext';
 
 export default function MealScheduleScreen() {
+  const { user } = useAuth();
   const [reminder, setReminder] = useState<MealReminder>(defaultSchedule());
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    loadSchedule().then(setReminder);
-  }, []);
+    if (user?.id) {
+      loadSchedule(user.id).then(setReminder);
+    }
+  }, [user?.id]);
 
   const requestPermissions = async (): Promise<boolean> => {
     const settings = await notifee.requestPermission();
@@ -54,12 +58,13 @@ export default function MealScheduleScreen() {
   };
 
   const handleSave = async () => {
+    if (!user?.id) return;
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
     setSaving(true);
     try {
-      await saveSchedule(reminder);
-      await scheduleAllAlarms(reminder);
+      await saveSchedule(reminder, user.id);
+      await scheduleAllAlarms(reminder, user.id);
       Alert.alert('✅ Saved', 'Your meal reminder has been scheduled.');
     } catch (e: any) {
       console.error('Schedule alarm error:', e);

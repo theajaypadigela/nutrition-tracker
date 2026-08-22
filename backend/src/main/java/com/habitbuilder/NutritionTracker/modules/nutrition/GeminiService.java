@@ -21,21 +21,21 @@ public class GeminiService {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    private final String copilotBridgeUrl;
-    private final String copilotBridgeToken;
-    private final String copilotModel;
+    private final String chatCompletionsUrl;
+    private final String providerToken;
+    private final String providerModel;
 
     public GeminiService(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${copilot.bridge.port}") String copilotPort,
-            @Value("${copilot.bridge.token}") String copilotToken,
-            @Value("${copilot.bridge.model}") String copilotModel) {
+            @Value("${ai.provider.base-url:https://api.openai.com/v1}") String providerBaseUrl,
+            @Value("${ai.provider.token}") String providerToken,
+            @Value("${ai.provider.model:gpt-4o-mini}") String providerModel) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
-        this.copilotBridgeUrl = "http://127.0.0.1:" + copilotPort + "/v1/chat/completions";
-        this.copilotBridgeToken = copilotToken;
-        this.copilotModel = copilotModel;
+        this.chatCompletionsUrl = chatCompletionsUrl(providerBaseUrl);
+        this.providerToken = providerToken;
+        this.providerModel = providerModel;
     }
 
     public NutritionResponse getNutritionInfo(String foodName, double quantity, String unit) {
@@ -44,16 +44,16 @@ public class GeminiService {
 
         try {
             Map<String, Object> requestBody = Map.of(
-                    "model", copilotModel,
+                    "model", providerModel,
                     "messages", List.of(
                             Map.of("role", "user", "content", prompt)),
                     "temperature", 0.1);
 
-            logger.info("Calling Copilot Bridge API for: {} {} {}", foodName, quantity, unit);
+            logger.info("Calling AI provider for nutrition enrichment");
 
             rawResponse = webClient.post()
-                    .uri(copilotBridgeUrl)
-                    .header("Authorization", "Bearer " + copilotBridgeToken)
+                    .uri(chatCompletionsUrl)
+                    .header("Authorization", "Bearer " + providerToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
@@ -61,27 +61,27 @@ public class GeminiService {
                             clientResponse -> clientResponse.bodyToMono(String.class)
                                     .defaultIfEmpty("No response body")
                                     .flatMap(body -> {
-                                        logger.error("Copilot Bridge API error response: {}", body);
+                                        logger.error("AI provider rejected nutrition request: status={}",
+                                                clientResponse.statusCode().value());
                                         return reactor.core.publisher.Mono
                                                 .error(new GeminiApiException("API Error", body));
                                     }))
                     .bodyToMono(String.class)
                     .block();
 
-            logger.info("Copilot Bridge API response received: {}", rawResponse);
+            logger.info("AI provider nutrition response received");
             return parseNutritionResponse(rawResponse);
         } catch (GeminiApiException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error calling Copilot Bridge API for food: {} {} {} - Error: {}", foodName, quantity, unit,
-                    e.getMessage(), e);
-            throw new GeminiApiException("Failed to get nutrition info: " + e.getMessage(),
+            logger.error("AI provider nutrition request failed: errorType={}", e.getClass().getSimpleName());
+            throw new GeminiApiException("Failed to get nutrition info",
                     rawResponse != null ? rawResponse : "No response received", e);
         }
     }
 
     /**
-     * Calls Copilot Bridge API and returns the raw response string without any
+     * Calls the AI provider and returns the raw response string without any
      * parsing.
      */
     public String getRawNutritionResponse(String foodName, double quantity, String unit) {
@@ -89,16 +89,16 @@ public class GeminiService {
 
         try {
             Map<String, Object> requestBody = Map.of(
-                    "model", copilotModel,
+                    "model", providerModel,
                     "messages", List.of(
                             Map.of("role", "user", "content", prompt)),
                     "temperature", 0.1);
 
-            logger.info("[DEBUG] Calling Copilot Bridge API for: {} {} {}", foodName, quantity, unit);
+            logger.info("Calling AI provider for raw nutrition enrichment");
 
             String rawResponse = webClient.post()
-                    .uri(copilotBridgeUrl)
-                    .header("Authorization", "Bearer " + copilotBridgeToken)
+                    .uri(chatCompletionsUrl)
+                    .header("Authorization", "Bearer " + providerToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
@@ -106,37 +106,38 @@ public class GeminiService {
                             clientResponse -> clientResponse.bodyToMono(String.class)
                                     .defaultIfEmpty("No response body")
                                     .flatMap(body -> {
-                                        logger.error("[DEBUG] Copilot Bridge API error: {}", body);
+                                        logger.error("AI provider rejected nutrition request: status={}",
+                                                clientResponse.statusCode().value());
                                         return reactor.core.publisher.Mono
                                                 .error(new GeminiApiException("API Error", body));
                                     }))
                     .bodyToMono(String.class)
                     .block();
 
-            logger.info("[DEBUG] Raw Copilot Bridge response: {}", rawResponse);
+            logger.info("AI provider nutrition response received");
             return rawResponse;
         } catch (Exception e) {
-            logger.error("[DEBUG] Copilot Bridge API call failed: {}", e.getMessage(), e);
-            throw new GeminiApiException("Failed to call Copilot Bridge API: " + e.getMessage(),
+            logger.error("AI provider nutrition request failed: errorType={}", e.getClass().getSimpleName());
+            throw new GeminiApiException("Failed to call AI provider",
                     "No response received", e);
         }
     }
 
     /**
-     * Generic method to call the Copilot Bridge with any prompt and return the raw response.
+     * Generic method to call the AI provider with any prompt and return the raw response.
      */
     public String callRawPrompt(String prompt) {
         try {
             Map<String, Object> requestBody = Map.of(
-                    "model", copilotModel,
+                    "model", providerModel,
                     "messages", List.of(Map.of("role", "user", "content", prompt)),
                     "temperature", 0.1);
 
-            logger.info("Calling Copilot Bridge with generic prompt (length={})", prompt.length());
+            logger.info("Calling AI provider with generic prompt (length={})", prompt.length());
 
             return webClient.post()
-                    .uri(copilotBridgeUrl)
-                    .header("Authorization", "Bearer " + copilotBridgeToken)
+                    .uri(chatCompletionsUrl)
+                    .header("Authorization", "Bearer " + providerToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
@@ -144,7 +145,8 @@ public class GeminiService {
                             clientResponse -> clientResponse.bodyToMono(String.class)
                                     .defaultIfEmpty("No response body")
                                     .flatMap(body -> {
-                                        logger.error("Copilot Bridge API error: {}", body);
+                                        logger.error("AI provider rejected generic request: status={}",
+                                                clientResponse.statusCode().value());
                                         return reactor.core.publisher.Mono
                                                 .error(new GeminiApiException("API Error", body));
                                     }))
@@ -153,8 +155,8 @@ public class GeminiService {
         } catch (GeminiApiException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error calling Copilot Bridge: {}", e.getMessage(), e);
-            throw new GeminiApiException("Failed to call Copilot Bridge: " + e.getMessage(), "No response received", e);
+            logger.error("AI provider request failed: errorType={}", e.getClass().getSimpleName());
+            throw new GeminiApiException("Failed to call AI provider", "No response received", e);
         }
     }
 
@@ -191,25 +193,22 @@ public class GeminiService {
             // Navigate to the text content in OpenAI's response structure
             JsonNode choices = root.path("choices");
             if (choices.isEmpty() || !choices.isArray()) {
-                throw new GeminiApiException("Invalid Copilot Bridge response: no choices found", response);
+                throw new NutritionParseException("Invalid AI provider response: no choices found", response);
             }
 
             JsonNode message = choices.get(0).path("message");
             if (message.isEmpty() || message.isMissingNode()) {
-                throw new GeminiApiException("Invalid Copilot Bridge response: no message found", response);
+                throw new NutritionParseException("Invalid AI provider response: no message found", response);
             }
 
             String text = message.path("content").asText();
 
-            logger.info("Raw text from Copilot Bridge: {}", text);
-
             // Extract JSON from the response (in case there's any surrounding text)
             String jsonStr = extractJson(text);
-            logger.info("Extracted JSON: {}", jsonStr);
 
             JsonNode nutritionData = objectMapper.readTree(jsonStr);
 
-            return NutritionResponse.builder()
+            NutritionResponse nutritionResponse = NutritionResponse.builder()
                     .calories(getBigDecimal(nutritionData, "calories"))
                     .proteinG(getBigDecimal(nutritionData, "proteinG"))
                     .carbsG(getBigDecimal(nutritionData, "carbsG"))
@@ -219,11 +218,19 @@ public class GeminiService {
                     .sodiumMg(getBigDecimal(nutritionData, "sodiumMg"))
                     .build();
 
-        } catch (GeminiApiException e) {
+            if (!nutritionResponse.hasAnyNumericValue()) {
+                throw new NutritionParseException(
+                        "AI nutrition payload contained no numeric nutrient values",
+                        response);
+            }
+            return nutritionResponse;
+
+        } catch (NutritionParseException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error parsing Copilot Bridge response: {}", response, e);
-            throw new GeminiApiException("Failed to parse nutrition response: " + e.getMessage(), response, e);
+            logger.error("AI provider nutrition response could not be parsed: errorType={}",
+                    e.getClass().getSimpleName());
+            throw new NutritionParseException("Failed to parse nutrition response", response, e);
         }
     }
 
@@ -259,7 +266,7 @@ public class GeminiService {
     private BigDecimal getBigDecimal(JsonNode node, String field) {
         JsonNode value = node.path(field);
         if (value.isMissingNode() || value.isNull()) {
-            return BigDecimal.ZERO;
+            return null;
         }
         if (value.isNumber()) {
             return BigDecimal.valueOf(value.asDouble());
@@ -267,7 +274,19 @@ public class GeminiService {
         try {
             return new BigDecimal(value.asText());
         } catch (NumberFormatException e) {
-            return BigDecimal.ZERO;
+            return null;
         }
+    }
+
+    private static String chatCompletionsUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new IllegalArgumentException("AI provider base URL must be configured");
+        }
+        String normalized = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+        return normalized.endsWith("/chat/completions")
+                ? normalized
+                : normalized + "/chat/completions";
     }
 }

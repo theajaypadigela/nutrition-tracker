@@ -5,6 +5,7 @@ export interface User {
   email: string;
   age?: string;
   gender?: string;
+  timezone?: string;
 }
 
 // Navigation
@@ -13,7 +14,7 @@ export type TabName = 'Home' | 'Habits' | 'Food' | 'Reports' | 'Profile';
 
 // Habits
 
-export type ReminderType = 'notification' | 'call';
+export type ReminderType = 'notification' | 'call' | 'none';
 
 export interface Habit {
   id: string;
@@ -84,7 +85,14 @@ export interface FoodItem {
   fiber?: number;
   sugar?: number;
   sodium?: number;
+  enrichmentStatus?: EnrichmentStatus;
 }
+
+export type EnrichmentStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'completed'
+  | 'failed';
 
 export interface NutritionTotals {
   calories: number;

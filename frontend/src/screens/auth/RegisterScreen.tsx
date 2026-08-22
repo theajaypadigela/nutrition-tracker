@@ -24,6 +24,10 @@ import { ChevronDownIcon } from '../../components/ui/icon';
 import { Activity, EyeIcon, EyeOffIcon } from 'lucide-react-native';
 import { ButtonText, Button } from '../../components/ui/button';
 import { useAuth } from '@/src/context/AuthContext';
+import {
+  isRegistrationPasswordValid,
+  REGISTRATION_PASSWORD_REQUIREMENT,
+} from '../../features/auth/registrationPasswordPolicy';
 
 const RegisterScreen = () => {
   const [selectedGender, setSelectedGender] = useState('');
@@ -123,8 +127,8 @@ const RegisterScreen = () => {
       setPasswordError('Password is required');
       return false;
     }
-    if (pwd.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    if (!isRegistrationPasswordValid(pwd)) {
+      setPasswordError(REGISTRATION_PASSWORD_REQUIREMENT);
       return false;
     }
     setPasswordError('');
@@ -142,6 +146,7 @@ const RegisterScreen = () => {
       selectedGender !== '' &&
       email !== '' &&
       password !== '' &&
+      isRegistrationPasswordValid(password) &&
       confirmPassword !== '' &&
       password === confirmPassword &&
       !fullNameError &&

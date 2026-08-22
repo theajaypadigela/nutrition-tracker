@@ -7,17 +7,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
+import com.habitbuilder.NutritionTracker.modules.auth.service.UserTimeZone;
+import com.habitbuilder.NutritionTracker.security.AuthenticatedUserProvider;
 
 @Service
 public class HabitService {
@@ -26,10 +24,15 @@ public class HabitService {
 
     private HabitRepository habitRepository;
     private HabitEntityRepository habitEntityRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
+    private final UserTimeZone userTimeZone;
 
-    HabitService(HabitRepository habitRepository, HabitEntityRepository habitEntityRepository) {
+    HabitService(HabitRepository habitRepository, HabitEntityRepository habitEntityRepository,
+            AuthenticatedUserProvider authenticatedUserProvider, UserTimeZone userTimeZone) {
         this.habitRepository = habitRepository;
         this.habitEntityRepository = habitEntityRepository;
+        this.authenticatedUserProvider = authenticatedUserProvider;
+        this.userTimeZone = userTimeZone;
     }
 
     public Habit addHabit(HabitDTO habitDto) {
@@ -72,25 +75,29 @@ public class HabitService {
     }
 
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
-            return user;
-        }
-
-        throw new IllegalStateException("User not authenticated");
+        return authenticatedUserProvider.getAuthenticatedUser();
     }
 
     public List<HabitWithCompletionDTO> getPresentDayHabits() {
-        return getHabitsByDate(LocalDate.now());
+        User currentUser = getCurrentUser();
+        return getHabitsByDate(currentUser, userTimeZone.today(currentUser));
     }
 
     public List<HabitWithCompletionDTO> getHabitsByDate(LocalDate date) {
         User currentUser = getCurrentUser();
+        return getHabitsByDate(currentUser, date);
+    }
+
+    public List<Habit> getAllHabits() {
+        User currentUser = getCurrentUser();
+        return habitRepository.findByUser_IdOrderByIdAsc(currentUser.getId());
+    }
+
+    private List<HabitWithCompletionDTO> getHabitsByDate(User currentUser, LocalDate date) {
         String dayOfWeek = date.getDayOfWeek().toString().substring(0, 3).toUpperCase();
 
-        System.out.println(
-                "Fetching habits for user: " + currentUser.getId() + " on date: " + date + " (day: " + dayOfWeek + ")");
+        log.debug("Fetching habits: userId={}, date={}, dayOfWeek={}",
+                currentUser.getId(), date, dayOfWeek);
 
         List<Habit> habits = habitRepository.findByUserAndRepeatDaysContaining(currentUser.getId(), dayOfWeek);
 
@@ -126,7 +133,7 @@ public class HabitService {
 
     public void toggleHabit(HabitCompletionDTO habitCompletion) {
         User currentUser = getCurrentUser();
-        LocalDate today = LocalDate.now();
+        LocalDate today = userTimeZone.today(currentUser);
 
         Long habitId = habitCompletion.getId();
         if (habitId == null) {
@@ -161,7 +168,7 @@ public class HabitService {
             habitEntity.setCompletionTime(null);
         } else {
             habitEntity.setStatus(HabitStatus.COMPLETED);
-            habitEntity.setCompletionTime(java.time.LocalTime.now().toString());
+            habitEntity.setCompletionTime(userTimeZone.localTime(currentUser).toString());
         }
         habitEntityRepository.save(habitEntity);
     }
@@ -182,7 +189,7 @@ public class HabitService {
 
     public HabitWithCompletionDTO processVoiceResult(HabitVoiceResultDTO result) {
         User currentUser = getCurrentUser();
-        LocalDate today = LocalDate.now();
+        LocalDate today = userTimeZone.today(currentUser);
 
         log.info("Received habit voice result: userId={}, habitId={}, status={}, rescheduleMinutes={}",
                 currentUser.getId(), result.getHabitId(), result.getHabitStatus(), result.getRescheduleMinutes());
@@ -217,13 +224,13 @@ public class HabitService {
             habitEntity.setStatus(HabitStatus.COMPLETED);
             habitEntity.setCompletionTime(result.getCompletedAt() != null
                     ? result.getCompletedAt()
-                    : java.time.LocalTime.now().toString());
+                    : userTimeZone.localTime(currentUser).toString());
             habitEntity.setRescheduledTime(null);
         } else if ("rescheduled".equals(status)) {
             habitEntity.setStatus(HabitStatus.RESCHEDULED);
             if (result.getRescheduleMinutes() != null) {
                 habitEntity.setRescheduledTime(
-                        LocalDateTime.now().plusMinutes(result.getRescheduleMinutes()));
+                        userTimeZone.localDateTime(currentUser).plusMinutes(result.getRescheduleMinutes()));
             }
         } else {
             habitEntity.setStatus(HabitStatus.MISSED);

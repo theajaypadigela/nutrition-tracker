@@ -28,8 +28,10 @@ import {
   SelectDragIndicator,
 } from '../../components/ui/select';
 import { ChevronDownIcon } from 'lucide-react-native';
-import useApi from '../../hooks/useApi';
-import { MealType, MealsResponse } from '../../types/types';
+import { MealType } from '../../types/types';
+import { formatLocalDate } from '../../shared/date-time/localDate';
+import { foodLogApi } from '../../features/food-log/api/foodLogApi';
+import { useApiOperation } from '../../features/api/useApiOperation';
 
 const MEAL_TYPES: { label: string; value: MealType }[] = [
   { label: 'Breakfast', value: 'breakfast' },
@@ -59,7 +61,7 @@ interface FormErrors {
 
 const ManualFoodLogScreen = () => {
   const navigation = useNavigation();
-  const { request, loading } = useApi<MealsResponse>();
+  const { execute: executeFoodRequest, loading } = useApiOperation();
 
   const [mealType, setMealType] = useState<MealType | ''>('');
   const [foodName, setFoodName] = useState('');
@@ -76,10 +78,7 @@ const ManualFoodLogScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
+  const getTodayDate = () => formatLocalDate();
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {
@@ -124,17 +123,20 @@ const ManualFoodLogScreen = () => {
 
     try {
       const date = getTodayDate();
-      await request({
-        url: `/food/${date}/meals/${mealType}/entries`,
-        method: 'POST',
-        data: [
-          {
-            name: foodName.trim(),
-            quantity: parseFloat(quantity),
-            unit: unit.trim(),
-          },
-        ],
-      });
+      await executeFoodRequest(signal =>
+        foodLogApi.addEntries(
+          date,
+          mealType as MealType,
+          [
+            {
+              name: foodName.trim(),
+              quantity: parseFloat(quantity),
+              unit: unit.trim(),
+            },
+          ],
+          { signal },
+        ),
+      );
 
       setIsSuccess(true);
       // Reset form

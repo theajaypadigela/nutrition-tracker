@@ -16,21 +16,21 @@ import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
 import AllNutritionsCard from '../../components/nutrition-report/AllNutritionsCard';
 import { Insight } from '../../components/nutrition-report/types';
 import AppBar from '../../components/AppBar';
-import useApi from '../../hooks/useApi';
 import { WeeklyNutritionReport } from '../../types/types';
-
-interface InsightApiResponse {
-  variant: 'positive' | 'negative' | 'neutral';
-  message: string;
-}
+import { trailingLocalDateRange } from '../../shared/date-time/localDate';
+import {
+  nutritionReportApi,
+  NutritionInsightResponse,
+} from '../../features/nutrition-report/api/nutritionReportApi';
+import { getErrorMessage } from '../../shared/errors/getErrorMessage';
+import { useApiOperation } from '../../features/api/useApiOperation';
 
 const NutritionReportScreen = () => {
-  const { data, request, loading } = useApi<WeeklyNutritionReport>();
-  const insightsApi = useApi<InsightApiResponse[]>();
-  const { request: insightsRequest } = insightsApi;
   const [reportData, setReportData] = useState<WeeklyNutritionReport | null>(
     null,
   );
+  const { execute: executeReportRequest, loading } = useApiOperation();
+  const { execute: executeInsightsRequest } = useApiOperation();
   const [aiInsights, setAiInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
@@ -38,38 +38,22 @@ const NutritionReportScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Get date range for the past 7 days
-  const getDateRange = () => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 6); // Last 7 days
-
-    return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-    };
-  };
+  const getDateRange = () => trailingLocalDateRange(7);
 
   const loadWeeklyReport = useCallback(async () => {
     try {
-      const { startDate, endDate } = getDateRange();
-      await request({
-        url: `/food/nutrition/weekly?startDate=${startDate}&endDate=${endDate}`,
-        method: 'GET',
-      });
+      const report = await executeReportRequest(signal =>
+        nutritionReportApi.getWeekly(getDateRange(), { signal }),
+      );
+      setReportData(report);
     } catch (error) {
       console.error('Failed to load weekly nutrition report:', error);
     }
-  }, [request]);
+  }, [executeReportRequest]);
 
   useEffect(() => {
     loadWeeklyReport();
   }, [loadWeeklyReport]);
-
-  useEffect(() => {
-    if (data) {
-      setReportData(data);
-    }
-  }, [data]);
 
   // Fallback rule-based insights
   const generateFallbackInsights = useCallback((): Insight[] => {
@@ -126,25 +110,25 @@ const NutritionReportScreen = () => {
     setInsightsError(null);
     setUsingFallback(false);
     try {
-      const { startDate, endDate } = getDateRange();
-      const result = await insightsRequest({
-        url: `/food/nutrition/insights?startDate=${startDate}&endDate=${endDate}`,
-        method: 'GET',
-      });
+      const result = await executeInsightsRequest(signal =>
+        nutritionReportApi.getInsights(getDateRange(), { signal }),
+      );
       if (result && Array.isArray(result)) {
         setAiInsights(
-          result.map((r: InsightApiResponse) => ({
+          result.map((r: NutritionInsightResponse) => ({
             variant: r.variant,
             message: r.message,
           })),
         );
         setUsingFallback(false);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load AI insights:', error);
       setInsightsError(
-        error?.message ||
+        getErrorMessage(
+          error,
           'Failed to load AI insights. Showing rule-based insights.',
+        ),
       );
       // Fallback to rule-based insights
       if (reportData) {
@@ -155,7 +139,7 @@ const NutritionReportScreen = () => {
     } finally {
       setInsightsLoading(false);
     }
-  }, [insightsRequest, reportData, generateFallbackInsights]);
+  }, [executeInsightsRequest, reportData, generateFallbackInsights]);
 
   useEffect(() => {
     if (reportData) {

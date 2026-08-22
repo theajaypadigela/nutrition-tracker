@@ -1,9 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import axios, {
-  AxiosRequestConfig,
-  AxiosError,
-  CancelTokenSource,
-} from 'axios';
+import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import apiClient from '../api/client';
 
 interface UseApiOptions {
@@ -26,7 +22,7 @@ export default function useApi<T = any>(): UseApiReturn<T> {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cancelTokenSourceRef = useRef<CancelTokenSource | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const request = useCallback(
     async ({
@@ -39,12 +35,9 @@ export default function useApi<T = any>(): UseApiReturn<T> {
       setLoading(true);
       setError(null);
 
-      if (cancelTokenSourceRef.current) {
-        cancelTokenSourceRef.current.cancel('New request initiated');
-      }
-
-      // Create new cancel token
-      cancelTokenSourceRef.current = axios.CancelToken.source();
+      abortControllerRef.current?.abort();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
       try {
         const config: AxiosRequestConfig = {
@@ -53,7 +46,7 @@ export default function useApi<T = any>(): UseApiReturn<T> {
           data: requestData,
           params,
           headers,
-          cancelToken: cancelTokenSourceRef.current.token,
+          signal: abortController.signal,
         };
 
         const response = await apiClient.request<T>(config);
@@ -74,7 +67,10 @@ export default function useApi<T = any>(): UseApiReturn<T> {
         setError(errorMessage);
         throw err;
       } finally {
-        setLoading(false);
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+          setLoading(false);
+        }
       }
     },
     [],
@@ -83,9 +79,7 @@ export default function useApi<T = any>(): UseApiReturn<T> {
   useEffect(() => {
     return () => {
       // Cancel any pending requests on unmount
-      if (cancelTokenSourceRef.current) {
-        cancelTokenSourceRef.current.cancel('Component unmounted');
-      }
+      abortControllerRef.current?.abort();
     };
   }, []);
 

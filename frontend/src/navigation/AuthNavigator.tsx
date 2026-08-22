@@ -2,7 +2,10 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-import DeveloperSettingsScreen from '../screens/dev/DeveloperSettingsScreen';
+
+const DeveloperSettingsScreen = __DEV__
+  ? require('../screens/dev/DeveloperSettingsScreen').default
+  : null;
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -22,10 +25,12 @@ export const AuthNavigator = () => {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen
-        name="DeveloperSettings"
-        component={DeveloperSettingsScreen}
-      />
+      {__DEV__ && DeveloperSettingsScreen ? (
+        <Stack.Screen
+          name="DeveloperSettings"
+          component={DeveloperSettingsScreen}
+        />
+      ) : null}
     </Stack.Navigator>
   );
 };

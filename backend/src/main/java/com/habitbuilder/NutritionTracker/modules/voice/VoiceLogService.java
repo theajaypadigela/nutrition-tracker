@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
+import com.habitbuilder.NutritionTracker.modules.auth.service.UserTimeZone;
 import com.habitbuilder.NutritionTracker.modules.food.FoodService;
 import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
@@ -11,15 +12,10 @@ import com.habitbuilder.NutritionTracker.modules.voice.dto.VoiceMealLogRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -31,26 +27,24 @@ public class VoiceLogService {
     private final UserRepository userRepository;
     private final VoiceMealSessionRepository sessionRepo;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
     private final GeminiService geminiService;
-
-    @Value("${vapi.private-key}")
-    private String vapiPrivateKey;
-
-    @Value("${vapi.assistant-id}")
-    private String vapiAssistantId;
+    private final VapiClient vapiClient;
+    private final UserTimeZone userTimeZone;
 
     public VoiceLogService(FoodService foodService,
             UserRepository userRepository,
             VoiceMealSessionRepository sessionRepo,
             ObjectMapper objectMapper,
-            GeminiService geminiService) {
+            GeminiService geminiService,
+            VapiClient vapiClient,
+            UserTimeZone userTimeZone) {
         this.foodService = foodService;
         this.userRepository = userRepository;
         this.sessionRepo = sessionRepo;
         this.objectMapper = objectMapper;
-        this.restTemplate = new RestTemplate();
         this.geminiService = geminiService;
+        this.vapiClient = vapiClient;
+        this.userTimeZone = userTimeZone;
     }
 
     /**
@@ -60,21 +54,20 @@ public class VoiceLogService {
      */
     public void processVoiceMealLog(Map<String, Object> params,
             List<VapiWebhookRequest.TranscriptEntry> transcript,
+            String providerCallId,
             Map<String, Object> callMetadata) {
         VoiceMealLogRequest req = objectMapper.convertValue(params, VoiceMealLogRequest.class);
-        LocalDate logDate = LocalDate.parse(req.getDate());
+        var logDate = java.time.LocalDate.parse(req.getDate());
 
-        Long userId = resolveUserFromCallMetadata(callMetadata);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found for voice log: " + userId));
-
-        // Save session record for audit
-        VoiceMealSession session = new VoiceMealSession();
-        session.setUser(user);
+        VoiceMealSession session = resolveAuthorizedSession(providerCallId, callMetadata);
+        if (session.getStatus() != VoiceMealSession.SessionStatus.PENDING) {
+            logger.info("Ignoring duplicate Vapi meal log for provider call {}", providerCallId);
+            return;
+        }
+        User user = session.getUser();
+        Long userId = user.getId();
         session.setLogDate(logDate);
         session.setRawTranscript(transcriptToString(transcript));
-        session.setStatus(VoiceMealSession.SessionStatus.PENDING);
-        session.setCreatedAt(LocalDateTime.now());
         sessionRepo.save(session);
 
         try {
@@ -90,14 +83,15 @@ public class VoiceLogService {
             });
 
             session.setStatus(VoiceMealSession.SessionStatus.COMPLETED);
-            session.setCompletedAt(LocalDateTime.now());
+            session.setCompletedAt(userTimeZone.localDateTime(user));
             sessionRepo.save(session);
 
             logger.info("Voice meal log completed for user {} on {}", userId, logDate);
         } catch (Exception e) {
             session.setStatus(VoiceMealSession.SessionStatus.FAILED);
             sessionRepo.save(session);
-            logger.error("Voice meal log failed for user {}: {}", userId, e.getMessage(), e);
+            logger.error("Voice meal log failed: userId={}, errorType={}",
+                    userId, e.getClass().getSimpleName());
             throw e;
         }
     }
@@ -106,39 +100,34 @@ public class VoiceLogService {
      * Generates a short-lived Vapi web call token scoped to the given user.
      * The userId is embedded in metadata so the webhook can identify the user.
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     public String generateVapiToken(Long userId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(vapiPrivateKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        VapiClient.VapiWebCall call = vapiClient.createWebCall(userId);
 
-        Map<String, Object> body = Map.of(
-                "assistantId", vapiAssistantId,
-                "assistantOverrides", Map.of(
-                        "metadata", Map.of("userId", userId.toString())));
+        VoiceMealSession session = new VoiceMealSession();
+        session.setUser(user);
+        session.setProviderCallId(call.id());
+        session.setStatus(VoiceMealSession.SessionStatus.PENDING);
+        session.setCreatedAt(userTimeZone.localDateTime(user));
+        sessionRepo.save(session);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://api.vapi.ai/call/web",
-                new HttpEntity<>(body, headers),
-                Map.class);
-
-        Map responseBody = response.getBody();
-        if (responseBody == null || !responseBody.containsKey("token")) {
-            throw new RuntimeException("Failed to obtain Vapi call token");
-        }
-
-        return (String) responseBody.get("token");
+        return call.token();
     }
 
-    private Long resolveUserFromCallMetadata(Map<String, Object> callMetadata) {
-        if (callMetadata != null && callMetadata.containsKey("userId")) {
-            try {
-                return Long.parseLong(callMetadata.get("userId").toString());
-            } catch (NumberFormatException e) {
-                logger.error("Invalid userId in Vapi call metadata: {}", callMetadata.get("userId"));
-            }
+    private VoiceMealSession resolveAuthorizedSession(String providerCallId, Map<String, Object> callMetadata) {
+        if (providerCallId == null || providerCallId.isBlank()) {
+            throw new SecurityException("Vapi call id is missing");
         }
-        throw new RuntimeException("Cannot resolve user from Vapi webhook — userId missing from call metadata");
+
+        VoiceMealSession session = sessionRepo.findByProviderCallId(providerCallId)
+                .orElseThrow(() -> new SecurityException("Vapi call was not minted by this application"));
+        Object claimedUserId = callMetadata != null ? callMetadata.get("userId") : null;
+        if (claimedUserId == null
+                || !session.getUser().getId().toString().equals(claimedUserId.toString())) {
+            throw new SecurityException("Vapi call user claim does not match its authenticated session");
+        }
+        return session;
     }
 
     private String transcriptToString(List<VapiWebhookRequest.TranscriptEntry> transcript) {
@@ -162,7 +151,7 @@ public class VoiceLogService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        LocalDate logDate = LocalDate.now();
+        var logDate = userTimeZone.today(user);
 
         // Save session record for audit
         VoiceMealSession session = new VoiceMealSession();
@@ -170,7 +159,7 @@ public class VoiceLogService {
         session.setLogDate(logDate);
         session.setRawTranscript(transcript);
         session.setStatus(VoiceMealSession.SessionStatus.PENDING);
-        session.setCreatedAt(LocalDateTime.now());
+        session.setCreatedAt(userTimeZone.localDateTime(user));
         sessionRepo.save(session);
 
         try {
@@ -186,7 +175,7 @@ public class VoiceLogService {
 
             if (mealsNode.isArray()) {
                 for (JsonNode mealNode : mealsNode) {
-                    String mealType = mealNode.path("mealType").asText("snack").toLowerCase();
+                    String mealType = mealNode.path("mealType").asText("snack").toLowerCase(Locale.ROOT);
                     String foodName = mealNode.path("name").asText("");
                     double quantity = mealNode.path("quantity").asDouble(1.0);
                     String unit = mealNode.path("unit").asText("serving");
@@ -200,7 +189,7 @@ public class VoiceLogService {
             }
 
             session.setStatus(VoiceMealSession.SessionStatus.COMPLETED);
-            session.setCompletedAt(LocalDateTime.now());
+            session.setCompletedAt(userTimeZone.localDateTime(user));
             sessionRepo.save(session);
 
             logger.info("Parsed and logged {} meal entries from transcript for user {} on {}",
@@ -209,8 +198,9 @@ public class VoiceLogService {
         } catch (Exception e) {
             session.setStatus(VoiceMealSession.SessionStatus.FAILED);
             sessionRepo.save(session);
-            logger.error("Failed to parse transcript for user {}: {}", userId, e.getMessage(), e);
-            throw new RuntimeException("Failed to parse meals from conversation: " + e.getMessage(), e);
+            logger.error("Failed to parse transcript: userId={}, errorType={}",
+                    userId, e.getClass().getSimpleName());
+            throw new RuntimeException("Failed to parse meals from conversation", e);
         }
     }
 
@@ -248,7 +238,8 @@ public class VoiceLogService {
                 return choices.get(0).path("message").path("content").asText("");
             }
         } catch (Exception e) {
-            logger.warn("Could not parse LLM response structure, using raw: {}", e.getMessage());
+            logger.warn("Could not parse AI provider response structure: errorType={}",
+                    e.getClass().getSimpleName());
         }
         return rawResponse;
     }

@@ -5,6 +5,7 @@ import { VStack } from '../ui/vstack';
 import { HStack } from '../ui/hstack';
 import { ChevronDown, ChevronUp, Edit2, Trash2 } from 'lucide-react-native';
 import { FoodItem } from './types';
+import { getEnrichmentPresentation } from '../../features/food-log/enrichmentStatus';
 
 interface MealGroupProps {
   mealType: string;
@@ -25,7 +26,10 @@ export const MealGroup: React.FC<MealGroupProps> = ({
 }) => {
   if (items.length === 0) return null;
 
-  const mealCalories = items.reduce((sum, item) => sum + (item.calories || 0), 0);
+  const mealCalories = items.reduce((sum, item) => {
+    const presentation = getEnrichmentPresentation(item.enrichmentStatus);
+    return sum + (presentation.showNutrition ? item.calories || 0 : 0);
+  }, 0);
 
   const getMealIcon = (type: string) => {
     const lowerType = type.toLowerCase();
@@ -161,17 +165,20 @@ export const MealGroup: React.FC<MealGroupProps> = ({
                       paddingHorizontal: 8,
                       paddingVertical: 2,
                       borderRadius: 9999,
-                      backgroundColor: '#DBEAFE',
+                      backgroundColor: getEnrichmentPresentation(
+                        item.enrichmentStatus,
+                      ).backgroundColor,
                     }}
                   >
                     <Text
                       style={{
                         fontSize: 10,
-                        color: '#3B82F6',
+                        color: getEnrichmentPresentation(item.enrichmentStatus)
+                          .textColor,
                         fontWeight: '500',
                       }}
                     >
-                      AI Logged
+                      {getEnrichmentPresentation(item.enrichmentStatus).label}
                     </Text>
                   </View>
                 </View>
@@ -185,19 +192,30 @@ export const MealGroup: React.FC<MealGroupProps> = ({
                   }}
                 >
                   {item.quantity} {item.servingSize}
-                  {item.calories && ` • ${item.calories} cal`}
+                  {getEnrichmentPresentation(item.enrichmentStatus)
+                    .showNutrition && item.calories !== undefined
+                    ? ` • ${item.calories} cal`
+                    : ''}
                 </Text>
 
                 {/* Macros - only show if available */}
-                {(item.protein || item.carbs || item.fat) && (
-                  <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-                    {item.protein !== undefined && `P: ${item.protein}g`}
-                    {item.protein !== undefined && item.carbs !== undefined && ' • '}
-                    {item.carbs !== undefined && `C: ${item.carbs}g`}
-                    {item.carbs !== undefined && item.fat !== undefined && ' • '}
-                    {item.fat !== undefined && `F: ${item.fat}g`}
-                  </Text>
-                )}
+                {getEnrichmentPresentation(item.enrichmentStatus)
+                  .showNutrition &&
+                  (item.protein !== undefined ||
+                    item.carbs !== undefined ||
+                    item.fat !== undefined) && (
+                    <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                      {item.protein !== undefined && `P: ${item.protein}g`}
+                      {item.protein !== undefined &&
+                        item.carbs !== undefined &&
+                        ' • '}
+                      {item.carbs !== undefined && `C: ${item.carbs}g`}
+                      {item.carbs !== undefined &&
+                        item.fat !== undefined &&
+                        ' • '}
+                      {item.fat !== undefined && `F: ${item.fat}g`}
+                    </Text>
+                  )}
               </View>
 
               {/* Action buttons */}

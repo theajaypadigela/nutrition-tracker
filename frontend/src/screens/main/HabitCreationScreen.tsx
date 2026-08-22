@@ -21,9 +21,13 @@ import { VStack } from '../../components/ui/vstack';
 import { HStack } from '../../components/ui/hstack';
 import { Text } from '../../components/ui/text';
 import { Divider } from '../../components/ui/divider';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import useApi from '../../hooks/useApi';
-import { scheduleHabitReminder } from '../../services/habitScheduler';
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
+import { habitApi } from '../../features/habits/api/habitApi';
+import { useApiOperation } from '../../features/api/useApiOperation';
+import { reconcileReminders } from '../../services/reminderCoordinator';
+import { useAuth } from '../../context/AuthContext';
 
 type DayKey = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 type ReminderType = 'notification' | 'call' | 'none';
@@ -40,7 +44,8 @@ const DAYS: { key: DayKey; label: string }[] = [
 
 const HabitCreationScreen = () => {
   const navigation = useNavigation();
-  const { loading, error, request } = useApi();
+  const { user } = useAuth();
+  const { execute: executeHabitRequest, loading, error } = useApiOperation();
 
   const [habitName, setHabitName] = useState('');
   const [selectedDays, setSelectedDays] = useState<DayKey[]>([]);
@@ -96,7 +101,7 @@ const HabitCreationScreen = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const onTimeChange = (_event: any, selectedTime?: Date) => {
+  const onTimeChange = (_event: DateTimePickerEvent, selectedTime?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
     }
@@ -129,7 +134,7 @@ const HabitCreationScreen = () => {
     reminderType.length > 0 &&
     reminderTime instanceof Date;
 
-  const formatTimeToHHMM = date => {
+  const formatTimeToHHMM = (date: Date) => {
     const hours = date.getHours();
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -148,30 +153,26 @@ const HabitCreationScreen = () => {
     };
 
     try {
-      const createdHabit = await request({
-        url: '/habit',
-        method: 'POST',
-        data: newHabit,
-      });
+      const createdHabit = await executeHabitRequest(signal =>
+        habitApi.create(newHabit, { signal }),
+      );
 
       console.log('Habit created successfully');
 
-      // Schedule notification for this habit
-      if (createdHabit) {
-        await scheduleHabitReminder({
-          id: String(createdHabit.id),
-          name: createdHabit.name,
-          reminderTime: formatTimeToHHMM(reminderTime),
-          reminderType: reminderType as 'notification' | 'call',
-          completed: false,
-          repeatDays: selectedDays,
-        });
+      if (createdHabit && user?.id) {
+        try {
+          await reconcileReminders(user.id);
+        } catch (reminderError) {
+          console.warn(
+            'Habit was created, but reminder reconciliation will retry on foreground:',
+            reminderError,
+          );
+        }
       }
 
       navigation.goBack();
     } catch (err) {
       console.error('Failed to create habit:', err);
-      // Error is already set in the useApi hook
     }
   };
 

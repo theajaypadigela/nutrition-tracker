@@ -1,0 +1,226 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20.19.4
+  NPM_VERSION: 10.8.2
+  JAVA_VERSION: 17.0.19
+  RUBY_VERSION: 4.0.5
+
+jobs:
+  backend:
+    name: Backend verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Verify backend, migrations, and PostgreSQL mappings
+        working-directory: backend
+        run: ./mvnw --batch-mode --no-transfer-progress verify
+      - name: Prove PostgreSQL integration tests ran
+        working-directory: backend
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          expected = (
+              "ApplicationContextIT",
+              "DatabaseMigrationIT",
+              "PersistenceMappingIT",
+          )
+          report_dir = Path("target/failsafe-reports")
+          for class_name in expected:
+              report = report_dir / f"TEST-com.habitbuilder.NutritionTracker.{class_name}.xml"
+              suite = ET.parse(report).getroot()
+              assert int(suite.attrib["tests"]) > 0, f"{class_name} ran no tests"
+              assert int(suite.attrib["skipped"]) == 0, f"{class_name} was skipped"
+          PY
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: backend-jacoco
+          path: backend/target/site/jacoco
+          if-no-files-found: error
+
+  backend-dependencies:
+    name: Backend dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      # dependency-check 12 pulls its data from the NVD API, which throttles hard
+      # to ~1 request per 6s without a key. Cache the database and pass the key
+      # when it exists, so this job is a gate rather than a timeout.
+      - name: Cache dependency-check database
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: dependency-check-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: dependency-check-${{ runner.os }}-
+      - name: Audit backend dependencies
+        working-directory: backend
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          if [ -z "${NVD_API_KEY}" ]; then
+            echo "::warning::NVD_API_KEY is not set; the NVD download will be rate-limited and may exceed this job's timeout."
+            ./mvnw --batch-mode --no-transfer-progress \
+              -DskipTests -Pdependency-audit verify
+          else
+            ./mvnw --batch-mode --no-transfer-progress \
+              -DskipTests -Pdependency-audit -Dnvd.api.key="${NVD_API_KEY}" verify
+          fi
+
+  frontend:
+    name: Frontend quality gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@${NPM_VERSION}
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Audit frontend dependencies
+        working-directory: frontend
+        run: npm run audit:ci
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+      - name: Check inline lint-suppression debt
+        working-directory: frontend
+        run: npm run lint:debt
+      - name: Type-check frontend
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Test frontend with coverage
+        working-directory: frontend
+        run: npm run test:coverage -- --ci --runInBand
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: frontend-jest
+          path: frontend/coverage
+          if-no-files-found: error
+
+  android:
+    name: Android debug build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+          cache-dependency-path: |
+            frontend/android/*.gradle
+            frontend/android/**/*.gradle
+            frontend/android/gradle/wrapper/gradle-wrapper.properties
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Set up Android SDK and NDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        with:
+          cmdline-tools-version: 14742923
+          packages: >-
+            platform-tools platforms;android-36 build-tools;36.0.0
+            ndk;27.1.12297006
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+      - name: Pin npm
+        run: npm install --global npm@${NPM_VERSION}
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Test, lint, and assemble Android debug
+        working-directory: frontend/android
+        run: >-
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+          --no-daemon
+
+  ios:
+    name: iOS debug compile
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Set up Ruby and CocoaPods
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+          working-directory: frontend
+      - name: Pin npm
+        run: npm install --global npm@${NPM_VERSION}
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Verify Xcode pin
+        run: xcodebuild -version
+      - name: Install iOS pods from lockfile
+        working-directory: frontend
+        run: bundle exec pod install --project-directory=ios --deployment
+      - name: Compile iOS debug application
+        run: >-
+          xcodebuild
+          -workspace frontend/ios/habit_builder_app.xcworkspace
+          -scheme habit_builder_app
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "${RUNNER_TEMP}/habit-builder-derived-data"
+          CODE_SIGNING_ALLOWED=NO build

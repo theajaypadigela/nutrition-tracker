@@ -1,0 +1,692 @@
+openapi: 3.1.0
+info:
+  title: Nutrition Tracker compatibility API
+  version: 0.2.0-stage-a
+  description: >-
+    Repository-derived contract inventory after the approved Stage A
+    correctness and security changes. Except for the deliberately empty Vapi
+    webhook 401, errors use the ApiError schema.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      security: []
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthRequest' }
+      responses:
+        '200':
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/login:
+    post:
+      security: []
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthRequest' }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      security: []
+      operationId: validateToken
+      responses:
+        '200':
+          description: Current principal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /profile:
+    get:
+      operationId: getProfile
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+    put:
+      operationId: updateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+  /dashboard/{date}:
+    get:
+      operationId: getDashboardSummary
+      parameters:
+        - $ref: '#/components/parameters/DatePath'
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardResponse' }
+  /food/{date}/meals/{mealType}/entries:
+    post:
+      operationId: addFoodEntries
+      parameters:
+        - $ref: '#/components/parameters/DatePath'
+        - name: mealType
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/AddFoodEntryRequest' }
+      responses:
+        '200':
+          description: Created entries; enrichment remains asynchronous
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FoodEntryResponse' }
+  /food/{date}:
+    get:
+      operationId: getDayLog
+      parameters:
+        - $ref: '#/components/parameters/DatePath'
+      responses:
+        '200':
+          description: Meal-keyed daily log
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MealsResponse' }
+  /food:
+    get:
+      operationId: getDayLogs
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Range logs with array-shaped meals
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DayLogResponse' }
+  /food/{date}/meals/entries/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DatePath'
+      - $ref: '#/components/parameters/EntryId'
+    put:
+      operationId: updateFoodEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateFoodEntryRequest' }
+      responses:
+        '200':
+          description: Updated complete daily log
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MealsResponse' }
+    delete:
+      operationId: deleteFoodEntry
+      responses:
+        '200':
+          description: Updated complete daily log
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MealsResponse' }
+  /food/nutrition/weekly:
+    get:
+      operationId: getWeeklyNutrition
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Weekly report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WeeklyNutritionReport' }
+  /food/nutrition/all:
+    get:
+      operationId: getAllNutrients
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Nutrient summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/NutrientSummary' }
+  /food/nutrition/insights:
+    get:
+      operationId: getNutritionInsights
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/InsightResponse' }
+  /food/nutrient/{nutrientId}/pin:
+    post:
+      operationId: toggleNutrientPin
+      parameters:
+        - $ref: '#/components/parameters/NutrientId'
+      responses:
+        '200':
+          description: Preference
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NutrientPreferenceResponse' }
+  /food/nutrient/{nutrientId}/target:
+    put:
+      operationId: setNutrientTarget
+      parameters:
+        - $ref: '#/components/parameters/NutrientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetTargetRequest' }
+      responses:
+        '200':
+          description: Preference
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NutrientPreferenceResponse' }
+  /food/nutrient/{nutrientId}/avoid:
+    put:
+      operationId: setAvoidedFoods
+      parameters:
+        - $ref: '#/components/parameters/NutrientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetAvoidRequest' }
+      responses:
+        '200':
+          description: Preference
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NutrientPreferenceResponse' }
+  /food/nutrient/preferences:
+    get:
+      operationId: getNutrientPreferences
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/NutrientPreferenceResponse' }
+  /habit:
+    get:
+      operationId: getAllHabits
+      responses:
+        '200':
+          description: All recurring habits owned by the current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+    post:
+      operationId: createHabit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HabitRequest' }
+      responses:
+        '200':
+          description: Current persistence-entity JSON shape
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /habit/today:
+    get:
+      operationId: getTodayHabits
+      responses:
+        '200':
+          description: Today's habits
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HabitWithCompletion' }
+  /habit/{id}/toggle:
+    post:
+      operationId: toggleHabit
+      parameters:
+        - $ref: '#/components/parameters/HabitId'
+      responses:
+        '200': { description: Empty response }
+  /habit/{id}:
+    delete:
+      operationId: deleteHabit
+      parameters:
+        - $ref: '#/components/parameters/HabitId'
+      responses:
+        '200': { description: Empty response }
+  /habit/voice-result:
+    post:
+      operationId: submitHabitVoiceResult
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HabitVoiceResult' }
+      responses:
+        '200':
+          description: Updated habit state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HabitWithCompletion' }
+  /food/voice-log:
+    post:
+      security: []
+      operationId: handleVapiWebhook
+      parameters:
+        - name: X-Vapi-Secret
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Provider acknowledgement, including ignored/application-failure events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result: { type: string, const: logged }
+        '401': { description: Empty response when a configured secret does not match }
+        '413':
+          description: Request body or meal count exceeds the configured limit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+  /food/voice/token:
+    get:
+      operationId: getVoiceToken
+      responses:
+        '200':
+          description: Vapi token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token: { type: string }
+  /food/voice-log/parse-transcript:
+    post:
+      operationId: parseVoiceTranscript
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transcript: { type: string }
+      responses:
+        '200':
+          description: Transcript processed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, entriesLogged]
+                properties:
+                  status: { type: string, const: success }
+                  entriesLogged: { type: integer }
+        '400': { description: Transcript missing }
+        '500': { description: Processing failed }
+components:
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Unauthorized:
+      description: Authentication is required or credentials are invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Conflict:
+      description: Request conflicts with current state
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DatePath:
+      name: date
+      in: path
+      required: true
+      schema: { type: string, format: date }
+    FromDate:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    ToDate:
+      name: to
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    StartDate:
+      name: startDate
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    EndDate:
+      name: endDate
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    EntryId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    HabitId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    NutrientId:
+      name: nutrientId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    AuthRequest:
+      type: object
+      properties:
+        email: { type: [string, 'null'] }
+        password: { type: [string, 'null'] }
+        name: { type: [string, 'null'] }
+        age: { type: [string, 'null'] }
+        gender: { type: [string, 'null'] }
+        timezone:
+          type: [string, 'null']
+          description: IANA timezone identifier; registration defaults to UTC
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/ProfileResponse'
+        - type: object
+          required: [token]
+          properties:
+            token: { type: string }
+    ProfileResponse:
+      type: object
+      required: [id, name, email, timezone]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        email: { type: string }
+        age: { type: [string, 'null'] }
+        gender: { type: [string, 'null'] }
+        timezone: { type: string, example: Asia/Kolkata }
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name: { type: [string, 'null'] }
+        age: { type: [string, 'null'] }
+        gender: { type: [string, 'null'] }
+        timezone: { type: [string, 'null'], example: Asia/Kolkata }
+    ApiError:
+      type: object
+      required: [status, code, message]
+      properties:
+        status: { type: integer, example: 400 }
+        code: { type: string, example: INVALID_REQUEST }
+        message: { type: string, example: Request validation failed }
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    AddFoodEntryRequest:
+      type: object
+      required: [name, quantity, unit]
+      properties:
+        name: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+    UpdateFoodEntryRequest:
+      type: object
+      properties:
+        name: { type: [string, 'null'] }
+        quantity: { type: [number, 'null'] }
+        unit: { type: [string, 'null'] }
+    FoodEntryResponse:
+      type: object
+      required: [id, name, quantity, unit, mealType, nutritionResponse, enrichmentStatus]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        mealType: { type: string }
+        nutritionResponse: { type: string, const: Nutrition enrichment in progress }
+        enrichmentStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        createdAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: [string, 'null'], format: date-time }
+    FoodItem:
+      type: object
+      required: [id, name, quantity, servingSize, enrichmentStatus]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        quantity: { type: string }
+        servingSize: { type: string }
+        enrichmentStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        calories: { type: [number, 'null'] }
+        protein: { type: [number, 'null'] }
+        carbs: { type: [number, 'null'] }
+        fat: { type: [number, 'null'] }
+        fiber: { type: [number, 'null'] }
+        sugar: { type: [number, 'null'] }
+        sodium: { type: [number, 'null'] }
+    NutritionTotals:
+      type: object
+      required: [calories, protein, carbs, fat, fiber, sugar, sodium]
+      properties:
+        calories: { type: number }
+        protein: { type: number }
+        carbs: { type: number }
+        fat: { type: number }
+        fiber: { type: number }
+        sugar: { type: number }
+        sodium: { type: number }
+    MealsResponse:
+      type: object
+      required: [meals, totals]
+      properties:
+        meals:
+          type: object
+          additionalProperties:
+            type: array
+            items: { $ref: '#/components/schemas/FoodItem' }
+        totals: { $ref: '#/components/schemas/NutritionTotals' }
+    DayLogEntry:
+      type: object
+      required: [id, name, quantity, unit, mealType, enrichmentStatus]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        mealType: { type: string }
+        nutritionResponse: { type: [string, 'null'] }
+        enrichmentStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        createdAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: [string, 'null'], format: date-time }
+    MealEntries:
+      type: object
+      required: [mealType, entries]
+      properties:
+        mealType: { type: string }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/DayLogEntry' }
+    DayLogResponse:
+      type: object
+      required: [foodLogId, date, meals]
+      properties:
+        foodLogId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        meals:
+          type: array
+          items: { $ref: '#/components/schemas/MealEntries' }
+    DailyNutritionSummary:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        totals: { $ref: '#/components/schemas/NutritionTotals' }
+    WeeklyNutritionReport:
+      type: object
+      properties:
+        avgDailyCalories: { type: [number, 'null'] }
+        weeklyTotals: { $ref: '#/components/schemas/NutritionTotals' }
+        weeklyAverage: { $ref: '#/components/schemas/NutritionTotals' }
+        dailySummaries:
+          type: array
+          items: { $ref: '#/components/schemas/DailyNutritionSummary' }
+    TopFoodSource:
+      type: object
+      properties:
+        name: { type: string }
+        amount: { type: number }
+        unit: { type: string }
+        contribution: { type: number }
+    NutrientSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        category: { type: string }
+        value: { type: number }
+        goal: { type: number }
+        pctDV: { type: integer }
+        flag: { type: string }
+        weeklyAvg: { type: number }
+        trend: { type: array, items: { type: number } }
+        topSources: { type: array, items: { $ref: '#/components/schemas/TopFoodSource' } }
+        pinned: { type: boolean }
+        avoidedFoods: { type: [string, 'null'] }
+        customTarget: { type: [number, 'null'] }
+    SetTargetRequest:
+      type: object
+      properties:
+        target: { type: [number, 'null'] }
+    SetAvoidRequest:
+      type: object
+      properties:
+        foods: { type: [array, 'null'], items: { type: string } }
+    NutrientPreferenceResponse:
+      type: object
+      properties:
+        nutrientId: { type: string }
+        pinned: { type: boolean }
+        customTarget: { type: [number, 'null'] }
+        avoidedFoods: { type: array, items: { type: string } }
+    InsightResponse:
+      type: object
+      properties:
+        variant: { type: string }
+        message: { type: string }
+    HabitRequest:
+      type: object
+      properties:
+        name: { type: [string, 'null'] }
+        repeatDays: { type: [array, 'null'], items: { type: string } }
+        reminderTime: { type: [string, 'null'] }
+        reminderType: { type: [string, 'null'] }
+    HabitWithCompletion:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        repeatDays: { type: array, items: { type: string } }
+        reminderTime: { type: string, description: Serialized with pattern hh:mm a }
+        reminderType: { type: string }
+        completed: { type: boolean }
+        status: { type: string }
+        completedAt: { type: [string, 'null'] }
+        rescheduledTime: { type: [string, 'null'], format: date-time }
+    HabitVoiceResult:
+      type: object
+      properties:
+        habitId: { type: [integer, 'null'], format: int64 }
+        habitName: { type: [string, 'null'] }
+        habitStatus: { type: [string, 'null'] }
+        rescheduleMinutes: { type: [integer, 'null'] }
+        completedAt: { type: [string, 'null'] }
+    DashboardResponse:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        foodSummary: { $ref: '#/components/schemas/MealsResponse' }
+        habits:
+          type: array
+          items: { $ref: '#/components/schemas/HabitWithCompletion' }

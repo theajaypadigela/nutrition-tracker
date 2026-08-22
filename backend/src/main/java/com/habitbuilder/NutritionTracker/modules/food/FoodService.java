@@ -1,20 +1,20 @@
 package com.habitbuilder.NutritionTracker.modules.food;
 
-import java.time.LocalDate;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.habitbuilder.NutritionTracker.modules.auth.entity.User;
 import com.habitbuilder.NutritionTracker.modules.nutrition.GeminiService;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionEnrichmentService;
+import com.habitbuilder.NutritionTracker.security.AuthenticatedUserProvider;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,18 +37,26 @@ public class FoodService {
     private GeminiService geminiService;
     private ObjectMapper objectMapper;
     private UserNutrientPreferenceRepository preferenceRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
+    private final Clock clock;
+    private final NutritionCalculator nutritionCalculator = new NutritionCalculator();
+    private final FoodDtoMapper foodDtoMapper = new FoodDtoMapper();
 
     FoodService(FoodLogRepository foodLogRepository, FoodEntryRepository foodEntryRepository,
             NutritionEnrichmentService nutritionEnrichmentService,
             GeminiService geminiService,
             ObjectMapper objectMapper,
-            UserNutrientPreferenceRepository preferenceRepository) {
+            UserNutrientPreferenceRepository preferenceRepository,
+            AuthenticatedUserProvider authenticatedUserProvider,
+            Clock clock) {
         this.foodLogRepository = foodLogRepository;
         this.foodEntryRepository = foodEntryRepository;
         this.nutritionEnrichmentService = nutritionEnrichmentService;
         this.geminiService = geminiService;
         this.objectMapper = objectMapper;
         this.preferenceRepository = preferenceRepository;
+        this.authenticatedUserProvider = authenticatedUserProvider;
+        this.clock = clock;
     }
 
     public List<FoodEntryResponse> addFoodEntries(LocalDate date, String mealType, List<AddFoodEntryRequest> request) {
@@ -78,6 +86,7 @@ public class FoodService {
             res.setUnit(savedEntry.getUnit());
             res.setMealType(savedEntry.getMealType());
             res.setNutritionResponse("Nutrition enrichment in progress");
+            res.setEnrichmentStatus("pending");
 
             responses.add(res);
         }
@@ -117,33 +126,17 @@ public class FoodService {
 
         FoodLog log = logOpt.get();
         Map<String, List<FoodItemResponse>> mealsMap = new HashMap<>();
-        NutritionTotals totals = new NutritionTotals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        List<FoodItemResponse> items = new ArrayList<>();
 
         for (FoodEntry entry : log.getEntries()) {
             FoodItemResponse item = buildFoodItemResponse(entry);
-
-            // Accumulate totals
-            if (item.getCalories() != null)
-                totals.setCalories(totals.getCalories() + item.getCalories());
-            if (item.getProtein() != null)
-                totals.setProtein(totals.getProtein() + item.getProtein());
-            if (item.getCarbs() != null)
-                totals.setCarbs(totals.getCarbs() + item.getCarbs());
-            if (item.getFat() != null)
-                totals.setFat(totals.getFat() + item.getFat());
-            if (item.getFiber() != null)
-                totals.setFiber(totals.getFiber() + item.getFiber());
-            if (item.getSugar() != null)
-                totals.setSugar(totals.getSugar() + item.getSugar());
-            if (item.getSodium() != null)
-                totals.setSodium(totals.getSodium() + item.getSodium());
-
+            items.add(item);
             mealsMap.computeIfAbsent(entry.getMealType(), k -> new ArrayList<>()).add(item);
         }
 
         return MealsResponse.builder()
                 .meals(mealsMap)
-                .totals(totals)
+                .totals(nutritionCalculator.calculateTotals(items))
                 .build();
     }
 
@@ -225,19 +218,11 @@ public class FoodService {
     }
 
     private Long getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User user) {
-            return user.getId();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        return getCurrentUser().getId();
     }
 
     private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User user) {
-            return user;
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        return authenticatedUserProvider.getAuthenticatedUser();
     }
 
     private FoodLog getOrCreateFoodLog(Long userId, LocalDate date) {
@@ -260,6 +245,9 @@ public class FoodService {
             res.setQuantity(entry.getQuantity());
             res.setUnit(entry.getUnit());
             res.setMealType(entry.getMealType());
+            res.setEnrichmentStatus(entry.getNutritionDetails() != null
+                    ? entry.getNutritionDetails().getEnrichmentStatus()
+                    : "pending");
 
             mealMap.computeIfAbsent(entry.getMealType(), k -> new ArrayList<>()).add(res);
         }
@@ -272,38 +260,16 @@ public class FoodService {
     }
 
     private FoodItemResponse buildFoodItemResponse(FoodEntry entry) {
-        FoodItemResponse.FoodItemResponseBuilder builder = FoodItemResponse.builder()
-                .id(entry.getId().toString())
-                .name(entry.getName())
-                .quantity(String.valueOf(entry.getQuantity()))
-                .servingSize(entry.getUnit());
-
-        // Add nutrition data if available
         if (entry.getNutritionDetails() != null) {
             var nutrition = entry.getNutritionDetails();
             logger.debug("Nutrition details found for entry '{}': status={}, calories={}",
                     entry.getName(), nutrition.getEnrichmentStatus(), nutrition.getCalories());
-
-            if (nutrition.getCalories() != null)
-                builder.calories(nutrition.getCalories().doubleValue());
-            if (nutrition.getProteinG() != null)
-                builder.protein(nutrition.getProteinG().doubleValue());
-            if (nutrition.getCarbsG() != null)
-                builder.carbs(nutrition.getCarbsG().doubleValue());
-            if (nutrition.getFatsG() != null)
-                builder.fat(nutrition.getFatsG().doubleValue());
-            if (nutrition.getFiberG() != null)
-                builder.fiber(nutrition.getFiberG().doubleValue());
-            if (nutrition.getSugarG() != null)
-                builder.sugar(nutrition.getSugarG().doubleValue());
-            if (nutrition.getSodiumMg() != null)
-                builder.sodium(nutrition.getSodiumMg().doubleValue());
         } else {
             logger.warn("No nutrition details found for food entry: {} (ID: {})",
                     entry.getName(), entry.getId());
         }
 
-        return builder.build();
+        return foodDtoMapper.toFoodItemResponse(entry);
     }
 
     public WeeklyNutritionReport getWeeklyNutritionReport(LocalDate startDate, LocalDate endDate) {
@@ -711,7 +677,7 @@ public class FoodService {
         // Check cache first
         String cacheKey = user.getId() + "_" + startDate + "_" + endDate;
         CachedInsights cached = insightsCache.get(cacheKey);
-        if (cached != null && !cached.isExpired()) {
+        if (cached != null && !cached.isExpired(clock)) {
             logger.info("Returning cached AI insights for user {} (cached at {})", user.getId(), cached.getTimestamp());
             return cached.getInsights();
         }
@@ -778,7 +744,7 @@ public class FoodService {
             logger.info("AI insights generated for user {}: {} insights", user.getId(), insights.size());
 
             // Cache the successful result
-            insightsCache.put(cacheKey, new CachedInsights(insights, Instant.now()));
+            insightsCache.put(cacheKey, new CachedInsights(insights, Instant.now(clock)));
 
             return insights;
         } catch (Exception e) {
@@ -786,7 +752,7 @@ public class FoodService {
             List<InsightResponse> fallback = getFallbackInsights(avg);
 
             // Cache fallback for a shorter period (10 minutes) to retry sooner
-            insightsCache.put(cacheKey, new CachedInsights(fallback, Instant.now(), 10));
+            insightsCache.put(cacheKey, new CachedInsights(fallback, Instant.now(clock), 10));
 
             return fallback;
         }
@@ -832,8 +798,8 @@ public class FoodService {
             this.ttlMinutes = ttlMinutes;
         }
 
-        public boolean isExpired() {
-            return Instant.now().isAfter(timestamp.plusSeconds(ttlMinutes * 60));
+        public boolean isExpired(Clock clock) {
+            return Instant.now(clock).isAfter(timestamp.plusSeconds(ttlMinutes * 60));
         }
 
         public List<InsightResponse> getInsights() {

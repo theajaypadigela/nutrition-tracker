@@ -2,17 +2,47 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert, Platform } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
 import { HabitVoiceResult } from '../../types/types';
 import { scheduleHabitReschedule } from '../../services/habitScheduler';
 import VoiceSessionScreen, {
   CallStatus,
 } from '../../components/voice/VoiceSessionScreen';
+import { habitApi } from '../../features/habits/api/habitApi';
+import { getVapiConfiguration } from '../../config/buildConfig';
+import {
+  finishVoiceSession,
+  waitForVoiceCallEnd,
+} from '../../services/voiceSessionLifecycle';
+import { reconcileReminders } from '../../services/reminderCoordinator';
 
-const VAPI_PUBLIC_KEY = 'ee6c4930-dd4c-416e-9c58-090b8b46eee5';
-const VAPI_HABIT_ASSISTANT_ID = '21a94bba-766c-46bb-8df8-9c7e9aeed50a';
+type VoiceHabitRoute = RouteProp<
+  {
+    VoiceHabit:
+      | {
+          habitId?: string;
+          habitName?: string;
+          habitTime?: string;
+          autoStart?: boolean;
+        }
+      | undefined;
+  },
+  'VoiceHabit'
+>;
+
+interface VoiceHabitMessage {
+  type?: string;
+  role?: string;
+  transcriptType?: string;
+  transcript?: string;
+  functionCall?: {
+    parameters?: HabitVoiceResult;
+  };
+  analysis?: {
+    structuredData?: HabitVoiceResult;
+  };
+}
 
 function extractDelayFromText(text: string): number | null {
   const lowered = text.toLowerCase();
@@ -63,7 +93,7 @@ function normalizeHabitStatus(
 
 export default function VoiceHabitScreen() {
   const navigation = useNavigation();
-  const route = useRoute<any>();
+  const route = useRoute<VoiceHabitRoute>();
   const { user } = useAuth();
 
   const habitId: string | undefined = route.params?.habitId;
@@ -78,11 +108,40 @@ export default function VoiceHabitScreen() {
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<string[]>([]);
   const voiceResultRef = useRef<HabitVoiceResult | null>(null);
+  const isMountedRef = useRef(true);
+  const vapiAssistantIdRef = useRef<string | null>(null);
+  const persistCapturedResultRef = useRef<() => Promise<void>>(
+    async () => undefined,
+  );
+  const finalizationPromiseRef = useRef<Promise<void> | null>(null);
+  const callEndPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  const resolveCallEndRef = useRef<(() => void) | null>(null);
+
+  const finalizeCapturedResult = useCallback((): Promise<void> => {
+    if (!finalizationPromiseRef.current) {
+      finalizationPromiseRef.current = persistCapturedResultRef.current();
+    }
+    return finalizationPromiseRef.current;
+  }, []);
 
   // Wire up Vapi events
   useEffect(() => {
-    const vapi = new Vapi(VAPI_PUBLIC_KEY);
+    isMountedRef.current = true;
+
+    let vapiConfiguration: ReturnType<typeof getVapiConfiguration>;
+    try {
+      vapiConfiguration = getVapiConfiguration('habit');
+    } catch (error) {
+      console.error('[VapiHabit] Build configuration error:', error);
+      setStatus('error');
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
+
+    const vapi = new Vapi(vapiConfiguration.publicKey);
     vapiRef.current = vapi;
+    vapiAssistantIdRef.current = vapiConfiguration.assistantId;
 
     vapi.on('call-start', () => {
       console.log('[VapiHabit] Call started');
@@ -96,7 +155,11 @@ export default function VoiceHabitScreen() {
 
     vapi.on('call-end', () => {
       console.log('[VapiHabit] Call ended');
-      processHabitResult();
+      resolveCallEndRef.current?.();
+      resolveCallEndRef.current = null;
+      finalizeCapturedResult().catch(error => {
+        console.error('[VapiHabit] Failed to persist call result:', error);
+      });
     });
 
     vapi.on('speech-start', () => {
@@ -112,7 +175,7 @@ export default function VoiceHabitScreen() {
       setStatus('error');
     });
 
-    vapi.on('message', (msg: any) => {
+    vapi.on('message', (msg: VoiceHabitMessage) => {
       console.log(
         '[VapiHabit] Message:',
         msg?.type,
@@ -131,7 +194,7 @@ export default function VoiceHabitScreen() {
       if (msg.type === 'function-call' && msg.functionCall?.parameters) {
         const params = msg.functionCall.parameters;
         if (params.habit_status) {
-          voiceResultRef.current = params as HabitVoiceResult;
+          voiceResultRef.current = params;
           console.log(
             '[VapiHabit] Captured result from function call:',
             params,
@@ -141,8 +204,7 @@ export default function VoiceHabitScreen() {
 
       // Also check for structured data in analysis/result messages
       if (msg.type === 'end-of-call-report' && msg.analysis?.structuredData) {
-        voiceResultRef.current = msg.analysis
-          .structuredData as HabitVoiceResult;
+        voiceResultRef.current = msg.analysis.structuredData;
         console.log(
           '[VapiHabit] Captured result from analysis:',
           msg.analysis.structuredData,
@@ -151,16 +213,16 @@ export default function VoiceHabitScreen() {
     });
 
     return () => {
-      vapi.removeAllListeners();
-      try {
-        vapi.stop();
-      } catch {
-        // Ignore cleanup errors
-      }
+      isMountedRef.current = false;
       vapiRef.current = null;
+      vapiAssistantIdRef.current = null;
+      finishVoiceSession(vapi, finalizeCapturedResult, () =>
+        waitForVoiceCallEnd(callEndPromiseRef.current),
+      ).catch(error => {
+        console.warn('[VapiHabit] Voice session teardown failed:', error);
+      });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [finalizeCapturedResult]);
 
   // Auto-start
   useEffect(() => {
@@ -189,6 +251,10 @@ export default function VoiceHabitScreen() {
     transcriptRef.current = [];
     voiceResultRef.current = null;
     setResultMessage('');
+    finalizationPromiseRef.current = null;
+    callEndPromiseRef.current = new Promise(resolve => {
+      resolveCallEndRef.current = resolve;
+    });
 
     const hasPermission = await requestMicPermission();
     if (!hasPermission) {
@@ -207,12 +273,16 @@ export default function VoiceHabitScreen() {
       return;
     }
 
+    const assistantId = vapiAssistantIdRef.current;
+    if (!assistantId) {
+      console.error('[VapiHabit] Habit assistant configuration is unavailable');
+      setStatus('error');
+      return;
+    }
+
     try {
-      console.log(
-        '[VapiHabit] Starting call with assistant:',
-        VAPI_HABIT_ASSISTANT_ID,
-      );
-      await vapi.start(VAPI_HABIT_ASSISTANT_ID, {
+      console.log('[VapiHabit] Starting configured habit assistant call');
+      await vapi.start(assistantId, {
         metadata: { userId: user?.id ?? '' },
         variableValues: {
           name: user?.name ?? 'User',
@@ -240,12 +310,14 @@ export default function VoiceHabitScreen() {
   }, []);
 
   const processHabitResult = useCallback(async () => {
-    setStatus('processing');
+    if (isMountedRef.current) setStatus('processing');
 
     if (!habitId) {
       console.log('[VapiHabit] Missing habitId, skipping result processing.');
-      setResultMessage('Call completed');
-      setStatus('completed');
+      if (isMountedRef.current) {
+        setResultMessage('Call completed');
+        setStatus('completed');
+      }
       return;
     }
 
@@ -265,8 +337,10 @@ export default function VoiceHabitScreen() {
 
     if (!result) {
       console.log('[VapiHabit] No structured result captured from call.');
-      setResultMessage('Call completed');
-      setStatus('completed');
+      if (isMountedRef.current) {
+        setResultMessage('Call completed');
+        setStatus('completed');
+      }
       return;
     }
 
@@ -280,41 +354,61 @@ export default function VoiceHabitScreen() {
         resolved_delay_minutes: delayMinutes,
       });
 
-      const response = await apiClient.post('/habit/voice-result', {
+      const response = await habitApi.recordVoiceResult({
         habitId: parseInt(habitId, 10),
         habitName: result.habit_name || habitName,
         habitStatus,
         rescheduleMinutes: delayMinutes,
         completedAt: result.completed_at,
       });
-      console.log('[VapiHabit] Backend voice-result response:', response.data);
+      console.log('[VapiHabit] Backend voice-result response:', response);
+
+      if (user?.id) {
+        try {
+          await reconcileReminders(user.id);
+        } catch (reminderError) {
+          console.warn(
+            '[VapiHabit] Reminder reconciliation will retry on foreground:',
+            reminderError,
+          );
+        }
+      }
 
       if (habitStatus === 'completed') {
-        setResultMessage(`✅ "${habitName}" marked as completed!`);
+        if (isMountedRef.current) {
+          setResultMessage(`✅ "${habitName}" marked as completed!`);
+        }
       } else if (habitStatus === 'rescheduled') {
         const mins = delayMinutes ?? 0;
-        setResultMessage(
-          `⏰ "${habitName}" rescheduled. Will check again in ${mins} minutes.`,
-        );
+        if (isMountedRef.current) {
+          setResultMessage(
+            `⏰ "${habitName}" rescheduled. Will check again in ${mins} minutes.`,
+          );
+        }
 
         // Schedule local notification for the rescheduled time
         if (mins > 0) {
-          const scheduled = await scheduleHabitReschedule(
-            {
-              id: habitId,
-              name: habitName,
-              reminderTime: habitTime,
-              reminderType: 'call',
-              completed: false,
-              repeatDays: [],
-            },
-            mins,
-          );
+          const scheduled = user?.id
+            ? await scheduleHabitReschedule(
+                {
+                  id: habitId,
+                  name: habitName,
+                  reminderTime: habitTime,
+                  reminderType: 'call',
+                  completed: false,
+                  repeatDays: [],
+                },
+                mins,
+                user.id,
+              )
+            : false;
 
           if (!scheduled) {
-            setResultMessage(
-              'Could not schedule follow-up because it would fall on the next day.',
-            );
+            if (isMountedRef.current) {
+              setResultMessage(
+                'Could not schedule follow-up because it would fall on the next day.',
+              );
+            }
             console.log(
               '[VapiHabit] Skipped habit follow-up scheduling due to current-day rule.',
               { mins },
@@ -322,15 +416,19 @@ export default function VoiceHabitScreen() {
           }
         }
       } else {
-        setResultMessage(`"${habitName}" marked as missed.`);
+        if (isMountedRef.current) {
+          setResultMessage(`"${habitName}" marked as missed.`);
+        }
       }
 
-      setStatus('completed');
+      if (isMountedRef.current) setStatus('completed');
     } catch (err) {
       console.error('[VapiHabit] Failed to process result:', err);
-      setStatus('error');
+      if (isMountedRef.current) setStatus('error');
     }
-  }, [habitId, habitName, habitTime]);
+  }, [habitId, habitName, habitTime, user?.id]);
+
+  persistCapturedResultRef.current = processHabitResult;
 
   const getStatusText = () => {
     switch (status) {

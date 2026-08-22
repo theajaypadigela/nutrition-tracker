@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      backend-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      frontend-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: gradle
+    directory: /frontend/android
+    schedule:
+      interval: weekly
+    groups:
+      android-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: bundler
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      ios-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      ci-actions:
+        patterns: ["*"]

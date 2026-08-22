@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+      Accepted findings must be narrow, have an expiry date, and link to a
+      tracked risk decision. Keep this file empty until such a decision exists.
+    -->
+</suppressions>

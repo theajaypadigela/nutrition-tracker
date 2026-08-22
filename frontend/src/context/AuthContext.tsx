@@ -4,11 +4,18 @@ import React, {
   useContext,
   ReactNode,
   useEffect,
+  useCallback,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { User } from '../types/types';
-import apiClient from '../api/client';
-import { setLogoutHandler } from '../services/authService';
+import { authApi } from '../features/auth/api/authApi';
+import { subscribeToUnauthorized } from '../shared/api/sessionEvents';
+import { sessionStore } from '../shared/storage/sessionStore';
+import { getDeviceTimeZone } from '../shared/date-time/deviceTimeZone';
+import {
+  cancelAllReminders,
+  reconcileReminders,
+} from '../services/reminderCoordinator';
 
 interface AuthContextType {
   user: User | null;
@@ -36,28 +43,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const logout = async () => {
-    await AsyncStorage.removeItem('token');
+  const logout = useCallback(async () => {
     setUser(null);
-  };
-
-  // Set the logout handler for the API client
-  useEffect(() => {
-    setLogoutHandler(logout);
+    await Promise.all([sessionStore.clearSession(), cancelAllReminders()]);
   }, []);
+
+  // The API boundary publishes unauthorized events without importing React.
+  useEffect(() => {
+    return subscribeToUnauthorized(() => {
+      logout().catch(error => {
+        console.error('Failed to clear the expired session:', error);
+      });
+    });
+  }, [logout]);
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
+        const token = await sessionStore.getToken();
 
-        if (!token) return;
+        if (!token) {
+          await Promise.all([
+            sessionStore.clearSession(),
+            cancelAllReminders(),
+          ]);
+          return;
+        }
 
-        const response = await apiClient.get('/auth/me');
-        setUser(response.data);
+        const currentUser = await authApi.getCurrentUser();
+        await sessionStore.setUserId(currentUser.id);
+        setUser(currentUser);
       } catch (error) {
         console.error(error);
-        await AsyncStorage.removeItem('token');
+        await Promise.all([sessionStore.clearSession(), cancelAllReminders()]);
         setUser(null);
       } finally {
         setIsInitializing(false);
@@ -67,31 +85,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     initializeAuth();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    reconcileReminders(user.id).catch(error => {
+      console.error('Failed to reconcile reminders after login:', error);
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active' || !user?.id) return;
+
+      reconcileReminders(user.id).catch(error => {
+        console.error('Failed to reconcile reminders on foreground:', error);
+      });
+    });
+
+    return () => subscription.remove();
+  }, [user?.id]);
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
 
     try {
-      const response = await apiClient({
-        method: 'POST',
-        url: '/auth/login',
-        data: { email, password },
-      });
-
-      const data = response.data;
-
-      if (data.token) {
-        await AsyncStorage.setItem('token', data.token);
-      } else {
-        throw new Error('No access token received from server');
-      }
-
-      setUser({
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        age: data.age,
-        gender: data.gender,
-      });
+      const session = await authApi.login({ email, password });
+      await sessionStore.setSession(session.token, session.user.id);
+      setUser(session.user);
     } finally {
       setIsLoading(false);
     }
@@ -106,10 +126,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     setIsLoading(true);
     try {
-      await apiClient({
-        method: 'POST',
-        url: '/auth/register',
-        data: { name, email, password, age, gender },
+      await authApi.register({
+        name,
+        email,
+        password,
+        age,
+        gender,
+        timezone: getDeviceTimeZone(),
       });
 
       await login(email, password);
@@ -121,13 +144,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const updateProfile = async (name: string, age: string, gender: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient({
-        method: 'PUT',
-        url: '/profile',
-        data: { name, age, gender },
-      });
-
-      setUser(response.data);
+      setUser(
+        await authApi.updateProfile({
+          name,
+          age,
+          gender,
+          timezone: user?.timezone ?? getDeviceTimeZone(),
+        }),
+      );
     } finally {
       setIsLoading(false);
     }

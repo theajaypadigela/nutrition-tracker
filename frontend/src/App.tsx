@@ -7,38 +7,110 @@ import { AuthProvider } from './context/AuthContext';
 import { AppNavigator, navigationRef } from './navigation/AppNavigator';
 import { setupNotifeeChannels } from './services/notifee.bootstrap';
 import notifee, { EventType } from '@notifee/react-native';
+import {
+  NOTIFICATION_ACTION_IDS,
+  NotificationNavigationTarget,
+  notificationBelongsToUser,
+  parseCallNotificationPayload,
+  resolveNotificationNavigation,
+} from './app/notifications/contracts';
+import { sessionStore } from './shared/storage/sessionStore';
 
 // Flag set by background handler so the app navigates when it resumes
 let pendingAcceptNavigation: {
-  mealSlotId?: string;
-  habitId?: string;
-  habitName?: string;
-  habitTime?: string;
-  screen: string;
+  target: NotificationNavigationTarget;
+  userId: string;
 } | null = null;
+
+const cancelDisplayedNotification = async (
+  notificationId: string | undefined,
+): Promise<void> => {
+  if (notificationId) {
+    await notifee.cancelDisplayedNotification(notificationId);
+  }
+};
+
+const navigateToNotificationTarget = (
+  target: NotificationNavigationTarget,
+): void => {
+  switch (target.screen) {
+    case 'IncomingMealCall':
+      navigationRef.navigate('IncomingMealCall', target.params);
+      return;
+    case 'VoiceMealLog':
+      navigationRef.navigate('VoiceMealLog', target.params);
+      return;
+    case 'IncomingHabitCall':
+      navigationRef.navigate('IncomingHabitCall', target.params);
+      return;
+    case 'VoiceHabit':
+      navigationRef.navigate('VoiceHabit', target.params);
+  }
+};
+
+const resetToNotificationTarget = (
+  target: NotificationNavigationTarget,
+): void => {
+  switch (target.screen) {
+    case 'IncomingMealCall':
+      navigationRef.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs' },
+          { name: 'IncomingMealCall', params: target.params },
+        ],
+      });
+      return;
+    case 'VoiceMealLog':
+      navigationRef.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs' },
+          { name: 'VoiceMealLog', params: target.params },
+        ],
+      });
+      return;
+    case 'IncomingHabitCall':
+      navigationRef.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs' },
+          { name: 'IncomingHabitCall', params: target.params },
+        ],
+      });
+      return;
+    case 'VoiceHabit':
+      navigationRef.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs' },
+          { name: 'VoiceHabit', params: target.params },
+        ],
+      });
+  }
+};
 
 // Background handler — runs when app is killed/background
 notifee.onBackgroundEvent(async ({ type, detail }) => {
   if (type === EventType.ACTION_PRESS) {
-    if (detail.pressAction?.id === 'decline') {
-      await notifee.cancelNotification(detail.notification!.id!);
+    const payload = parseCallNotificationPayload(detail.notification?.data);
+    if (!payload) return;
+
+    const currentUserId = await sessionStore.getUserId();
+    if (!notificationBelongsToUser(payload, currentUserId)) {
+      await cancelDisplayedNotification(detail.notification?.id);
+      return;
     }
-    if (detail.pressAction?.id === 'accept') {
-      await notifee.cancelNotification(detail.notification!.id!);
-      const data = detail.notification?.data;
-      if (data?.screen === 'IncomingHabitCall') {
-        pendingAcceptNavigation = {
-          habitId: data.habitId as string,
-          habitName: data.habitName as string,
-          habitTime: data.habitTime as string,
-          screen: 'VoiceHabit',
-        };
-      } else {
-        pendingAcceptNavigation = {
-          mealSlotId: (data?.mealSlotId as string) || 'daily',
-          screen: 'VoiceMealLog',
-        };
-      }
+
+    if (detail.pressAction?.id === NOTIFICATION_ACTION_IDS.decline) {
+      await cancelDisplayedNotification(detail.notification?.id);
+    }
+    if (detail.pressAction?.id === NOTIFICATION_ACTION_IDS.accept) {
+      await cancelDisplayedNotification(detail.notification?.id);
+      pendingAcceptNavigation = {
+        target: resolveNotificationNavigation(payload, 'accept'),
+        userId: payload.userId,
+      };
     }
   }
 });
@@ -50,147 +122,85 @@ function App() {
 
   // Handle resume from background after tapping "Accept"
   React.useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active' && pendingAcceptNavigation) {
-        const pending = pendingAcceptNavigation;
-        pendingAcceptNavigation = null;
-        if (navigationRef.isReady()) {
-          if (pending.screen === 'VoiceHabit') {
-            (navigationRef as any).current?.navigate('VoiceHabit', {
-              habitId: pending.habitId,
-              habitName: pending.habitName,
-              habitTime: pending.habitTime,
-              autoStart: true,
-            });
-          } else {
-            (navigationRef as any).current?.navigate('VoiceMealLog', {
-              mealSlotId: pending.mealSlotId,
-              autoStart: true,
-            });
+    const subscription = AppState.addEventListener(
+      'change',
+      async nextAppState => {
+        if (nextAppState === 'active' && pendingAcceptNavigation) {
+          const pending = pendingAcceptNavigation;
+          pendingAcceptNavigation = null;
+          const currentUserId = await sessionStore.getUserId();
+          if (pending.userId === currentUserId && navigationRef.isReady()) {
+            navigateToNotificationTarget(pending.target);
           }
         }
-      }
-    });
+      },
+    );
     return () => subscription.remove();
   }, []);
 
   React.useEffect(() => {
     // When the app is cold-started by tapping the notification or an action button
-    notifee.getInitialNotification().then(initialNotification => {
+    notifee.getInitialNotification().then(async initialNotification => {
       if (!initialNotification) return;
-      const data = initialNotification.notification?.data;
-      const isAccept = initialNotification.pressAction?.id === 'accept';
+      const payload = parseCallNotificationPayload(
+        initialNotification.notification?.data,
+      );
+      if (!payload) return;
 
-      if (data?.screen === 'IncomingHabitCall') {
-        const screen = isAccept ? 'VoiceHabit' : 'IncomingHabitCall';
-        const params = isAccept
-          ? {
-              habitId: data.habitId,
-              habitName: data.habitName,
-              habitTime: data.habitTime,
-              autoStart: true,
-            }
-          : {
-              habitId: data.habitId,
-              habitName: data.habitName,
-              habitTime: data.habitTime,
-              autoAccept: false,
-            };
-
-        const tryNavigate = () => {
-          if (navigationRef.isReady()) {
-            (navigationRef as any).current?.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }, { name: screen, params }],
-            });
-          } else {
-            setTimeout(tryNavigate, 150);
-          }
-        };
-        tryNavigate();
-      } else if (data?.screen === 'IncomingMealCall') {
-        const mealSlotId = data.mealSlotId as string;
-        const screen = isAccept ? 'VoiceMealLog' : 'IncomingMealCall';
-        const params = isAccept
-          ? { mealSlotId, autoStart: true }
-          : { mealSlotId, autoAccept: false };
-
-        const tryNavigate = () => {
-          if (navigationRef.isReady()) {
-            (navigationRef as any).current?.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }, { name: screen, params }],
-            });
-          } else {
-            setTimeout(tryNavigate, 150);
-          }
-        };
-        tryNavigate();
+      const currentUserId = await sessionStore.getUserId();
+      if (!notificationBelongsToUser(payload, currentUserId)) {
+        await cancelDisplayedNotification(initialNotification.notification?.id);
+        return;
       }
+
+      const action =
+        initialNotification.pressAction?.id === NOTIFICATION_ACTION_IDS.accept
+          ? 'accept'
+          : 'open';
+      const target = resolveNotificationNavigation(payload, action);
+
+      const tryNavigate = async () => {
+        if (payload.userId !== (await sessionStore.getUserId())) return;
+
+        if (navigationRef.isReady()) {
+          resetToNotificationTarget(target);
+        } else {
+          setTimeout(() => {
+            tryNavigate().catch(() => {});
+          }, 150);
+        }
+      };
+      tryNavigate().catch(() => {});
     });
   }, []);
 
   // Foreground handler
   React.useEffect(() => {
-    return notifee.onForegroundEvent(({ type, detail }) => {
-      const data = detail.notification?.data;
+    return notifee.onForegroundEvent(async ({ type, detail }) => {
+      const payload = parseCallNotificationPayload(detail.notification?.data);
+      if (!payload) return;
 
-      // Habit call notifications
-      if (data?.screen === 'IncomingHabitCall') {
-        if (type === EventType.DELIVERED || type === EventType.PRESS) {
-          (navigationRef as any).current?.navigate('IncomingHabitCall', {
-            habitId: data.habitId,
-            habitName: data.habitName,
-            habitTime: data.habitTime,
-            autoAccept: false,
-          });
-        }
-        if (type === EventType.ACTION_PRESS) {
-          if (detail.pressAction?.id === 'accept') {
-            notifee
-              .cancelNotification(detail.notification!.id!)
-              .catch(() => {});
-            (navigationRef as any).current?.navigate('VoiceHabit', {
-              habitId: data.habitId,
-              habitName: data.habitName,
-              habitTime: data.habitTime,
-              autoStart: true,
-            });
-          }
-          if (detail.pressAction?.id === 'decline') {
-            notifee
-              .cancelNotification(detail.notification!.id!)
-              .catch(() => {});
-          }
-        }
+      const currentUserId = await sessionStore.getUserId();
+      if (!notificationBelongsToUser(payload, currentUserId)) {
+        await cancelDisplayedNotification(detail.notification?.id);
         return;
       }
 
-      // Meal call notifications (existing behavior)
-      if (type === EventType.DELIVERED && data?.screen === 'IncomingMealCall') {
-        (navigationRef as any).current?.navigate('IncomingMealCall', {
-          mealSlotId: data.mealSlotId,
-          autoAccept: false,
-        });
-      }
-
-      if (type === EventType.PRESS && data?.screen === 'IncomingMealCall') {
-        (navigationRef as any).current?.navigate('IncomingMealCall', {
-          mealSlotId: data.mealSlotId,
-          autoAccept: false,
-        });
+      if (type === EventType.DELIVERED || type === EventType.PRESS) {
+        navigateToNotificationTarget(
+          resolveNotificationNavigation(payload, 'open'),
+        );
       }
 
       if (type === EventType.ACTION_PRESS) {
-        if (detail.pressAction?.id === 'accept') {
-          notifee.cancelNotification(detail.notification!.id!).catch(() => {});
-          (navigationRef as any).current?.navigate('VoiceMealLog', {
-            mealSlotId: data?.mealSlotId,
-            autoStart: true,
-          });
+        if (detail.pressAction?.id === NOTIFICATION_ACTION_IDS.accept) {
+          await cancelDisplayedNotification(detail.notification?.id);
+          navigateToNotificationTarget(
+            resolveNotificationNavigation(payload, 'accept'),
+          );
         }
-        if (detail.pressAction?.id === 'decline') {
-          notifee.cancelNotification(detail.notification!.id!).catch(() => {});
+        if (detail.pressAction?.id === NOTIFICATION_ACTION_IDS.decline) {
+          await cancelDisplayedNotification(detail.notification?.id);
         }
       }
     });

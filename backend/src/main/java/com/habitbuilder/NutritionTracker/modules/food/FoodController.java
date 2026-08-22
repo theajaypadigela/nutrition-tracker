@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import lombok.AllArgsConstructor;
@@ -42,7 +41,7 @@ public class FoodController {
     public ResponseEntity<List<FoodEntryResponse>> addEntries(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PathVariable String mealType,
-            @RequestBody List<AddFoodEntryRequest> request) {
+            @RequestBody @Valid List<@Valid AddFoodEntryRequest> request) {
         List<FoodEntryResponse> result = foodService.addFoodEntries(date, mealType, request);
         return ResponseEntity.ok(result);
     }
@@ -151,6 +150,7 @@ class FoodEntryResponse {
     private String unit;
     private String mealType;
     private String nutritionResponse;
+    private String enrichmentStatus;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }
@@ -161,7 +161,6 @@ class AddFoodEntryRequest {
     @NotBlank(message = "Food name is required")
     private String name;
 
-    @NotNull(message = "Quantity is required")
     @Positive(message = "Quantity must be positive")
     private double quantity;
 
