@@ -1,10 +1,11 @@
 package com.habitbuilder.NutritionTracker.modules.voice.webhook;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+
+import com.habitbuilder.NutritionTracker.config.properties.VapiProperties;
 
 /**
  * Scopes {@link VapiWebhookAuthenticationFilter} to the webhook path.
@@ -20,9 +21,10 @@ public class VapiWebhookFilterRegistration {
 
     @Bean
     public FilterRegistrationBean<VapiWebhookAuthenticationFilter> vapiWebhookAuthenticationFilter(
-            @Value("${vapi.webhook-secret:}") String webhookSecret) {
+            VapiProperties vapiProperties) {
         FilterRegistrationBean<VapiWebhookAuthenticationFilter> registration =
-                new FilterRegistrationBean<>(new VapiWebhookAuthenticationFilter(webhookSecret));
+                new FilterRegistrationBean<>(
+                        new VapiWebhookAuthenticationFilter(vapiProperties.webhookSecret()));
         registration.addUrlPatterns(WEBHOOK_PATH);
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;

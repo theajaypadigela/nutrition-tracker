@@ -6,10 +6,10 @@ import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.habitbuilder.NutritionTracker.common.ApiKeys;
+import com.habitbuilder.NutritionTracker.config.properties.VapiProperties;
 
 /**
  * Resolves the client-side Vapi call configuration: which assistant answers a given
@@ -26,22 +26,10 @@ public class VapiSessionService {
     private static final String PURPOSE_MEAL = "meal";
     private static final String PURPOSE_HABIT = "habit";
 
-    private final String vapiPublicKey;
-    private final String mealAssistantId;
-    private final String habitAssistantId;
-    private final String dedicatedMealAssistantId;
+    private final VapiProperties properties;
 
-    public VapiSessionService(
-            @Value("${vapi.public-key:}") String vapiPublicKey,
-            @Value("${vapi.meal-assistant-id:${vapi.assistant-id:}}") String mealAssistantId,
-            @Value("${vapi.habit-assistant-id:${vapi.assistant-id:}}") String habitAssistantId,
-            // The dedicated meal id WITHOUT the shared fallback, so we can detect (and log) when
-            // meal calls are silently borrowing the generic VAPI_ASSISTANT_ID.
-            @Value("${vapi.meal-assistant-id:}") String dedicatedMealAssistantId) {
-        this.vapiPublicKey = vapiPublicKey;
-        this.mealAssistantId = mealAssistantId;
-        this.habitAssistantId = habitAssistantId;
-        this.dedicatedMealAssistantId = dedicatedMealAssistantId;
+    public VapiSessionService(VapiProperties properties) {
+        this.properties = properties;
     }
 
     /**
@@ -50,7 +38,7 @@ public class VapiSessionService {
      */
     @PostConstruct
     void logAssistantConfiguration() {
-        if (dedicatedMealAssistantId == null || dedicatedMealAssistantId.isBlank()) {
+        if (properties.dedicatedMealAssistantId().isBlank()) {
             logger.warn(
                     "Vapi meal assistant id not set (VAPI_MEAL_ASSISTANT_ID); meal calls fall back to the shared "
                             + "VAPI_ASSISTANT_ID. Set a dedicated meal assistant to control the meal call persona/voice "
@@ -58,7 +46,7 @@ public class VapiSessionService {
         } else {
             logger.info("Vapi meal assistant configured via VAPI_MEAL_ASSISTANT_ID.");
         }
-        if (habitAssistantId == null || habitAssistantId.isBlank()) {
+        if (properties.resolvedHabitAssistantId().isBlank()) {
             logger.warn(
                     "Vapi habit assistant id resolves empty; habit calls will fail until VAPI_HABIT_ASSISTANT_ID "
                             + "(or VAPI_ASSISTANT_ID) is configured.");
@@ -84,7 +72,7 @@ public class VapiSessionService {
     }
 
     private String resolveClientToken() {
-        String publicKey = ApiKeys.sanitize(vapiPublicKey);
+        String publicKey = ApiKeys.sanitize(properties.publicKey());
         if (!publicKey.isBlank()) {
             return publicKey;
         }
@@ -105,8 +93,10 @@ public class VapiSessionService {
     }
 
     private String resolveAssistantIdForPurpose(String purpose) {
-        String assistantId = PURPOSE_HABIT.equals(purpose) ? habitAssistantId : mealAssistantId;
-        if (assistantId == null || assistantId.isBlank()) {
+        String assistantId = PURPOSE_HABIT.equals(purpose)
+                ? properties.resolvedHabitAssistantId()
+                : properties.resolvedMealAssistantId();
+        if (assistantId.isBlank()) {
             throw new IllegalStateException("Vapi assistant id is not configured for purpose: " + purpose);
         }
         return assistantId;

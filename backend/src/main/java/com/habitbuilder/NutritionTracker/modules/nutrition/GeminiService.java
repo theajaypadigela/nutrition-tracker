@@ -7,7 +7,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -15,8 +14,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.habitbuilder.NutritionTracker.common.ApiKeys;
+import com.habitbuilder.NutritionTracker.config.properties.GeminiProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiRetryPolicy;
-import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiRetryProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiWebClients;
 
 import reactor.core.publisher.Mono;
@@ -48,22 +47,17 @@ public class GeminiService implements AiTextClient {
     public GeminiService(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${gemini.api.key}") String geminiApiKey,
-            @Value("${gemini.api.model:gemini-2.0-flash}") String geminiModel,
-            @Value("${gemini.api.timeout:55000}") long timeout,
-            @Value("${gemini.api.retry.max-attempts:3}") int maxRetryAttempts,
-            @Value("${gemini.api.retry.initial-backoff-ms:700}") long retryInitialBackoffMs,
-            @Value("${gemini.api.retry.max-backoff-ms:3000}") long retryMaxBackoffMs) {
-        this.geminiApiKey = ApiKeys.sanitize(geminiApiKey);
-        this.geminiModel = geminiModel == null ? "" : geminiModel.trim();
-        this.timeout = timeout;
+            GeminiProperties properties) {
+        this.geminiApiKey = ApiKeys.sanitize(properties.key());
+        this.geminiModel = properties.model() == null ? "" : properties.model().trim();
+        this.timeout = properties.timeout();
         this.retryPolicy = new AiRetryPolicy(
                 PROVIDER_LABEL,
                 logger,
-                new AiRetryProperties(maxRetryAttempts, retryInitialBackoffMs, retryMaxBackoffMs),
+                properties.retry(),
                 RETRYABLE_BODY_KEYWORDS,
                 GeminiApiException::new);
-        this.webClient = AiWebClients.timeoutBounded(webClientBuilder, timeout);
+        this.webClient = AiWebClients.timeoutBounded(webClientBuilder, this.timeout);
         this.objectMapper = objectMapper;
     }
 

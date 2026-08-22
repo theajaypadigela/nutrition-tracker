@@ -2,8 +2,9 @@ package com.habitbuilder.NutritionTracker.security.jwt;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.habitbuilder.NutritionTracker.config.properties.JwtProperties;
 
 import java.security.Key;
 import java.util.Date;
@@ -11,11 +12,13 @@ import java.util.Date;
 @Service
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    private final String secret;
+    private final long accessExpiration;
 
-    @Value("${jwt.access-expiration}")
-    private long accessExpiration;
+    public JwtTokenProvider(JwtProperties properties) {
+        this.secret = properties.secret();
+        this.accessExpiration = properties.accessExpiration();
+    }
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());

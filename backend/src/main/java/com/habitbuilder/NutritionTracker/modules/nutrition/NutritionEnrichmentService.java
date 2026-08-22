@@ -11,11 +11,11 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.habitbuilder.NutritionTracker.config.properties.NutritionProviderProperties;
 import com.habitbuilder.NutritionTracker.modules.food.FoodEntry;
 import com.habitbuilder.NutritionTracker.modules.food.FoodEntryRepository;
 import com.habitbuilder.NutritionTracker.modules.nutrition.provider.AiNutritionProvider;
@@ -47,12 +47,12 @@ public class NutritionEnrichmentService {
             NutritionCacheService cacheService,
             NutritionScaler scaler,
             List<NutritionProvider> providers,
-            @Value("${nutrition.provider-chain:spoonacular,ai}") String providerChainConfig) {
+            NutritionProviderProperties providerProperties) {
         this.nutritionDetailsRepository = nutritionDetailsRepository;
         this.foodEntryRepository = foodEntryRepository;
         this.cacheService = cacheService;
         this.scaler = scaler;
-        this.providerChain = resolveProviderChain(providers, providerChainConfig);
+        this.providerChain = resolveProviderChain(providers, providerProperties.providerChain());
 
         logger.info("Nutrition provider chain: {}",
                 providerChain.stream().map(NutritionProvider::source).toList());

@@ -7,7 +7,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -15,8 +14,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.habitbuilder.NutritionTracker.common.ApiKeys;
+import com.habitbuilder.NutritionTracker.config.properties.GroqProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiRetryPolicy;
-import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiRetryProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiWebClients;
 
 import reactor.core.publisher.Mono;
@@ -50,26 +49,20 @@ public class GroqService implements AiTextClient {
     public GroqService(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${groq.api.key:}") String groqApiKey,
-            @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}") String groqApiUrl,
-            @Value("${groq.api.model:llama-3.1-8b-instant}") String groqModel,
-            @Value("${groq.api.timeout:55000}") long timeout,
-            @Value("${groq.api.retry.max-attempts:3}") int maxRetryAttempts,
-            @Value("${groq.api.retry.initial-backoff-ms:700}") long retryInitialBackoffMs,
-            @Value("${groq.api.retry.max-backoff-ms:3000}") long retryMaxBackoffMs) {
+            GroqProperties properties) {
         this.objectMapper = objectMapper;
-        this.groqApiKey = ApiKeys.sanitize(groqApiKey);
-        this.groqApiUrl = groqApiUrl == null ? "" : groqApiUrl.trim();
-        this.groqModel = groqModel == null ? "" : groqModel.trim();
-        this.timeout = timeout;
+        this.groqApiKey = ApiKeys.sanitize(properties.key());
+        this.groqApiUrl = properties.url() == null ? "" : properties.url().trim();
+        this.groqModel = properties.model() == null ? "" : properties.model().trim();
+        this.timeout = properties.timeout();
         this.retryPolicy = new AiRetryPolicy(
                 PROVIDER_LABEL,
                 logger,
-                new AiRetryProperties(maxRetryAttempts, retryInitialBackoffMs, retryMaxBackoffMs),
+                properties.retry(),
                 RETRYABLE_BODY_KEYWORDS,
                 (message, rawResponse, cause, statusCode, retryable) -> new AiProviderException(
                         PROVIDER_NAME, message, rawResponse, cause, statusCode, retryable));
-        this.webClient = AiWebClients.timeoutBounded(webClientBuilder, timeout);
+        this.webClient = AiWebClients.timeoutBounded(webClientBuilder, this.timeout);
     }
 
     @Override
