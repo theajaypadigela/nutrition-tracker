@@ -8,7 +8,7 @@ import {
 } from '../../../theme/tokens';
 import { Direction, Status, WeeklyNutrient } from '../../../types/nutrition';
 import { getMondayWeekRange } from '../../../utils/weekRange';
-import { ALL_DAYS } from '../../../utils/daySelection';
+import { DAY_CODES_MONDAY_FIRST } from '../../../utils/dayCode';
 
 // Color values live in the shared token source (src/theme/tokens.ts).
 export const tokens = {
@@ -166,5 +166,5 @@ export function weekRangeLabel(weekIdx: number, refDate: Date = new Date()): str
 }
 
 export function weekDayLabels(): string[] {
-  return [...ALL_DAYS];
+  return [...DAY_CODES_MONDAY_FIRST];
 }

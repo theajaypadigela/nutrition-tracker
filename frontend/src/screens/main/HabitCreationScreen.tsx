@@ -22,11 +22,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AppBar from '../../components/AppBar';
 import { formatClockTime } from '../../utils/timeFormatter';
 import {
-  DayKey,
   isAllDays,
   isWeekdaysOnly,
   isWeekendsOnly,
 } from '../../utils/daySelection';
+import { DayCode } from '../../utils/dayCode';
 import {
   ReminderType,
   useHabitCreationForm,
@@ -36,7 +36,7 @@ const IOS_PLATFORM = 'ios';
 const REMINDER_NOTIFICATION: ReminderType = 'notification';
 const REMINDER_CALL: ReminderType = 'call';
 
-const DAYS: { key: DayKey; label: string }[] = [
+const DAYS: { key: DayCode; label: string }[] = [
   { key: 'Mon', label: 'M' },
   { key: 'Tue', label: 'T' },
   { key: 'Wed', label: 'W' },

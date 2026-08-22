@@ -6,7 +6,7 @@
  * legacy schemes so a first reconciliation pass migrates them cleanly).
  */
 
-import { WeekdayCode } from './time';
+import { DayCode } from '../../utils/dayCode';
 
 export const MEAL_DAILY_ID = 'meal-alarm-daily';
 export const MEAL_RESCHEDULE_ID = 'meal-reschedule-once';
@@ -17,7 +17,7 @@ export function habitCallDailyId(slotKey: string): string {
 }
 
 /** Consolidated call notification for a habit time slot on a specific weekday. */
-export function habitCallWeeklyId(slotKey: string, weekday: WeekdayCode): string {
+export function habitCallWeeklyId(slotKey: string, weekday: DayCode): string {
   return `habit-call-${slotKey}-${weekday}`;
 }
 
@@ -27,7 +27,7 @@ export function habitPushDailyId(habitId: string): string {
 }
 
 /** Per-habit push notification on a specific weekday. */
-export function habitPushWeeklyId(habitId: string, weekday: WeekdayCode): string {
+export function habitPushWeeklyId(habitId: string, weekday: DayCode): string {
   return `habit-push-${habitId}-${weekday}`;
 }
 

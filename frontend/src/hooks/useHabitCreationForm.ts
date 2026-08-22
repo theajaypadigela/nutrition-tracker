@@ -7,13 +7,13 @@ import {
 } from '../services/notifications/reminderService';
 import { formatReminderTime } from '../utils/timeFormatter';
 import {
-  DayKey,
   getRepeatSummary,
   toggleAllDays,
   toggleDay as toggleDayPure,
   toggleWeekdays,
   toggleWeekends,
 } from '../utils/daySelection';
+import { DayCode } from '../utils/dayCode';
 
 export type ReminderType = 'notification' | 'call' | 'none';
 
@@ -32,7 +32,7 @@ const extractError = (err: any): string =>
  */
 export function useHabitCreationForm(onSaved: () => void) {
   const [habitName, setHabitName] = useState('');
-  const [selectedDays, setSelectedDays] = useState<DayKey[]>([]);
+  const [selectedDays, setSelectedDays] = useState<DayCode[]>([]);
   const [reminderType, setReminderType] =
     useState<ReminderType>('notification');
   const [reminderTime, setReminderTime] = useState(new Date());
@@ -41,7 +41,7 @@ export function useHabitCreationForm(onSaved: () => void) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggleDay = useCallback((day: DayKey) => {
+  const toggleDay = useCallback((day: DayCode) => {
     setSelectedDays(prev => toggleDayPure(prev, day));
   }, []);
   const selectAllDays = useCallback(() => {

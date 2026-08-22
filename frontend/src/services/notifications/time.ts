@@ -8,18 +8,7 @@
  * deterministic in tests and correct across DST / travel on device.
  */
 
-export type WeekdayCode = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
-
-/** Backend `repeatDays` uses 3-char title-case codes (see HabitService.getHabitsByDate). */
-export const WEEKDAY_CODES: WeekdayCode[] = [
-  'Sun',
-  'Mon',
-  'Tue',
-  'Wed',
-  'Thu',
-  'Fri',
-  'Sat',
-];
+import { DAY_CODES_SUNDAY_FIRST, DayCode } from '../../utils/dayCode';
 
 export type ZonedParts = {
   year: number;
@@ -153,14 +142,14 @@ export function zonedWallTimeToEpoch(
 }
 
 /** Maps a JS weekday index (0=Sun) to the backend 3-char code. */
-export function weekdayIndexToCode(index: number): WeekdayCode {
-  return WEEKDAY_CODES[((index % 7) + 7) % 7];
+export function weekdayIndexToCode(index: number): DayCode {
+  return DAY_CODES_SUNDAY_FIRST[((index % 7) + 7) % 7];
 }
 
 /** True if `code` is a recognised weekday code (case-insensitive, trimmed). */
-export function normalizeWeekdayCode(raw: string): WeekdayCode | null {
+export function normalizeWeekdayCode(raw: string): DayCode | null {
   const trimmed = raw.trim().toLowerCase();
-  for (const code of WEEKDAY_CODES) {
+  for (const code of DAY_CODES_SUNDAY_FIRST) {
     if (code.toLowerCase() === trimmed) {
       return code;
     }

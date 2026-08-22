@@ -7,10 +7,9 @@
  * times after reboot, DST, or travel.
  */
 
+import { DAY_CODES_SUNDAY_FIRST, DayCode } from '../../utils/dayCode';
 import { WallClockTime } from './clockTime';
 import {
-  WeekdayCode,
-  WEEKDAY_CODES,
   epochToZonedParts,
   zonedWallTimeToEpoch,
   weekdayIndexToCode,
@@ -18,7 +17,7 @@ import {
 
 export type Recurrence =
   | { kind: 'daily' }
-  | { kind: 'weekly'; days: WeekdayCode[] };
+  | { kind: 'weekly'; days: DayCode[] };
 
 export type ScheduleIntent = {
   time: WallClockTime;
@@ -28,8 +27,8 @@ export type ScheduleIntent = {
 export const dailyRecurrence = (): Recurrence => ({ kind: 'daily' });
 
 /** Builds a weekly recurrence from backend repeatDays, dropping unrecognised codes. */
-export function weeklyRecurrence(days: WeekdayCode[]): Recurrence {
-  const valid = days.filter(d => WEEKDAY_CODES.includes(d));
+export function weeklyRecurrence(days: DayCode[]): Recurrence {
+  const valid = days.filter(d => DAY_CODES_SUNDAY_FIRST.includes(d));
   return { kind: 'weekly', days: valid };
 }
 

@@ -17,6 +17,7 @@
 import notifee from '@notifee/react-native';
 import { Habit } from '../../types/types';
 import { reminderLog } from './logger';
+import { DAY_CODES_SUNDAY_FIRST, DayCode } from '../../utils/dayCode';
 import { canonicalSlotKey, parseClockTime, WallClockTime } from './clockTime';
 import {
   ScheduleIntent,
@@ -24,11 +25,7 @@ import {
   weeklyRecurrence,
   nextOccurrence,
 } from './scheduleIntent';
-import {
-  WeekdayCode,
-  WEEKDAY_CODES,
-  normalizeWeekdayCode,
-} from './time';
+import { normalizeWeekdayCode } from './time';
 import {
   MEAL_DAILY_ID,
   habitCallDailyId,
@@ -75,8 +72,8 @@ export type DesiredInput = {
   timeZone: string;
 };
 
-function allWeekdays(days: Set<WeekdayCode>): boolean {
-  return WEEKDAY_CODES.every(c => days.has(c));
+function allWeekdays(days: Set<DayCode>): boolean {
+  return DAY_CODES_SUNDAY_FIRST.every(c => days.has(c));
 }
 
 function addArmSpec(plan: DesiredPlan, spec: ArmSpec): void {
@@ -117,7 +114,7 @@ export function computeDesiredTriggers(input: DesiredInput): DesiredPlan {
   // Call-type habits consolidate per canonical time slot; push-type stay per-habit.
   const callSlots = new Map<
     string,
-    { days: Set<WeekdayCode>; sample: Habit }
+    { days: Set<DayCode>; sample: Habit }
   >();
 
   for (const habit of input.habits) {
@@ -230,8 +227,8 @@ function key24(time: WallClockTime): string {
   return `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`;
 }
 
-function normalizeRepeatDays(raw: string[] | undefined): Set<WeekdayCode> {
-  const out = new Set<WeekdayCode>();
+function normalizeRepeatDays(raw: string[] | undefined): Set<DayCode> {
+  const out = new Set<DayCode>();
   for (const r of raw ?? []) {
     const code = normalizeWeekdayCode(r);
     if (code) out.add(code);
@@ -242,13 +239,13 @@ function normalizeRepeatDays(raw: string[] | undefined): Set<WeekdayCode> {
 function armHabitRecurrence(
   plan: DesiredPlan,
   args: {
-    days: Set<WeekdayCode>;
+    days: Set<DayCode>;
     time: WallClockTime;
     nowEpoch: number;
     timeZone: string;
     kind: ReminderKind;
     dailyId: string;
-    weeklyId: (wd: WeekdayCode) => string;
+    weeklyId: (wd: DayCode) => string;
     slotKey: string;
     habit: { habitId?: string; habitName?: string; habitTime?: string };
   },
