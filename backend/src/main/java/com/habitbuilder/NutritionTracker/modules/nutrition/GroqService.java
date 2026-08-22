@@ -3,33 +3,41 @@ package com.habitbuilder.NutritionTracker.modules.nutrition;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habitbuilder.NutritionTracker.common.ApiKeys;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiRetryPolicy;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiRetryProperties;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiWebClients;
 
-import io.netty.channel.ChannelOption;
-import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.WriteTimeoutHandler;
 import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
 
 @Service
 public class GroqService implements AiTextClient {
 
     private static final Logger logger = LoggerFactory.getLogger(GroqService.class);
     private static final String PROVIDER_NAME = "groq";
+    private static final String PROVIDER_LABEL = "Groq";
+
+    /** Phrases Groq uses for rate limiting and overload; see AiRetryPolicy. */
+    private static final List<String> RETRYABLE_BODY_KEYWORDS = List.of(
+            "rate limit",
+            "too many requests",
+            "temporarily unavailable",
+            "service unavailable",
+            "overloaded",
+            "\"code\":\"rate_limit_exceeded\"",
+            "\"code\":429",
+            "\"code\": 429");
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -37,9 +45,7 @@ public class GroqService implements AiTextClient {
     private final String groqApiUrl;
     private final String groqModel;
     private final long timeout;
-    private final int maxRetryAttempts;
-    private final long retryInitialBackoffMs;
-    private final long retryMaxBackoffMs;
+    private final AiRetryPolicy retryPolicy;
 
     public GroqService(
             WebClient.Builder webClientBuilder,
@@ -52,25 +58,18 @@ public class GroqService implements AiTextClient {
             @Value("${groq.api.retry.initial-backoff-ms:700}") long retryInitialBackoffMs,
             @Value("${groq.api.retry.max-backoff-ms:3000}") long retryMaxBackoffMs) {
         this.objectMapper = objectMapper;
-        this.groqApiKey = sanitizeApiKey(groqApiKey);
+        this.groqApiKey = ApiKeys.sanitize(groqApiKey);
         this.groqApiUrl = groqApiUrl == null ? "" : groqApiUrl.trim();
         this.groqModel = groqModel == null ? "" : groqModel.trim();
         this.timeout = timeout;
-        this.maxRetryAttempts = Math.max(1, maxRetryAttempts);
-        this.retryInitialBackoffMs = Math.max(100, retryInitialBackoffMs);
-        this.retryMaxBackoffMs = Math.max(this.retryInitialBackoffMs, retryMaxBackoffMs);
-
-        HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-                .option(ChannelOption.SO_KEEPALIVE, true)
-                .responseTimeout(Duration.ofMillis(timeout))
-                .doOnConnected(conn -> conn
-                        .addHandlerLast(new ReadTimeoutHandler(timeout, TimeUnit.MILLISECONDS))
-                        .addHandlerLast(new WriteTimeoutHandler(30000, TimeUnit.MILLISECONDS)));
-
-        this.webClient = webClientBuilder
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .build();
+        this.retryPolicy = new AiRetryPolicy(
+                PROVIDER_LABEL,
+                logger,
+                new AiRetryProperties(maxRetryAttempts, retryInitialBackoffMs, retryMaxBackoffMs),
+                RETRYABLE_BODY_KEYWORDS,
+                (message, rawResponse, cause, statusCode, retryable) -> new AiProviderException(
+                        PROVIDER_NAME, message, rawResponse, cause, statusCode, retryable));
+        this.webClient = AiWebClients.timeoutBounded(webClientBuilder, timeout);
     }
 
     @Override
@@ -99,43 +98,7 @@ public class GroqService implements AiTextClient {
     private String callGroqApi(String prompt) {
         validateGroqConfiguration();
         Map<String, Object> requestBody = buildGroqRequestBody(prompt);
-
-        for (int attempt = 1; attempt <= maxRetryAttempts; attempt++) {
-            try {
-                return callGroqApiOnce(requestBody);
-            } catch (AiProviderException e) {
-                if (!isRetryableGroqError(e) || attempt >= maxRetryAttempts) {
-                    throw e;
-                }
-
-                long backoffMs = computeBackoffMs(attempt);
-                logger.warn(
-                        "Groq API transient failure on attempt {}/{} (statusCode={}). Retrying in {} ms",
-                        attempt, maxRetryAttempts, e.getStatusCode(), backoffMs);
-                sleepBeforeRetry(backoffMs);
-            } catch (Exception e) {
-                if (!isRetryableTransportException(e)) {
-                    throw e;
-                }
-                if (attempt >= maxRetryAttempts) {
-                    throw new AiProviderException(
-                            PROVIDER_NAME,
-                            "Transient Groq transport error after retries: " + e.getMessage(),
-                            "No response received",
-                            e,
-                            -1,
-                            true);
-                }
-
-                long backoffMs = computeBackoffMs(attempt);
-                logger.warn(
-                        "Groq transport failure on attempt {}/{} ({}). Retrying in {} ms",
-                        attempt, maxRetryAttempts, e.getClass().getSimpleName(), backoffMs);
-                sleepBeforeRetry(backoffMs);
-            }
-        }
-
-        throw new AiProviderException(PROVIDER_NAME, "Failed to call Groq API after retries", "No response received");
+        return retryPolicy.execute(() -> callGroqApiOnce(requestBody));
     }
 
     private Map<String, Object> buildGroqRequestBody(String prompt) {
@@ -158,8 +121,8 @@ public class GroqService implements AiTextClient {
                                 .defaultIfEmpty("No response body")
                                 .flatMap(body -> {
                                     int statusCode = clientResponse.statusCode().value();
-                                    boolean retryable = isRetryableStatusCode(statusCode)
-                                            || isRetryableErrorBody(body);
+                                    boolean retryable = retryPolicy.isRetryableStatusCode(statusCode)
+                                            || retryPolicy.isRetryableErrorBody(body);
                                     logger.error("Groq API error response (status={}): {}", statusCode, body);
                                     return Mono.error(new AiProviderException(
                                             PROVIDER_NAME,
@@ -214,78 +177,6 @@ public class GroqService implements AiTextClient {
         }
     }
 
-    private boolean isRetryableStatusCode(int statusCode) {
-        return statusCode == 429
-                || statusCode == 500
-                || statusCode == 502
-                || statusCode == 503
-                || statusCode == 504;
-    }
-
-    private boolean isRetryableErrorBody(String body) {
-        if (body == null || body.isBlank()) {
-            return false;
-        }
-
-        String normalized = body.toLowerCase(Locale.ROOT);
-        return normalized.contains("rate limit")
-                || normalized.contains("too many requests")
-                || normalized.contains("temporarily unavailable")
-                || normalized.contains("service unavailable")
-                || normalized.contains("overloaded")
-                || normalized.contains("\"code\":\"rate_limit_exceeded\"")
-                || normalized.contains("\"code\":429")
-                || normalized.contains("\"code\": 429");
-    }
-
-    private boolean isRetryableGroqError(AiProviderException exception) {
-        if (exception == null) {
-            return false;
-        }
-
-        return exception.isRetryable()
-                || isRetryableStatusCode(exception.getStatusCode())
-                || isRetryableErrorBody(exception.getRawResponse());
-    }
-
-    private boolean isRetryableTransportException(Throwable throwable) {
-        Throwable current = throwable;
-        while (current != null) {
-            if (current instanceof java.util.concurrent.TimeoutException
-                    || current instanceof WebClientRequestException) {
-                return true;
-            }
-
-            String message = current.getMessage();
-            if (message != null) {
-                String normalized = message.toLowerCase(Locale.ROOT);
-                if (normalized.contains("timed out") || normalized.contains("timeout")) {
-                    return true;
-                }
-            }
-
-            current = current.getCause();
-        }
-        return false;
-    }
-
-    private long computeBackoffMs(int attempt) {
-        long exponentialBackoff = retryInitialBackoffMs << Math.max(0, attempt - 1);
-        if (exponentialBackoff < 0) {
-            exponentialBackoff = retryMaxBackoffMs;
-        }
-        return Math.min(exponentialBackoff, retryMaxBackoffMs);
-    }
-
-    private void sleepBeforeRetry(long backoffMs) {
-        try {
-            Thread.sleep(backoffMs);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AiProviderException(PROVIDER_NAME, "Groq retry interrupted", "Retry interrupted", e, -1, true);
-        }
-    }
-
     private void validateGroqConfiguration() {
         if (groqApiKey.isBlank()) {
             throw new AiProviderException(PROVIDER_NAME, "Groq API key is not configured", "No request sent");
@@ -296,20 +187,5 @@ public class GroqService implements AiTextClient {
         if (groqModel.isBlank()) {
             throw new AiProviderException(PROVIDER_NAME, "Groq model is not configured", "No request sent");
         }
-    }
-
-    private String sanitizeApiKey(String rawKey) {
-        if (rawKey == null) {
-            return "";
-        }
-
-        String key = rawKey.trim();
-        if (key.startsWith("Bearer ")) {
-            key = key.substring("Bearer ".length()).trim();
-        }
-        if ((key.startsWith("\"") && key.endsWith("\"")) || (key.startsWith("'") && key.endsWith("'"))) {
-            key = key.substring(1, key.length() - 1).trim();
-        }
-        return key;
     }
 }
