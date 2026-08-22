@@ -9,7 +9,8 @@
  * iOS notes also call for, and it needs no extra triggers.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createJsonArrayStore } from '../storage/jsonStore';
+import { StorageKeys } from '../storage/storageKeys';
 import { reminderLog } from './logger';
 import { ReminderKind } from './notificationBuilder';
 
@@ -25,45 +26,50 @@ export type PendingAnswer = {
   habit?: { habitId?: string; habitName?: string; habitTime?: string };
 };
 
-const STORAGE_KEY = 'reminder_pending_answers_v1';
-
-async function readAll(): Promise<PendingAnswer[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    reminderLog.warn('pending.read_failed', 'Pending-answer read failed', { error: String(e) });
-    return [];
-  }
+function isPendingAnswer(value: unknown): value is PendingAnswer {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.key === 'string' &&
+    v.key.length > 0 &&
+    typeof v.notificationId === 'string' &&
+    typeof v.deadline === 'number'
+  );
 }
 
-async function writeAll(entries: PendingAnswer[]): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
+const store = createJsonArrayStore<PendingAnswer>(
+  StorageKeys.pendingAnswers,
+  isPendingAnswer,
+  {
+    onReadFailure: (reason, error) =>
+      reminderLog.warn('pending.read_failed', 'Pending-answer read failed', {
+        reason,
+        error: String(error),
+      }),
+  },
+);
 
 export async function upsertPendingAnswer(entry: PendingAnswer): Promise<void> {
-  const all = await readAll();
+  const all = await store.readAll();
   const next = all.filter(e => e.key !== entry.key);
   next.push(entry);
-  await writeAll(next);
+  await store.writeAll(next);
 }
 
 export async function resolvePendingAnswer(key: string): Promise<void> {
-  const all = await readAll();
-  await writeAll(all.filter(e => e.key !== key));
+  const all = await store.readAll();
+  await store.writeAll(all.filter(e => e.key !== key));
 }
 
 /** Pending answers whose deadline has passed -> these are missed. */
 export async function listExpiredPendingAnswers(nowEpoch: number): Promise<PendingAnswer[]> {
-  return (await readAll()).filter(e => e.deadline <= nowEpoch);
+  return (await store.readAll()).filter(e => e.deadline <= nowEpoch);
 }
 
 export async function listPendingAnswers(): Promise<PendingAnswer[]> {
-  return readAll();
+  return store.readAll();
 }
 
 export async function clearPendingAnswers(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY);
+  await store.clear();
 }
