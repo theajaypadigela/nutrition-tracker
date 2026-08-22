@@ -5,7 +5,6 @@ import React, {
   ReactNode,
   useEffect,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/types';
 import { registerUnauthorizedHandler } from '../api/client';
 import { authApi } from '../services/api/authApi';
@@ -13,6 +12,11 @@ import {
   onLoginReminders,
   onLogoutReminders,
 } from '../services/notifications/reminderService';
+import {
+  clearToken,
+  getToken,
+  setToken,
+} from '../services/storage/tokenStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -63,7 +67,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem('token');
+    await clearToken();
     setUser(null);
     setNeedsOnboarding(false);
     setOnboardingCallTime(null);
@@ -79,7 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
+        const token = await getToken();
 
         if (!token) return;
 
@@ -90,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         onLoginReminders().catch(() => {});
       } catch (error) {
         console.error(error);
-        await AsyncStorage.removeItem('token');
+        await clearToken();
         setUser(null);
       } finally {
         setIsInitializing(false);
@@ -107,7 +111,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const data = await authApi.login(email, password);
 
       if (data.token) {
-        await AsyncStorage.setItem('token', data.token);
+        await setToken(data.token);
       } else {
         throw new Error('No access token received from server');
       }
