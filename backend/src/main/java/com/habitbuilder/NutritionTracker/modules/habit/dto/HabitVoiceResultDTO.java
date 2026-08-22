@@ -1,0 +1,14 @@
+package com.habitbuilder.NutritionTracker.modules.habit.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class HabitVoiceResultDTO {
+    private String habitId;
+    private String habitName;
+    private String habitStatus; // "completed", "not_completed", "rescheduled"
+    private Integer rescheduleMinutes;
+    private String completedAt;
+}

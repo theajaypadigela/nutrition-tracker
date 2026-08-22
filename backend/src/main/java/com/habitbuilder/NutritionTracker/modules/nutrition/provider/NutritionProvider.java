@@ -2,7 +2,7 @@ package com.habitbuilder.NutritionTracker.modules.nutrition.provider;
 
 import java.util.Optional;
 
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionCache;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionCache;
 
 /**
  * A source of per-base-unit nutrition data for a food name. Implementations

@@ -10,14 +10,14 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiJsonSupport;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiProviderException;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiJsonSupport;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiProviderException;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.nutrition.JsonNumbers;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientKeys;
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientValue;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutrientValue;
 import com.habitbuilder.NutritionTracker.modules.nutrition.Nutrients;
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionCache;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionCache;
 
 /**
  * Terminal fallback provider: asks the configured LLM for per-base-unit

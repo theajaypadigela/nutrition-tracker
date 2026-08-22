@@ -5,6 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.habitbuilder.NutritionTracker.modules.nutrition.units.UnitConversion;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutrientValue;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionCache;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionDetails;
 
 /**
  * Operations on nutrient maps ({@code key -> NutrientValue}): defensive

@@ -17,9 +17,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.habitbuilder.NutritionTracker.modules.nutrition.JsonNumbers;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientKeys;
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientValue;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutrientValue;
 import com.habitbuilder.NutritionTracker.modules.nutrition.Nutrients;
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionCache;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionCache;
 
 @Component
 public class SpoonacularNutritionProvider implements NutritionProvider {

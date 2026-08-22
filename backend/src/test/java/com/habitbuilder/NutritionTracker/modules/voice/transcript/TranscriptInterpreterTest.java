@@ -10,8 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextClient;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextClient;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 
 class TranscriptInterpreterTest {

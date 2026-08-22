@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoCommandException;
-import com.habitbuilder.NutritionTracker.modules.nutrition.NutritionCache;
+import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionCache;
 
 import java.time.LocalTime;
 import java.util.List;

@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.habitbuilder.NutritionTracker.modules.voice.VoiceMealSession;
-import com.habitbuilder.NutritionTracker.modules.voice.VoiceMealSessionRepository;
+import com.habitbuilder.NutritionTracker.modules.voice.entity.VoiceMealSession;
+import com.habitbuilder.NutritionTracker.modules.voice.repository.VoiceMealSessionRepository;
 
 /**
  * Owns the {@link VoiceMealSession} audit trail. Every voice log — webhook or transcript —

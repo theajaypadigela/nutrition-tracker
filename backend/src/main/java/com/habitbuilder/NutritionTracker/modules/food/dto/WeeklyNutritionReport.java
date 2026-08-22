@@ -2,7 +2,7 @@ package com.habitbuilder.NutritionTracker.modules.food.dto;
 
 import java.util.List;
 
-import com.habitbuilder.NutritionTracker.modules.food.NutritionTotals;
+import com.habitbuilder.NutritionTracker.modules.food.dto.NutritionTotals;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

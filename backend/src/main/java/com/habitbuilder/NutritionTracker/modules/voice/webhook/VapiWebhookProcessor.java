@@ -12,8 +12,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.habitbuilder.NutritionTracker.modules.auth.repository.UserRepository;
-import com.habitbuilder.NutritionTracker.modules.food.FoodLogService;
-import com.habitbuilder.NutritionTracker.modules.voice.VoiceMealSession;
+import com.habitbuilder.NutritionTracker.modules.food.service.FoodLogService;
+import com.habitbuilder.NutritionTracker.modules.voice.entity.VoiceMealSession;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VoiceMealLogRequest;
 import com.habitbuilder.NutritionTracker.modules.voice.session.VoiceSessionRecorder;

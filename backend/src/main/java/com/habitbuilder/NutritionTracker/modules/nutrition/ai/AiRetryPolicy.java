@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiProviderException;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiProviderException;
 
 /**
  * The retry engine every AI text client shares: which failures are worth another attempt,

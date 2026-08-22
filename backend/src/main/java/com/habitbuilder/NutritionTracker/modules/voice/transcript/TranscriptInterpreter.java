@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiJsonSupport;
-import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiJsonSupport;
+import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.transcript.prompt.MealTranscriptPrompts;
 
