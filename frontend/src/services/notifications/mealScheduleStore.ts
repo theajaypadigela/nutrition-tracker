@@ -5,8 +5,9 @@
  * syncing from the server on login.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mealScheduleApi } from '../api/mealScheduleApi';
+import { createJsonValueStore } from '../storage/jsonStore';
+import { StorageKeys } from '../storage/storageKeys';
 import { reminderLog } from './logger';
 import { resolveDeviceTimeZone } from './time';
 
@@ -15,8 +16,6 @@ export type MealSchedule = {
   minute: number;
   enabled: boolean;
 };
-
-const STORAGE_KEY = 'meal_schedule_v2';
 
 export function defaultMealSchedule(): MealSchedule {
   return { hour: 20, minute: 0, enabled: false };
@@ -36,28 +35,33 @@ function isValidSchedule(value: unknown): value is MealSchedule {
   );
 }
 
+// A single object, not a list — this store was never an array store, which is why the
+// value flavour of the factory exists.
+const store = createJsonValueStore<MealSchedule>(
+  StorageKeys.mealSchedule,
+  isValidSchedule,
+  defaultMealSchedule,
+  {
+    clearWhenInvalid: true,
+    onReadFailure: (reason, error) =>
+      reason === 'wrong-shape'
+        ? reminderLog.warn(
+            'meal.cache_corrupt',
+            'Meal schedule cache was invalid; using default',
+          )
+        : reminderLog.warn('meal.cache_read_failed', 'Meal schedule cache read failed', {
+            error: String(error),
+          }),
+  },
+);
+
 /** Reads the cached schedule. Corrupted storage returns the default (never throws). */
 export async function loadMealScheduleCached(): Promise<MealSchedule> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultMealSchedule();
-    const parsed = JSON.parse(raw);
-    if (!isValidSchedule(parsed)) {
-      reminderLog.warn('meal.cache_corrupt', 'Meal schedule cache was invalid; using default');
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      return defaultMealSchedule();
-    }
-    return parsed;
-  } catch (e) {
-    reminderLog.warn('meal.cache_read_failed', 'Meal schedule cache read failed', {
-      error: String(e),
-    });
-    return defaultMealSchedule();
-  }
+  return store.read();
 }
 
 export async function saveMealScheduleCached(schedule: MealSchedule): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(schedule));
+  await store.write(schedule);
 }
 
 /**
