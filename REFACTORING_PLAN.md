@@ -1,6 +1,6 @@
 # Refactoring Plan — Nutrition Tracker
 
-**Status:** Phase 1 executed (2026-08-23). Phases 0, 2–5 not yet executed.
+**Status:** Phases 1, 2 and 3 executed (2026-08-23). Phase 0 skipped by decision; Phases 4–5 not yet executed.
 **Prepared:** 2026-08-23 · branch `mongo-deployment`
 **Scope:** `backend/` (Spring Boot 3.4 / Java 17 / MongoDB) and `frontend/` (React Native 0.83 / TypeScript).
 
@@ -553,31 +553,105 @@ only after the safety net exists.
   updated 2026-06-16 (`b987410`) — it is a live runbook, so filing it under "history" would
   misrepresent it. The five genuine process artefacts went to `docs/history/` as specified.
 
-### Phase 2 — Backend structure
+### Phase 2 — Backend structure — ✅ **done 2026-08-23**
 
-| # | Task | Findings |
-|---|---|---|
-| 2.1 | Extract `AiRetryPolicy` + `AiRetryProperties`; collapse the duplicated retry engine | F5 |
-| 2.2 | Route the 6 `SecurityContextHolder` sites through `CurrentUserProvider` | F6 |
-| 2.3 | Split `FoodController` into 4 controllers (**paths unchanged**) | F6 |
-| 2.4 | Decompose `VoiceLogService` per §F4; `TranscriptIdempotencyGuard` as an interface | F4 |
-| 2.5 | `RuntimeException` → `ResponseStatusException` ⚠️ *behaviour change — needs §9 sign-off* | F4 |
-| 2.6 | Extract Vapi webhook auth into a filter; drop `ResponseEntity<?>` wildcards | F6 |
-| 2.7 | `@ConfigurationProperties` records; `EnvConfig` dual-list → single derivation; `println` → SLF4J | F7 |
-| 2.8 | Normalise all module packages to the `modules/auth` layout | F8 |
+| # | Task | Findings | Status |
+|---|---|---|---|
+| 2.1 | Extract `AiRetryPolicy` + `AiRetryProperties`; collapse the duplicated retry engine | F5 | ✅ |
+| 2.2 | Route the 6 `SecurityContextHolder` sites through `CurrentUserProvider` | F6 | ✅ (7 sites) |
+| 2.3 | Split `FoodController` into 4 controllers (**paths unchanged**) | F6 | ✅ |
+| 2.4 | Decompose `VoiceLogService` per §F4; `TranscriptIdempotencyGuard` as an interface | F4 | ✅ |
+| 2.5 | `RuntimeException` → `ResponseStatusException` | F4 | ✅ signed off |
+| 2.6 | Extract Vapi webhook auth into a filter; drop `ResponseEntity<?>` wildcards | F6 | ✅ |
+| 2.7 | `@ConfigurationProperties` records; `EnvConfig` dual-list → single derivation; `println` → SLF4J | F7 | ✅ partial |
+| 2.8 | Normalise all module packages to the `modules/auth` layout | F8 | ✅ |
 
-**2.8 goes last on purpose** — it touches ~100 files, so every earlier refactor lands before
+**2.8 went last on purpose** — it touched ~100 files, so every earlier refactor landed before
 the big move rather than being rebased across it.
 
-### Phase 3 — Frontend data & storage
+**Deviations from the plan as written, and why:**
 
-| # | Task | Findings |
-|---|---|---|
-| 3.1 | `api/client.js` → `client.ts`, typed `HttpClient` | F10 |
-| 3.2 | Move the 4 bypassing modules' HTTP calls into `services/api/*` | F10 |
-| 3.3 | `createJsonArrayStore<T>` factory + `storageKeys.ts`; migrate the 6 stores **one per commit** | F11 |
-| 3.4 | `tokenStorage` module; single owner of the `'token'` key | F11, F14 |
-| 3.5 | Split `OnboardingContext` out of `AuthContext` | F14 |
+- **2.2 — the plan's "behaviour-identical" claim did not survive contact.** `CurrentUserProvider`
+  throws 401, but `/auth/me` answers an anonymous caller `{valid:false}` and `/profile` answers
+  `{message:...}`; routing them through the throwing accessor would have changed both bodies.
+  Added `findCurrentUser(): Optional<User>` so all seven sites keep their exact responses.
+  An `isAuthenticated()` check was tried and reverted — a no-op in production (the JWT filter
+  always builds the three-argument token) but it rejects the two-argument token tests use, which
+  `MealScheduleServiceTest` caught immediately.
+- **2.4 found eight `RuntimeException` sites, not six.** The plan's grep missed the two inside
+  `orElseThrow` lambdas.
+- **2.5's real footprint is one path, not six.** The plan assumed these failures surfaced as
+  `GlobalExceptionHandler`'s generic 500. They did not: both entry points caught `Exception`
+  themselves. Only `parse-transcript` was opened up, and only its missing-user path changes
+  (500 → 404). The body deliberately keeps this endpoint's own `{error: string}` shape, because
+  `VoiceMealLogScreen` renders that string — the uniform contract's `"Not Found"` reason phrase
+  would have become user-facing copy. **The webhook keeps swallowing everything into 202 on
+  purpose:** its new 400/422 are permanent failures and Vapi retries any non-2xx, so surfacing
+  them would cause re-delivery of a payload that can never succeed.
+- **2.7 — the plan's derivation rule was backwards.** `toLowerCase().replace('_','.')` only
+  reproduces 12 of the 28 property names, because the leaf segments are kebab-case
+  (`gemini.api.retry.max-attempts`). Deriving in the *other* direction — property name to env
+  key, uppercase with `.`/`-` → `_` — reproduces 25 of 28, leaving exactly three legacy
+  overrides (`GEMINI_MODEL`, `GROQ_MODEL`, `MONGODB_URI`). The single list is therefore keyed by
+  Spring property name.
+- **2.7 is partial by scope, and named as such.** The six records the plan lists were done.
+  `spoonacular.api.*`, `usda.api.*`, `mongo.*`, `cors.allowed-origins` and `ai.provider` stay on
+  `@Value`. Separately, `JwtAuthenticationFilter` still writes seven `System.out.println` lines
+  per request — including the authenticated email — which is outside F7's stated scope but is a
+  worse instance of the same defect.
+- **2.8 left six files at their module roots.** `MealTypes`, `NutrientCatalog`, `NutrientKeys`,
+  `Nutrients`, `JsonNumbers` and `VoiceTranscriptProcessingException` belong to no single layer
+  and are read from all of them; filing `MealTypes` under `entity/` or `dto/` would claim
+  something untrue. `HabitCompletionDTO` and `HabitDTO` had to widen from package-private to
+  public, being used from what are now sibling packages.
+- **Verification, given Phase 0 was skipped.** Two throwaway harnesses were written, run, and
+  removed rather than committed: a standalone-MockMvc route inventory (13 `/food` routes resolve
+  to the expected handlers) and an `ApplicationContextRunner` binding suite (8 checks: every
+  default equals the `@Value` default it replaced, clamping survives binding, missing required
+  properties still fail startup, an empty Gemini key still starts, the Vapi assistant fallback
+  distinguishes unset from empty, all 28 env keys derive to their historical names, and
+  `EnvConfig` still instantiates from `spring.factories` with its new `DeferredLogFactory`
+  constructor). Both were re-run against the moved tree after 2.8. They are worth committing if
+  Phase 0 is ever revisited.
+
+### Phase 3 — Frontend data & storage — ✅ **done 2026-08-23**
+
+| # | Task | Findings | Status |
+|---|---|---|---|
+| 3.1 | `api/client.js` → `client.ts`, typed `HttpClient` | F10 | ✅ |
+| 3.2 | Move the 4 bypassing modules' HTTP calls into `services/api/*` | F10 | ✅ |
+| 3.3 | `createJsonArrayStore<T>` factory + `storageKeys.ts`; migrate the 6 stores **one per commit** | F11 | ✅ |
+| 3.4 | `tokenStorage` module; single owner of the `'token'` key | F11, F14 | ✅ |
+| 3.5 | Split `OnboardingContext` out of `AuthContext` | F14 | ✅ |
+
+**Deviations from the plan as written, and why:**
+
+- **3.1 and 3.4 landed in one commit.** `api/client` is one of the two owners of the `'token'`
+  key, so splitting them meant writing the token accessors twice and reverting one leaves the
+  other broken.
+- **3.3 needed two factories, not one.** `mealScheduleStore` persists a single
+  `{hour, minute, enabled}` object, so it was never an array store; it uses a
+  `createJsonValueStore<T>` sibling. Calling it an array store would have been a fiction.
+  The other five use `createJsonArrayStore<T>` as specified, one per commit.
+- **3.3 — the element-guard hardening bit three stores, not all six.** `rescheduleStore` and
+  `habitStore` already validated elements, and `mealScheduleStore` is a single value.
+  `missedStore`, `pendingAnswerStore` and `processedActions` gained element validation, so a
+  malformed record is now dropped instead of read back and re-persisted.
+- **3.5 required inverting the provider order.** `OnboardingProvider` wraps `AuthProvider`,
+  because registration arms the flow and a parent cannot read a child's context. It also
+  surfaced a latent lint error: moving `resetOnboarding` into `logout`'s closure made
+  `react-hooks/exhaustive-deps` flag the effect's empty dependency array. Fixed with
+  `useCallback` rather than suppressed.
+- **3.5 — `setOnboardingCallTime` has no caller anywhere in the app**, so `onboardingCallTime`
+  is always `null` and the navigator's `ONBOARDING_DONE` branch is unreachable; the chosen time
+  actually reaches the Done screen as a navigation param. Removing the pair is provably
+  behaviour-identical, but it deletes a navigator branch, so it was documented in
+  `OnboardingContext` and left for a decision rather than done unasked.
+- **No new tests were written** (see §9 decision 5). The existing suites were kept green and
+  three were adjusted mechanically: `VoiceLogServiceTest` became
+  `TranscriptInterpreterTest`, `habitStore.test.ts` now seeds through
+  `StorageKeys.habitDefinitions` instead of a raw key literal, and `AuthContext.test.tsx`
+  gained the `OnboardingProvider` wrapper. F14's "split the test to match" was not done.
 
 ### Phase 4 — Frontend component/hook boundaries
 
@@ -658,21 +732,22 @@ Named so nobody expects them and nobody quietly does them:
 
 ---
 
-## 9. Decisions Needed Before Phase 2
+## 9. Decisions — answered 2026-08-23
 
-1. **Task 2.5 — `RuntimeException` → `ResponseStatusException` in `VoiceLogService`.** This
-   is the only deliberate behaviour change proposed. Six failure paths that currently return
-   `500 "An unexpected error occurred"` would start returning accurate 4xx statuses. It is
-   the right fix, but if any frontend code branches on the 500 it needs coordinating.
-   **Proceed, or leave the statuses as-is and only fix the class hierarchy?**
+1. **Task 2.5 — `RuntimeException` → `ResponseStatusException`.** ✅ **Proceed with accurate
+   4xx.** Grep evidence supporting the call: the only HTTP-status branches in `frontend/src`
+   are `api/client.ts` (401) and `mealScheduleStore` (404, on a different endpoint). Nothing
+   branches on the voice endpoints' 500s. See the Phase 2 deviations for what actually changed.
 
-2. **Task 5.3 — `strict: true` rollout.** Four incremental waves across 189 files, with real
-   bugs expected to surface. **Full rollout now, or `noImplicitAny` + `strictNullChecks`
-   only for this pass?**
+2. **Task 5.3 — `strict: true` rollout.** ⏳ Still open; Phase 5 not started.
 
-3. **Phase 2.8 — the ~100-file package move.** Highest merge-conflict risk in the plan.
-   **Is there a quiet window, or should it be deferred to a later pass?**
+3. **Phase 2.8 — the ~100-file package move.** ✅ **Included, landed last** as the plan
+   sequenced it.
 
-4. **Sequencing.** The phases are independent after Phase 0. If you want a specific area
-   first (the plan's own recommendation is Phase 0 → 1 → 2, since the backend has the
-   highest severity-to-effort ratio), say which and I'll re-order.
+4. **Sequencing.** ✅ Phases 2 and 3 were run back to back. Phases 4 and 5 remain.
+
+5. **Phase 0 — the test safety net.** ✅ **Skipped by decision**; no new test files were
+   committed. The two throwaway verification harnesses described in the Phase 2 deviations
+   stood in for tasks 0.1–0.3 and were discarded afterwards. Phase 0 is therefore still open,
+   and the risk it was written to cover is still open with it — most sharply for Phases 4–5,
+   which touch screens and type-level flags with no render tests underneath them.
