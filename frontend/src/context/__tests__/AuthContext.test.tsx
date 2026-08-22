@@ -2,6 +2,7 @@ import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../AuthContext';
+import { OnboardingProvider } from '../OnboardingContext';
 import { authApi } from '../../services/api/authApi';
 import {
   onLoginReminders,
@@ -37,9 +38,13 @@ async function setupAuth(): Promise<{ current: () => AuthApi }> {
   };
   await act(async () => {
     ReactTestRenderer.create(
-      <AuthProvider>
-        <Capture />
-      </AuthProvider>,
+      // AuthProvider consumes OnboardingContext (it arms the first-run flow on
+      // registration), so the provider order here mirrors App.tsx.
+      <OnboardingProvider>
+        <AuthProvider>
+          <Capture />
+        </AuthProvider>
+      </OnboardingProvider>,
     );
   });
   return { current: () => value as AuthApi };

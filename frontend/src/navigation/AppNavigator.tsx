@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import { useAuth } from '../context/AuthContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import MealScheduleScreen from '../screens/main/MealScheduleScreen';
 import OnboardingMealScheduleScreen from '../screens/onboarding/OnboardingMealScheduleScreen';
 import OnboardingDoneScreen from '../screens/onboarding/OnboardingDoneScreen';
@@ -37,7 +38,7 @@ const AuthenticatedNavigator = () => {
   // Fresh signups open on the one-time call-setup flow; everyone else on MainTabs.
   // If a call time was already chosen during registration, skip straight to Done.
   // needsOnboarding resets on app reload, so it only fires for the registering session.
-  const { needsOnboarding, onboardingCallTime } = useAuth();
+  const { needsOnboarding, onboardingCallTime } = useOnboarding();
   const initialRoute = !needsOnboarding
     ? ROUTES.MAIN_TABS
     : onboardingCallTime

@@ -3,6 +3,7 @@ import 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GluestackUIProvider } from './components/ui/gluestack-ui-provider';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { OnboardingProvider } from './context/OnboardingContext';
 import { AppNavigator } from './navigation/AppNavigator';
 import { useNotificationInit } from './hooks/notifications/useNotificationInit';
 import { useReminderReconciliation } from './hooks/notifications/useReminderReconciliation';
@@ -35,9 +36,13 @@ function AppShell() {
 function App() {
   return (
     <GluestackUIProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
+      {/* Onboarding sits above Auth: registration arms the first-run flow, so
+          AuthProvider consumes it rather than owning it. */}
+      <OnboardingProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </OnboardingProvider>
     </GluestackUIProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useState,
   useContext,
   ReactNode,
@@ -17,25 +18,13 @@ import {
   getToken,
   setToken,
 } from '../services/storage/tokenStorage';
+import { useOnboarding } from './OnboardingContext';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
   isLoading: boolean;
-  /**
-   * True for the duration of an app session right after a fresh registration, so the
-   * authenticated navigator opens on the one-time call-setup flow instead of MainTabs.
-   * Resets to false on app reload and once onboarding is finished.
-   */
-  needsOnboarding: boolean;
-  /**
-   * Formatted call time chosen during registration (e.g. "8:00 PM"), or null. When set,
-   * the onboarding gate skips Call Setup and opens directly on the Done screen.
-   */
-  onboardingCallTime: string | null;
-  setOnboardingCallTime: (t: string | null) => void;
-  completeOnboarding: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (
     name: string,
@@ -50,35 +39,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Session and identity only. First-run flow state lives in OnboardingContext, which
+ * must be mounted above this provider: registration arms that flow, so this consumes it
+ * rather than owning it (F14).
+ */
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
-  const [onboardingCallTime, setOnboardingCallTime] = useState<string | null>(
-    null,
-  );
+  const { beginOnboarding, resetOnboarding } = useOnboarding();
 
-  const completeOnboarding = () => {
-    setNeedsOnboarding(false);
-    setOnboardingCallTime(null);
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await clearToken();
     setUser(null);
-    setNeedsOnboarding(false);
-    setOnboardingCallTime(null);
+    resetOnboarding();
     // Cancel all local triggers and clear device-local reminder state on logout.
     await onLogoutReminders().catch(() => {});
-  };
+  }, [resetOnboarding]);
 
-  // Register the logout handler the API client calls on a 401.
+  // Register the logout handler the API client calls on a 401. Re-registers if the
+  // callback's identity changes, so the client never holds a stale closure.
   useEffect(() => {
     registerUnauthorizedHandler(logout);
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -142,14 +128,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setIsLoading(true);
     // Flag onboarding before login flips isAuthenticated, so the authenticated
     // navigator mounts on the call-setup flow rather than MainTabs.
-    setNeedsOnboarding(true);
+    beginOnboarding();
     try {
       await authApi.register(name, email, password, dob, gender);
 
       await login(email, password);
     } catch (error) {
-      setNeedsOnboarding(false);
-      setOnboardingCallTime(null);
+      resetOnboarding();
       throw error;
     } finally {
       setIsLoading(false);
@@ -174,10 +159,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         isAuthenticated: !!user,
         isInitializing,
         isLoading,
-        needsOnboarding,
-        onboardingCallTime,
-        setOnboardingCallTime,
-        completeOnboarding,
         login,
         register,
         logout,

@@ -4,7 +4,7 @@ import { ArrowRight, Check } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useAuth } from '@/src/context/AuthContext';
+import { useOnboarding } from '@/src/context/OnboardingContext';
 import { ROUTES } from '../../navigation/routeNames';
 import { PrimaryButton, T } from '../../components/auth';
 
@@ -16,7 +16,7 @@ export default function OnboardingDoneScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const insets = useSafeAreaInsets();
-  const { completeOnboarding } = useAuth();
+  const { completeOnboarding } = useOnboarding();
   const callTime = (route.params as { callTime?: string } | undefined)?.callTime;
 
   const pop = useRef(new Animated.Value(0.6)).current;
