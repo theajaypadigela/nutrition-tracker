@@ -6,12 +6,24 @@
  * handler and the foreground app even on a fresh process.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createJsonArrayStore } from '../storage/jsonStore';
+import { StorageKeys } from '../storage/storageKeys';
 
-const STORAGE_KEY = 'reminder_processed_actions_v1';
 const TTL_MS = 30_000;
 
 type Entry = { key: string; at: number };
+
+function isEntry(value: unknown): value is Entry {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.key === 'string' && typeof v.at === 'number';
+}
+
+// No failure reporting on purpose: this is a best-effort dedupe backstop, and a
+// storage hiccup must never stop an action the user just tapped.
+const store = createJsonArrayStore<Entry>(StorageKeys.processedActions, isEntry, {
+  onWriteFailure: () => {},
+});
 
 // Synchronous in-memory claim set. Notifee's headless background handler and the
 // foreground app share a single RN JS runtime, so a synchronous check-and-set here is
@@ -31,16 +43,9 @@ function claimInMemory(key: string, now: number): boolean {
   return true;
 }
 
-async function readAll(now: number): Promise<Entry[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((e: Entry) => now - e.at < TTL_MS);
-  } catch {
-    return [];
-  }
+/** Persisted claims still inside the TTL. */
+async function readUnexpired(now: number): Promise<Entry[]> {
+  return (await store.readAll()).filter(e => now - e.at < TTL_MS);
 }
 
 /**
@@ -58,15 +63,12 @@ export async function claimAction(
     return false;
   }
   // Persisted backstop for the cross-launch case (in-memory is empty on a fresh process).
-  const entries = await readAll(now);
+  const entries = await readUnexpired(now);
   if (entries.some(e => e.key === key)) {
     return false;
   }
   entries.push({ key, at: now });
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // If persistence fails we still proceed (better to act than to silently drop).
-  }
+  // A failed write is swallowed by the store: better to act than to silently drop.
+  await store.writeAll(entries);
   return true;
 }
