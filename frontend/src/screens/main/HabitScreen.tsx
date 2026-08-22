@@ -19,7 +19,7 @@ import {
   Clock,
 } from 'lucide-react-native';
 import { Button } from '../../components/ui/button';
-import AppBar from '../../components/AppBar';
+import AppBar from '../../components/common/AppBar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/MainTabNavigator';

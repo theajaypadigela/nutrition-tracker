@@ -26,7 +26,7 @@ import {
 } from '../../components/ui/select';
 import { useAuth } from '@/src/context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
-import AppBar from '../../components/AppBar';
+import AppBar from '../../components/common/AppBar';
 import { useProfileForm } from '../../hooks/useProfileForm';
 
 const ProfileScreen = () => {

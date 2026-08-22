@@ -13,7 +13,7 @@ import {
   CalendarDays,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import AppBar from '../../components/AppBar';
+import AppBar from '../../components/common/AppBar';
 
 import { HStack } from '../../components/ui/hstack';
 import { VStack } from '../../components/ui/vstack';

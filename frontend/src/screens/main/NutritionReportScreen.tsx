@@ -21,7 +21,7 @@ import {
 } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
-import AppBar from '../../components/AppBar';
+import AppBar from '../../components/common/AppBar';
 import { useWeeklyNutritionReport } from '../../hooks/useWeeklyNutritionReport';
 
 const NutritionReportScreen = () => {

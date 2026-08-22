@@ -13,7 +13,7 @@ import { HStack } from '../../components/ui/hstack';
 import { Input, InputField } from '../../components/ui/input';
 import { Button, ButtonText } from '../../components/ui/button';
 import { Divider } from '../../components/ui/divider';
-import AppBar from '../../components/AppBar';
+import AppBar from '../../components/common/AppBar';
 import {
   Select,
   SelectItem,

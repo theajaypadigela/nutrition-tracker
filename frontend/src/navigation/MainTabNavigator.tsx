@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import DashBoardScreen from '../screens/main/DashBoardScreen';
 import HabitScreen from '../screens/main/HabitScreen';
 import HabitCreationScreen from '../screens/main/HabitCreationScreen';
-import BottomNavigation from '../components/BottomNavigation';
+import BottomNavigation from '../components/common/BottomNavigation';
 import { FoodStackNavigator } from './FoodStackNavigator';
 import { ReportsStackNavigator } from './ReportsStackNavigator';
 
