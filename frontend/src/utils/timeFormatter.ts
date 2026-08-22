@@ -59,3 +59,36 @@ export function formatLocaleTimeFromParts(hour: number, minute: number): string 
   d.setHours(hour, minute, 0, 0);
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
+
+/**
+ * Minutes-since-midnight for the first 12-hour time found in `t`, or null when the
+ * string contains none. Deliberately lenient: unanchored and range-unchecked.
+ *
+ * Not the same parser as `services/notifications/clockTime.parseClockTime`, which is
+ * anchored, range-validated and also accepts 24-hour strings — use that one for
+ * anything that schedules. This one exists only for the display-string comparison
+ * below, and stays lenient so `timesMatch` keeps its historical behaviour.
+ */
+export function parseTime12hToMinutes(t: string): number | null {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const period = m[3].toUpperCase();
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+/**
+ * True when two display time strings denote the same clock time, so that
+ * "2:16 PM" and "02:16 PM" compare equal. Falls back to a normalised exact match
+ * first, which is what makes non-12h strings (e.g. "20:00") still compare.
+ */
+export function timesMatch(a: string, b: string): boolean {
+  const normalize = (t: string) => t.replace(/\s+/g, ' ').trim().toUpperCase();
+  if (normalize(a) === normalize(b)) return true;
+  const pa = parseTime12hToMinutes(a);
+  const pb = parseTime12hToMinutes(b);
+  return pa !== null && pb !== null && pa === pb;
+}
