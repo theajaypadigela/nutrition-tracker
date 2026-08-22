@@ -1,4 +1,4 @@
-package com.habitbuilder.NutritionTracker.modules.voice;
+package com.habitbuilder.NutritionTracker.modules.voice.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,11 +14,11 @@ import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextClient;
 import com.habitbuilder.NutritionTracker.modules.nutrition.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 
-class VoiceLogServiceTest {
+class TranscriptInterpreterTest {
 
     @Test
     void usesAiRescheduleDecisionAndMinutes() {
-        VoiceLogService service = serviceWithAiResponse("""
+        TranscriptInterpreter service = interpreterWithAiResponse("""
                 {"shouldLogMeals":false,"rescheduleMinutes":10,"rationale":"user_asked_for_delay"}
                 """);
 
@@ -32,7 +32,7 @@ class VoiceLogServiceTest {
 
     @Test
     void doesNotOverrideAiWhenTranscriptContainsDelayWords() {
-        VoiceLogService service = serviceWithAiResponse("""
+        TranscriptInterpreter service = interpreterWithAiResponse("""
                 {"shouldLogMeals":false,"rescheduleMinutes":null,"rationale":"not_enough_info"}
                 """);
 
@@ -46,7 +46,7 @@ class VoiceLogServiceTest {
 
     @Test
     void keepsAiMealLoggingDecisionWithOptionalReschedule() {
-        VoiceLogService service = serviceWithAiResponse("""
+        TranscriptInterpreter service = interpreterWithAiResponse("""
                 {"shouldLogMeals":true,"rescheduleMinutes":15,"rationale":"logged_and_follow_up"}
                 """);
 
@@ -58,9 +58,9 @@ class VoiceLogServiceTest {
         assertEquals(15, response.getRescheduleMinutes());
     }
 
-    private VoiceLogService serviceWithAiResponse(String response) {
+    private TranscriptInterpreter interpreterWithAiResponse(String response) {
         AiTextService aiTextService = new AiTextService(List.of(new StubAiTextClient(response)), "stub");
-        return new VoiceLogService(null, null, null, new ObjectMapper(), aiTextService);
+        return new TranscriptInterpreter(aiTextService, new ObjectMapper());
     }
 
     private record StubAiTextClient(String response) implements AiTextClient {

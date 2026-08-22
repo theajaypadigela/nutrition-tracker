@@ -8,6 +8,12 @@ import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpr
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiSessionConfigResponseDTO;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.VapiWebhookRequest;
+import com.habitbuilder.NutritionTracker.modules.voice.session.VapiSessionConfig;
+import com.habitbuilder.NutritionTracker.modules.voice.session.VapiSessionService;
+import com.habitbuilder.NutritionTracker.modules.voice.transcript.MealTranscriptParseResult;
+import com.habitbuilder.NutritionTracker.modules.voice.transcript.TranscriptInterpreter;
+import com.habitbuilder.NutritionTracker.modules.voice.transcript.TranscriptParsingService;
+import com.habitbuilder.NutritionTracker.modules.voice.webhook.VapiWebhookProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +33,24 @@ public class VoiceLogController {
 
     private static final Logger logger = LoggerFactory.getLogger(VoiceLogController.class);
 
-    private final VoiceLogService voiceLogService;
+    private final VapiWebhookProcessor webhookProcessor;
+    private final VapiSessionService vapiSessionService;
+    private final TranscriptParsingService transcriptParsingService;
+    private final TranscriptInterpreter transcriptInterpreter;
     private final CurrentUserProvider currentUserProvider;
 
     @Value("${vapi.webhook-secret:}")
     private String vapiWebhookSecret;
 
-    public VoiceLogController(VoiceLogService voiceLogService, CurrentUserProvider currentUserProvider) {
-        this.voiceLogService = voiceLogService;
+    public VoiceLogController(VapiWebhookProcessor webhookProcessor,
+            VapiSessionService vapiSessionService,
+            TranscriptParsingService transcriptParsingService,
+            TranscriptInterpreter transcriptInterpreter,
+            CurrentUserProvider currentUserProvider) {
+        this.webhookProcessor = webhookProcessor;
+        this.vapiSessionService = vapiSessionService;
+        this.transcriptParsingService = transcriptParsingService;
+        this.transcriptInterpreter = transcriptInterpreter;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -66,13 +82,15 @@ public class VoiceLogController {
                             ? webhookRequest.getCall().getMetadata()
                             : null;
 
-                    voiceLogService.processVoiceMealLog(
+                    webhookProcessor.processVoiceMealLog(
                             fn.getParameters(),
                             webhookRequest.getCall() != null ? webhookRequest.getCall().getTranscript() : null,
                             callMetadata);
                 }
             }
         } catch (Exception e) {
+            // Every failure is swallowed on purpose: Vapi retries on any non-2xx, and a
+            // re-delivered webhook would duplicate the entries this call already logged.
             logger.error("Error processing Vapi webhook: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(Map.of("result", "failed", "recoverable", true));
@@ -98,8 +116,7 @@ public class VoiceLogController {
         User user = authenticated.get();
 
         try {
-            VoiceLogService.VapiSessionConfig config = voiceLogService
-                    .createVapiSessionConfig(user.getId(), purpose);
+            VapiSessionConfig config = vapiSessionService.createSessionConfig(user.getId(), purpose);
 
                 return ResponseEntity.ok()
                     .cacheControl(CacheControl.noStore())
@@ -131,7 +148,7 @@ public class VoiceLogController {
         }
         User user = authenticated.get();
 
-        String token = voiceLogService.generateVapiToken(user.getId());
+        String token = vapiSessionService.generateToken(user.getId());
         return ResponseEntity.ok()
             .cacheControl(CacheControl.noStore())
             .body(Map.of("token", token));
@@ -164,7 +181,7 @@ public class VoiceLogController {
                 user.getId(), normalizedTranscript.length());
 
         try {
-            VoiceLogService.MealTranscriptParseResult result = voiceLogService.parseTranscriptAndLogMeals(
+            MealTranscriptParseResult result = transcriptParsingService.parseTranscriptAndLogMeals(
                     user.getId(), logDate, normalizedTranscript);
             return ResponseEntity.ok(Map.of(
                     "status", "success",
@@ -172,6 +189,8 @@ public class VoiceLogController {
                     "duplicateTranscript", result.duplicateTranscript(),
                     "logDate", logDate));
         } catch (Exception e) {
+            // A transient provider failure is checked first, and by cause chain, because the
+            // client's retry-with-backoff depends on getting 503 rather than 500.
             AiProviderException aiProviderException = findAiProviderException(e);
             if (aiProviderException != null && aiProviderException.isRetryable()) {
                 logger.warn(
@@ -214,7 +233,7 @@ public class VoiceLogController {
                     .body(Map.of("error", "Transcript is required"));
         }
 
-        MealTranscriptInterpretResponseDTO response = voiceLogService
+        MealTranscriptInterpretResponseDTO response = transcriptInterpreter
                 .interpretMealTranscript(transcript.trim(), body.getMealSlotId());
         return ResponseEntity.ok(response);
     }
