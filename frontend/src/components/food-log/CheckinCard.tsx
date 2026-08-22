@@ -10,12 +10,11 @@ import {
 import { Text } from '../ui/text';
 import { Phone, Zap, Clock, ChevronRight, X } from 'lucide-react-native';
 import {
-  MealReminder,
-  loadSchedule,
-  saveSchedule,
-  scheduleAllAlarms,
-  defaultSchedule,
-} from '../../services/mealScheduler';
+  MealSchedule,
+  loadMealScheduleCached,
+  saveMealSchedule,
+  defaultMealSchedule,
+} from '../../services/notifications/reminderService';
 import { formatClockTimeFromParts } from '../../utils/timeFormatter';
 
 const GREEN = '#0f7a3d';
@@ -51,14 +50,14 @@ function computeEta(hour: number, minute: number): string {
 }
 
 export const CheckinCard: React.FC = () => {
-  const [reminder, setReminder] = useState<MealReminder>(defaultSchedule());
+  const [reminder, setReminder] = useState<MealSchedule>(defaultMealSchedule());
   const [showSheet, setShowSheet] = useState(false);
   const [draftHour, setDraftHour] = useState(20);
   const [draftMinute, setDraftMinute] = useState(0);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    loadSchedule().then(s => {
+    loadMealScheduleCached().then(s => {
       setReminder(s);
       setDraftHour(s.hour);
       setDraftMinute(s.minute);
@@ -75,11 +74,10 @@ export const CheckinCard: React.FC = () => {
   };
 
   const toggleEnabled = async (val: boolean) => {
-    const updated: MealReminder = { ...reminder, enabled: val };
+    const updated: MealSchedule = { ...reminder, enabled: val };
     setReminder(updated);
     try {
-      await saveSchedule(updated);
-      await scheduleAllAlarms(updated);
+      await saveMealSchedule(updated);
     } catch (e: any) {
       console.error('Toggle reminder failed:', e);
     }
@@ -87,10 +85,9 @@ export const CheckinCard: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    const updated: MealReminder = { hour: draftHour, minute: draftMinute, enabled: true };
+    const updated: MealSchedule = { hour: draftHour, minute: draftMinute, enabled: true };
     try {
-      await saveSchedule(updated);
-      await scheduleAllAlarms(updated);
+      await saveMealSchedule(updated);
       setReminder(updated);
       setShowSheet(false);
     } catch (e: any) {

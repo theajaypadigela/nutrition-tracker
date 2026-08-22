@@ -8,8 +8,8 @@ const apiClient = axios.create({
 });
 
 // Handler invoked when the server rejects auth (401). The AuthProvider registers its
-// logout() here at startup. This replaces the old global-mutable `logoutHandler` that
-// was shared through services/authService and coupled the client to that module.
+// logout() here at startup, so the client owns the handler instead of sharing it through
+// a global mutable in a separate module.
 let unauthorizedHandler = null;
 
 export const registerUnauthorizedHandler = handler => {
@@ -37,6 +37,4 @@ apiClient.interceptors.response.use(
   },
 );
 
-// Re-exported under the original name for any code still importing DEFAULT_BASE_URL.
-export { API_BASE_URL as DEFAULT_BASE_URL };
 export default apiClient;

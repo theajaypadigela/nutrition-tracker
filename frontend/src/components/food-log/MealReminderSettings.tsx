@@ -13,12 +13,11 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import notifee, { AuthorizationStatus } from '@notifee/react-native';
 import {
-  MealReminder,
-  loadSchedule,
-  saveSchedule,
-  scheduleAllAlarms,
-  defaultSchedule,
-} from '../../services/mealScheduler';
+  MealSchedule,
+  loadMealScheduleCached,
+  saveMealSchedule,
+  defaultMealSchedule,
+} from '../../services/notifications/reminderService';
 import { formatClockTimeFromParts } from '../../utils/timeFormatter';
 
 type Props = {
@@ -29,12 +28,12 @@ type Props = {
   variant?: 'screen' | 'card';
   style?: StyleProp<ViewStyle>;
   /** Called after a successful save with the persisted schedule. */
-  onSaved?: (schedule: MealReminder) => void;
+  onSaved?: (schedule: MealSchedule) => void;
 };
 
 /**
  * Self-contained meal-reminder controls (time + enable + save). Owns its own load/save
- * lifecycle via the mealScheduler facade, so it can be dropped into any screen without
+ * lifecycle via the reminder facade, so it can be dropped into any screen without
  * lifting state. Rendered both by MealScheduleScreen and inline on the Food Log page (where
  * users log their meals) — the same controls, one source of truth.
  *
@@ -46,13 +45,13 @@ export default function MealReminderSettings({
   style,
   onSaved,
 }: Props) {
-  const [reminder, setReminder] = useState<MealReminder>(defaultSchedule());
+  const [reminder, setReminder] = useState<MealSchedule>(defaultMealSchedule());
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
-    loadSchedule().then(s => {
+    loadMealScheduleCached().then(s => {
       if (active) setReminder(s);
     });
     return () => {
@@ -85,8 +84,7 @@ export default function MealReminderSettings({
         settings.authorizationStatus === AuthorizationStatus.DENIED;
     }
     try {
-      await saveSchedule(reminder);
-      await scheduleAllAlarms(reminder);
+      await saveMealSchedule(reminder);
       if (notificationsDenied) {
         Alert.alert(
           'Saved — but notifications are off',

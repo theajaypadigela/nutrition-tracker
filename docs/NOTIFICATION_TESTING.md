@@ -1,7 +1,7 @@
 # Notification reliability — manual device runbook
 
 This runbook validates that reminders behave like alarm-clock alarms across the survival
-matrix in `NOTIFICATION_RELIABILITY_PROMPT.md` §B/§C. Each scenario lists the exact
+matrix in `docs/history/NOTIFICATION_RELIABILITY_PROMPT.md` §B/§C. Each scenario lists the exact
 commands and the **expected observable outcome**.
 
 > Status of execution: at the time these changes were authored, **no Android device or

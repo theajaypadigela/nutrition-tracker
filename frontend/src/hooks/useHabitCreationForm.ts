@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 import { habitApi } from '../services/api/habitApi';
-import { scheduleHabitReminder } from '../services/habitScheduler';
-import { requestReminderPermissions } from '../services/notifications/reminderService';
+import {
+  requestReminderPermissions,
+  scheduleHabitReminder,
+} from '../services/notifications/reminderService';
 import { formatReminderTime } from '../utils/timeFormatter';
 import {
   DayKey,

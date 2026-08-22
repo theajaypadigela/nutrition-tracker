@@ -3,7 +3,7 @@ import {
   navigateToVoiceHabit,
   navigateToVoiceMealLog,
 } from '../navigation/navigationUtils';
-import { clearMealRescheduleTime } from '../services/mealScheduler';
+import { clearMealReschedule } from '../services/notifications/reminderService';
 import { onCallAccepted, type OccurrenceData } from '../services/notifications/callLifecycle';
 import type { ReminderKind } from '../services/notifications/notificationBuilder';
 
@@ -87,7 +87,7 @@ export async function handleAcceptCall(payload: IncomingCallPayload): Promise<vo
   await onCallAccepted(payloadToOccurrence(payload)).catch(() => {});
 
   if (payload.type === 'meal') {
-    await clearMealRescheduleTime().catch(() => {});
+    await clearMealReschedule().catch(() => {});
   }
 
   navigateToVoiceForPayload(payload);
@@ -100,7 +100,7 @@ export async function handleAcceptCall(payload: IncomingCallPayload): Promise<vo
  */
 export async function handleMissedLogNow(payload: IncomingCallPayload): Promise<void> {
   if (payload.type === 'meal') {
-    await clearMealRescheduleTime().catch(() => {});
+    await clearMealReschedule().catch(() => {});
   }
   navigateToVoiceForPayload(payload);
 }

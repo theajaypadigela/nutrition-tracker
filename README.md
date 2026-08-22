@@ -17,6 +17,8 @@ A full-stack nutrition tracking application with a React Native mobile frontend 
 │   ├── pom.xml        # Maven configuration
 │   └── ...
 │
+├── docs/              # Reference docs (manual runbooks) and docs/history/ process artefacts
+│
 └── README.md          # This file
 ```
 

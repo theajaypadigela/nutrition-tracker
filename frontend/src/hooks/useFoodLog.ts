@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { FoodItem, Meals, MealsResponse, NutritionTotals } from '../types/types';
 import { foodLogApi } from '../services/api/foodLogApi';
-import { loadMealRescheduleTime } from '../services/mealScheduler';
+import { getMealRescheduleFireAt } from '../services/notifications/reminderService';
 import { createEmptyMeals, normalizeMeals } from '../utils/meals';
 
 const EMPTY_TOTALS: NutritionTotals = {
@@ -17,7 +17,7 @@ const EMPTY_TOTALS: NutritionTotals = {
 /**
  * Controller for a day's food log: fetch, the meal-reschedule banner, the edit-drawer
  * state, and entry save/delete (all via foodLogApi). Replaces the previous two-sources-of-
- * truth pattern (useApi.data synced into local state) with a single owned state.
+ * truth pattern (fetched data synced into local state) with a single owned state.
  */
 export function useFoodLog(selectedDate: string) {
   const [meals, setMeals] = useState<Meals>(createEmptyMeals());
@@ -48,7 +48,7 @@ export function useFoodLog(selectedDate: string) {
   // Fetch the log + the meal-reschedule banner time together (used on focus + refresh).
   const reload = useCallback(async () => {
     await loadFoodLog();
-    const ts = await loadMealRescheduleTime();
+    const ts = await getMealRescheduleFireAt();
     setMealRescheduleTime(ts);
   }, [loadFoodLog]);
 

@@ -3,19 +3,19 @@ import ReactTestRenderer, { act } from 'react-test-renderer';
 import { Alert } from 'react-native';
 import { useHabitCreationForm } from '../useHabitCreationForm';
 import { habitApi } from '../../services/api/habitApi';
-import { scheduleHabitReminder } from '../../services/habitScheduler';
-import { requestReminderPermissions } from '../../services/notifications/reminderService';
+import {
+  requestReminderPermissions,
+  scheduleHabitReminder,
+} from '../../services/notifications/reminderService';
 
 jest.mock('../../services/api/habitApi', () => ({
   habitApi: { create: jest.fn() },
-}));
-jest.mock('../../services/habitScheduler', () => ({
-  scheduleHabitReminder: jest.fn(() => Promise.resolve()),
 }));
 jest.mock('../../services/notifications/reminderService', () => ({
   requestReminderPermissions: jest.fn(() =>
     Promise.resolve({ notificationsAuthorized: true }),
   ),
+  scheduleHabitReminder: jest.fn(() => Promise.resolve()),
 }));
 
 const mockCreate = habitApi.create as jest.Mock;

@@ -2,18 +2,18 @@ import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { useFoodLog } from '../useFoodLog';
 import { foodLogApi } from '../../services/api/foodLogApi';
-import { loadMealRescheduleTime } from '../../services/mealScheduler';
+import { getMealRescheduleFireAt } from '../../services/notifications/reminderService';
 import { FoodItem } from '../../types/types';
 
 jest.mock('../../services/api/foodLogApi', () => ({
   foodLogApi: { getLog: jest.fn(), updateEntry: jest.fn(), deleteEntry: jest.fn() },
 }));
-jest.mock('../../services/mealScheduler', () => ({
-  loadMealRescheduleTime: jest.fn(() => Promise.resolve(null)),
+jest.mock('../../services/notifications/reminderService', () => ({
+  getMealRescheduleFireAt: jest.fn(() => Promise.resolve(null)),
 }));
 
 const mockApi = foodLogApi as jest.Mocked<typeof foodLogApi>;
-const mockReschedule = loadMealRescheduleTime as jest.Mock;
+const mockReschedule = getMealRescheduleFireAt as jest.Mock;
 
 const totals = {
   calories: 100,

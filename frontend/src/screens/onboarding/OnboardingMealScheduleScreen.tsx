@@ -15,10 +15,9 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import {
-  defaultSchedule,
-  saveSchedule,
-  scheduleAllAlarms,
-} from '../../services/mealScheduler';
+  defaultMealSchedule,
+  saveMealSchedule,
+} from '../../services/notifications/reminderService';
 import notifee, { AuthorizationStatus } from '@notifee/react-native';
 import { ROUTES } from '../../navigation/routeNames';
 import {
@@ -32,13 +31,13 @@ import { formatLocaleTimeFromParts } from '../../utils/timeFormatter';
 /**
  * One-time "daily check-in call" setup, shown right after registration. Visually the
  * Nourish CallSetup design; functionally it keeps the existing scheduler core
- * (saveSchedule + scheduleAllAlarms + notifee permission). On finish/skip it lands on
+ * (saveMealSchedule + notifee permission). On finish/skip it lands on
  * the Done screen rather than jumping straight to MainTabs.
  */
 export default function OnboardingMealScheduleScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const base = defaultSchedule();
+  const base = defaultMealSchedule();
   const [hour, setHour] = useState(base.hour);
   const [minute, setMinute] = useState(base.minute);
   const [hasPicked, setHasPicked] = useState(false);
@@ -68,8 +67,7 @@ export default function OnboardingMealScheduleScreen() {
       const settings = await notifee.requestPermission();
       const denied =
         settings.authorizationStatus === AuthorizationStatus.DENIED;
-      await saveSchedule({ hour, minute, enabled: true });
-      await scheduleAllAlarms({ hour, minute, enabled: true });
+      await saveMealSchedule({ hour, minute, enabled: true });
       if (denied) {
         Alert.alert(
           'Reminders are off',

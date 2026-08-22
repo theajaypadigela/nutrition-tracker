@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { Habit } from '../types/types';
 import { habitApi } from '../services/api/habitApi';
-import { cancelHabitReminder } from '../services/habitScheduler';
+import { cancelHabitReminder } from '../services/notifications/reminderService';
 import { calculateHabitStats } from '../utils/habitStats';
 
 const flipCompleted = (habits: Habit[], id: string): Habit[] =>

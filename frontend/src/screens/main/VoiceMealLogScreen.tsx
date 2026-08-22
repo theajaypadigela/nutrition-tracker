@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { foodLogApi } from '../../services/api/foodLogApi';
-import { scheduleMealReschedule } from '../../services/mealScheduler';
+import { rescheduleMeal } from '../../services/notifications/reminderService';
 import { getTodayLocalDate } from '../../utils/date';
 import type { VoiceMealLogParams } from '../../navigation/paramTypes';
 import VoiceSessionScreen from '../../components/voice/VoiceSessionScreen';
@@ -224,7 +224,7 @@ export default function VoiceMealLogScreen() {
       console.log('[VoiceMealLog] Logged', count, 'meal entries');
 
       if (delayMinutes != null && delayMinutes > 0) {
-        const fireAt = await scheduleMealReschedule(delayMinutes);
+        const fireAt = await rescheduleMeal(delayMinutes);
         if (fireAt != null) {
           setFollowUpMessage(
             buildFollowUpMessage({

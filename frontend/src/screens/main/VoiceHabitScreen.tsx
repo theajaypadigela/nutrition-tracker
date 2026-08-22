@@ -3,7 +3,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { habitApi } from '../../services/api/habitApi';
 import { Habit, HabitVoiceResult } from '../../types/types';
-import { scheduleHabitReschedule } from '../../services/habitScheduler';
+import { rescheduleHabit } from '../../services/notifications/reminderService';
 import type { VoiceHabitParams } from '../../navigation/paramTypes';
 import VoiceSessionScreen from '../../components/voice/VoiceSessionScreen';
 import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
@@ -268,7 +268,7 @@ export default function VoiceHabitScreen() {
         // then build the confirmation from the epoch the scheduler actually armed.
         let fireAt: number | null = null;
         if (habits.length > 0) {
-          fireAt = await scheduleHabitReschedule(
+          fireAt = await rescheduleHabit(
             {
               id: habits[0].id,
               name: habits.map(h => h.name).join(', '),

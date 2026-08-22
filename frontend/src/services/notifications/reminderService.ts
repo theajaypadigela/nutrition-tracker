@@ -22,7 +22,11 @@ import {
 } from './rescheduleStore';
 import { clearPendingAnswers } from './pendingAnswerStore';
 import { clearMissed } from './missedStore';
-import { clearHabitsCached } from './habitStore';
+import {
+  clearHabitsCached,
+  upsertHabitCached,
+  removeHabitCached,
+} from './habitStore';
 import {
   readPermissionSnapshot,
   canScheduleExact,
@@ -33,6 +37,10 @@ import { armSpec, cancelTrigger } from './scheduler';
 import { MEAL_RESCHEDULE_ID, habitRescheduleCallId, habitReschedulePushId } from './ids';
 import { canonicalSlotKey } from './clockTime';
 import { reminderLog } from './logger';
+
+/** Meal-schedule shape and read helpers, re-exported so screens have one entry point. */
+export type { MealSchedule } from './mealScheduleStore';
+export { defaultMealSchedule, loadMealScheduleCached } from './mealScheduleStore';
 
 /** One-time startup: create channels and register iOS action categories. */
 export async function initReminders(): Promise<void> {
@@ -85,6 +93,26 @@ export async function reconcileAfterHabitChange(): Promise<ReconcileReport> {
   // old time-slot trigger now even if the GET /habit round-trip fails on this pass — otherwise a
   // habit time edit can ring at BOTH the old and new times until the next successful fetch.
   return runReconciliation({ reason: 'save', isAuthenticated: true, forceHabitPrune: true });
+}
+
+/**
+ * Arms reminders for the current habit set (idempotent; safe to call after create/edit).
+ *
+ * The created/edited habit is written to the offline cache FIRST so reconciliation can arm
+ * it even if the `GET /habit` round-trip is unavailable — restoring the resilience the old
+ * direct-scheduling path had, while keeping the reconcile-from-truth architecture.
+ */
+export async function scheduleHabitReminder(habit: Habit): Promise<void> {
+  await upsertHabitCached(habit);
+  await reconcileAfterHabitChange();
+}
+
+/** Re-arms from server truth, pruning any triggers for a now-deleted habit. */
+export async function cancelHabitReminder(habitId: string): Promise<void> {
+  // Drop it from the cache too, so a reconcile whose fetch fails doesn't re-arm a habit the
+  // user just deleted.
+  await removeHabitCached(habitId);
+  await reconcileAfterHabitChange();
 }
 
 async function armReschedule(entry: RescheduleEntry): Promise<void> {
