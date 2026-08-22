@@ -17,7 +17,6 @@ import com.habitbuilder.NutritionTracker.modules.voice.webhook.VapiWebhookProces
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,9 +39,6 @@ public class VoiceLogController {
     private final TranscriptInterpreter transcriptInterpreter;
     private final CurrentUserProvider currentUserProvider;
 
-    @Value("${vapi.webhook-secret:}")
-    private String vapiWebhookSecret;
-
     public VoiceLogController(VapiWebhookProcessor webhookProcessor,
             VapiSessionService vapiSessionService,
             TranscriptParsingService transcriptParsingService,
@@ -56,23 +52,14 @@ public class VoiceLogController {
     }
 
     /**
-     * Webhook endpoint called by Vapi when a voice call ends or a function is
-     * invoked.
-     * This endpoint is publicly accessible (no JWT) but validated via X-Vapi-Secret
-     * header.
+     * Webhook endpoint called by Vapi when a voice call ends or a function is invoked.
+     * Publicly accessible (no JWT); the X-Vapi-Secret header is checked by
+     * {@link com.habitbuilder.NutritionTracker.modules.voice.webhook.VapiWebhookAuthenticationFilter}
+     * before the request reaches here.
      */
     @PostMapping("/voice-log")
-    public ResponseEntity<?> handleVapiWebhook(
-            @RequestHeader(value = "X-Vapi-Secret", required = false) String secret,
+    public ResponseEntity<Map<String, Object>> handleVapiWebhook(
             @RequestBody VapiWebhookRequest webhookRequest) {
-
-        // Validate webhook secret if configured
-        if (vapiWebhookSecret != null && !vapiWebhookSecret.isEmpty()
-                && !vapiWebhookSecret.equals(secret)) {
-            logger.warn("Vapi webhook request rejected — invalid secret");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
         try {
             if (webhookRequest.getMessage() != null
                     && "function-call".equals(webhookRequest.getMessage().getType())) {
@@ -108,33 +95,32 @@ public class VoiceLogController {
      * user.
      */
     @GetMapping("/voice/session")
-    public ResponseEntity<?> getVapiSessionConfig(
+    public ResponseEntity<VapiSessionConfigResponseDTO> getVapiSessionConfig(
             @RequestParam(value = "purpose", defaultValue = "meal") String purpose) {
         Optional<User> authenticated = currentUserProvider.findCurrentUser();
         if (authenticated.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        User user = authenticated.get();
 
         try {
-            VapiSessionConfig config = vapiSessionService.createSessionConfig(user.getId(), purpose);
+            VapiSessionConfig config = vapiSessionService.createSessionConfig(
+                    authenticated.get().getId(), purpose);
 
-                return ResponseEntity.ok()
+            return ResponseEntity.ok()
                     .cacheControl(CacheControl.noStore())
                     .body(new VapiSessionConfigResponseDTO(
-                    config.token(),
-                    config.assistantId(),
-                    config.purpose()));
+                            config.token(),
+                            config.assistantId(),
+                            config.purpose()));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
             logger.error("Vapi session configuration error: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Voice service configuration is invalid"));
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Voice service configuration is invalid");
         } catch (Exception e) {
             logger.error("Failed to initialize Vapi session: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("error", "Failed to initialize voice session"));
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to initialize voice session");
         }
     }
 
@@ -147,9 +133,8 @@ public class VoiceLogController {
         if (authenticated.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        User user = authenticated.get();
 
-        String token = vapiSessionService.generateToken(user.getId());
+        String token = vapiSessionService.generateToken(authenticated.get().getId());
         return ResponseEntity.ok()
             .cacheControl(CacheControl.noStore())
             .body(Map.of("token", token));
@@ -236,7 +221,7 @@ public class VoiceLogController {
     }
 
     @PostMapping("/voice-log/interpret-transcript")
-    public ResponseEntity<?> interpretMealTranscript(
+    public ResponseEntity<MealTranscriptInterpretResponseDTO> interpretMealTranscript(
             @RequestBody MealTranscriptInterpretRequestDTO body) {
         if (currentUserProvider.findCurrentUser().isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -244,12 +229,10 @@ public class VoiceLogController {
 
         String transcript = body.getTranscript();
         if (transcript == null || transcript.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Transcript is required"));
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transcript is required");
         }
 
-        MealTranscriptInterpretResponseDTO response = transcriptInterpreter
-                .interpretMealTranscript(transcript.trim(), body.getMealSlotId());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(transcriptInterpreter
+                .interpretMealTranscript(transcript.trim(), body.getMealSlotId()));
     }
 }
