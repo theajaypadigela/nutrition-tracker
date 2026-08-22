@@ -4,11 +4,11 @@
  * habitId, so we send the reminder time and the server resolves every matching habit.
  */
 
-import apiClient from '../../api/client';
+import { HabitOccurrenceStatus, habitApi } from '../api/habitApi';
 import { reminderLog } from './logger';
 import { resolveDeviceTimeZone } from './time';
 
-export type OccurrenceStatus = 'MISSED' | 'DECLINED';
+export type OccurrenceStatus = HabitOccurrenceStatus;
 
 export async function reportHabitOccurrence(input: {
   habitId?: string;
@@ -19,7 +19,7 @@ export async function reportHabitOccurrence(input: {
     return;
   }
   try {
-    await apiClient.post('/habit/occurrence-status', {
+    await habitApi.reportOccurrenceStatus({
       habitId: input.habitId,
       reminderTime: input.reminderTime,
       status: input.status,

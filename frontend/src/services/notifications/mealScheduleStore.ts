@@ -6,7 +6,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import apiClient from '../../api/client';
+import { mealScheduleApi } from '../api/mealScheduleApi';
 import { reminderLog } from './logger';
 import { resolveDeviceTimeZone } from './time';
 
@@ -72,9 +72,9 @@ export type MealScheduleFetch =
 
 export async function fetchMealScheduleFromServer(): Promise<MealScheduleFetch> {
   try {
-    const res = await apiClient.get('/meal-schedule');
-    if (res.data && isValidSchedule(res.data)) {
-      return { status: 'found', schedule: res.data };
+    const data = await mealScheduleApi.get();
+    if (data && isValidSchedule(data)) {
+      return { status: 'found', schedule: data };
     }
     return { status: 'absent' };
   } catch (e: any) {
@@ -91,10 +91,7 @@ export async function fetchMealScheduleFromServer(): Promise<MealScheduleFetch> 
 /** Persists the schedule to the server (with device timezone). Returns success. */
 export async function pushMealScheduleToServer(schedule: MealSchedule): Promise<boolean> {
   try {
-    await apiClient.put('/meal-schedule', {
-      ...schedule,
-      timezone: resolveDeviceTimeZone(),
-    });
+    await mealScheduleApi.save(schedule, resolveDeviceTimeZone());
     return true;
   } catch (e: any) {
     reminderLog.warn('meal.server_push_failed', 'Could not save meal schedule to server', {

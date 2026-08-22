@@ -19,8 +19,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import apiClient from '../../api/client';
 import { Habit } from '../../types/types';
+import { habitApi } from '../api/habitApi';
 import { reminderLog } from './logger';
 import { resolveDeviceTimeZone } from './time';
 
@@ -114,11 +114,9 @@ export async function clearHabitsCached(): Promise<void> {
  */
 export async function fetchHabitsFromServer(): Promise<Habit[] | null> {
   try {
-    const res = await apiClient.get('/habit', {
-      params: { tz: resolveDeviceTimeZone() },
-    });
-    if (Array.isArray(res.data)) {
-      const habits = (res.data as Habit[]).filter(isValidHabit);
+    const data = await habitApi.getAll(resolveDeviceTimeZone());
+    if (Array.isArray(data)) {
+      const habits = data.filter(isValidHabit);
       await saveHabitsCached(habits);
       return habits;
     }

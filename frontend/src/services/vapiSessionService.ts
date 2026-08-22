@@ -1,7 +1,7 @@
 import Vapi from '@vapi-ai/react-native';
-import apiClient from '../api/client';
+import { VoiceSessionPurpose, voiceApi } from './api/voiceApi';
 
-export type VoiceSessionPurpose = 'meal' | 'habit';
+export type { VoiceSessionPurpose };
 
 export interface VapiSessionConfig {
   token: string;
@@ -35,11 +35,9 @@ function validateSessionConfig(
 export async function fetchVapiSessionConfig(
   purpose: VoiceSessionPurpose,
 ): Promise<VapiSessionConfig> {
-  const response = await apiClient.get('/food/voice/session', {
-    params: { purpose },
-  });
+  const data = await voiceApi.getSessionConfig(purpose);
 
-  return validateSessionConfig(response?.data, purpose);
+  return validateSessionConfig(data, purpose);
 }
 
 export async function initializeVapiClient(
