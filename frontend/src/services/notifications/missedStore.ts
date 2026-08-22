@@ -6,7 +6,8 @@
  * miss isn't surfaced twice across reconciliation passes.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createJsonArrayStore } from '../storage/jsonStore';
+import { StorageKeys } from '../storage/storageKeys';
 import { reminderLog } from './logger';
 import { ReminderKind } from './notificationBuilder';
 
@@ -22,28 +23,34 @@ export type MissedRecord = {
   followUpShown?: boolean;
 };
 
-const STORAGE_KEY = 'reminder_missed_v1';
 const MAX_RECORDS = 50;
 
-async function readAll(): Promise<MissedRecord[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    reminderLog.warn('missed.read_failed', 'Missed store read failed', { error: String(e) });
-    return [];
-  }
+function isMissedRecord(value: unknown): value is MissedRecord {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.key === 'string' &&
+    v.key.length > 0 &&
+    typeof v.kind === 'string' &&
+    typeof v.intendedFireAt === 'number'
+  );
 }
 
-async function writeAll(records: MissedRecord[]): Promise<void> {
-  // Keep only the most recent MAX_RECORDS to bound storage.
-  const trimmed = records
-    .sort((a, b) => a.intendedFireAt - b.intendedFireAt)
-    .slice(-MAX_RECORDS);
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-}
+const store = createJsonArrayStore<MissedRecord>(
+  StorageKeys.missedReminders,
+  isMissedRecord,
+  {
+    // Bound storage: oldest records fall off first.
+    max: MAX_RECORDS,
+    order: (a, b) => a.intendedFireAt - b.intendedFireAt,
+    onReadFailure: (reason, error) =>
+      reminderLog.warn('missed.read_failed', 'Missed store read failed', {
+        reason,
+        error: String(error),
+      }),
+  },
+);
+
 
 export function missedKey(
   kind: ReminderKind,
@@ -55,12 +62,12 @@ export function missedKey(
 
 /** Records a miss if not already present. Returns true if newly recorded. */
 export async function recordMissed(record: MissedRecord): Promise<boolean> {
-  const all = await readAll();
+  const all = await store.readAll();
   if (all.some(r => r.key === record.key)) {
     return false;
   }
   all.push(record);
-  await writeAll(all);
+  await store.writeAll(all);
   reminderLog.info('missed.recorded', 'Recorded missed reminder', {
     key: record.key,
     kind: record.kind,
@@ -69,19 +76,19 @@ export async function recordMissed(record: MissedRecord): Promise<boolean> {
 }
 
 export async function markFollowUpShown(key: string): Promise<void> {
-  const all = await readAll();
+  const all = await store.readAll();
   const next = all.map(r => (r.key === key ? { ...r, followUpShown: true } : r));
-  await writeAll(next);
+  await store.writeAll(next);
 }
 
 export async function listMissedNeedingFollowUp(): Promise<MissedRecord[]> {
-  return (await readAll()).filter(r => !r.followUpShown);
+  return (await store.readAll()).filter(r => !r.followUpShown);
 }
 
 export async function listAllMissed(): Promise<MissedRecord[]> {
-  return readAll();
+  return store.readAll();
 }
 
 export async function clearMissed(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY);
+  await store.clear();
 }
