@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.habitbuilder.NutritionTracker.config.properties.CorsProperties;
 import com.habitbuilder.NutritionTracker.security.jwt.JwtAuthenticationFilter;
 
 @Configuration
@@ -29,9 +29,9 @@ public class SecurityConfig {
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtFilter,
-            @Value("${cors.allowed-origins:*}") String allowedOriginsProperty) {
+            CorsProperties corsProperties) {
         this.jwtFilter = jwtFilter;
-        this.allowedOrigins = Arrays.stream(allowedOriginsProperty.split(","))
+        this.allowedOrigins = Arrays.stream(corsProperties.allowedOrigins().split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .collect(Collectors.toCollection(ArrayList::new));

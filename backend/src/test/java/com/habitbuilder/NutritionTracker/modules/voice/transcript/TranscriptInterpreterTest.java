@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habitbuilder.NutritionTracker.config.properties.AiProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextClient;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.voice.dto.MealTranscriptInterpretResponseDTO;
@@ -59,7 +60,7 @@ class TranscriptInterpreterTest {
     }
 
     private TranscriptInterpreter interpreterWithAiResponse(String response) {
-        AiTextService aiTextService = new AiTextService(List.of(new StubAiTextClient(response)), "stub");
+        AiTextService aiTextService = new AiTextService(List.of(new StubAiTextClient(response)), new AiProperties("stub"));
         return new TranscriptInterpreter(aiTextService, new ObjectMapper());
     }
 

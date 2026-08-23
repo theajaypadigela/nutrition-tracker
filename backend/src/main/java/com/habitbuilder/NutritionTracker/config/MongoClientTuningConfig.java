@@ -1,9 +1,10 @@
 package com.habitbuilder.NutritionTracker.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.mongo.MongoClientSettingsBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.habitbuilder.NutritionTracker.config.properties.MongoTuningProperties;
 
 import java.util.concurrent.TimeUnit;
 
@@ -12,18 +13,15 @@ public class MongoClientTuningConfig {
 
     @Bean
     public MongoClientSettingsBuilderCustomizer mongoClientSettingsBuilderCustomizer(
-            @Value("${mongo.connect-timeout-ms:20000}") int connectTimeoutMs,
-            @Value("${mongo.socket-read-timeout-ms:20000}") int socketReadTimeoutMs,
-            @Value("${mongo.server-selection-timeout-ms:45000}") int serverSelectionTimeoutMs,
-            @Value("${mongo.heartbeat-frequency-ms:10000}") int heartbeatFrequencyMs) {
+            MongoTuningProperties properties) {
 
         return builder -> builder
                 .applyToSocketSettings(socketSettings -> socketSettings
-                        .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                        .readTimeout(socketReadTimeoutMs, TimeUnit.MILLISECONDS))
+                        .connectTimeout(properties.connectTimeoutMs(), TimeUnit.MILLISECONDS)
+                        .readTimeout(properties.socketReadTimeoutMs(), TimeUnit.MILLISECONDS))
                 .applyToClusterSettings(clusterSettings -> clusterSettings
-                        .serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
+                        .serverSelectionTimeout(properties.serverSelectionTimeoutMs(), TimeUnit.MILLISECONDS))
                 .applyToServerSettings(serverSettings -> serverSettings
-                        .heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
+                        .heartbeatFrequency(properties.heartbeatFrequencyMs(), TimeUnit.MILLISECONDS));
     }
 }

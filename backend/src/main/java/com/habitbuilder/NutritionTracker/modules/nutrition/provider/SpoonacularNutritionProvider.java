@@ -9,12 +9,12 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habitbuilder.NutritionTracker.config.properties.SpoonacularProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.JsonNumbers;
 import com.habitbuilder.NutritionTracker.modules.nutrition.NutrientKeys;
 import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutrientValue;
@@ -38,12 +38,11 @@ public class SpoonacularNutritionProvider implements NutritionProvider {
     public SpoonacularNutritionProvider(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${spoonacular.api.key:}") String apiKey,
-            @Value("${spoonacular.api.timeout:20000}") long timeoutMillis) {
+            SpoonacularProperties properties) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
-        this.apiKey = apiKey;
-        this.timeoutMillis = timeoutMillis;
+        this.apiKey = properties.key();
+        this.timeoutMillis = properties.timeout();
     }
 
     @Override

@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habitbuilder.NutritionTracker.config.properties.AiProperties;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextClient;
 import com.habitbuilder.NutritionTracker.modules.nutrition.ai.AiTextService;
 import com.habitbuilder.NutritionTracker.modules.habit.dto.HabitVoiceInterpretRequestDTO;
@@ -68,7 +69,7 @@ class HabitServiceTest {
     }
 
     private HabitService serviceWithAiResponse(String response) {
-        AiTextService aiTextService = new AiTextService(List.of(new StubAiTextClient(response)), "stub");
+        AiTextService aiTextService = new AiTextService(List.of(new StubAiTextClient(response)), new AiProperties("stub"));
         // These tests only exercise interpretVoiceTranscript, which uses the AI service +
         // object mapper; the repositories are not touched, so null is sufficient.
         return new HabitService(null, null, aiTextService, new ObjectMapper(), null,
