@@ -19,6 +19,13 @@ import {
 } from 'lucide-react-native';
 import { R, pwStrength } from './authTheme';
 
+/**
+ * Opacity of the green focus glow. The glow is always mounted (see
+ * `styles.fieldFocusRing`) and only its opacity moves, so focusing a field never
+ * adds or removes shadow props.
+ */
+const FOCUS_RING_OPACITY = 0.18;
+
 // ─── label + footer ────────────────────────────────────────
 function FieldLabel({ label, optional }: { label: string; optional?: boolean }) {
   return (
@@ -91,11 +98,12 @@ export function AuthTextField({
       <View
         style={[
           styles.fieldBox,
+          styles.fieldFocusRing,
           {
             borderColor,
             backgroundColor: focus ? tokens.auth.surface : tokens.auth.field,
+            shadowOpacity: focus ? FOCUS_RING_OPACITY : 0,
           },
-          focus ? styles.fieldFocusRing : null,
         ]}
       >
         {Icon ? <Icon size={20} color={iconColor} /> : null}
@@ -225,8 +233,12 @@ export function PickerField({
         accessibilityRole="button"
         style={[
           styles.fieldBox,
-          { borderColor, backgroundColor: active ? tokens.auth.surface : tokens.auth.field },
-          active ? styles.fieldFocusRing : null,
+          styles.fieldFocusRing,
+          {
+            borderColor,
+            backgroundColor: active ? tokens.auth.surface : tokens.auth.field,
+            shadowOpacity: active ? FOCUS_RING_OPACITY : 0,
+          },
         ]}
       >
         {Icon ? <Icon size={20} color={iconColor} /> : null}
@@ -366,11 +378,15 @@ const styles = StyleSheet.create({
     height: 54,
   },
   fieldFocusRing: {
-    // iOS-only glow. Do NOT add `elevation` here: toggling Android elevation on
-    // focus recreates this View's native shadow node, which drops focus off the
-    // child TextInput (the "tap the field, it immediately unselects" bug).
+    // iOS-only glow, and it must stay applied UNCONDITIONALLY — callers vary only
+    // `shadowOpacity` (0 <-> FOCUS_RING_OPACITY). Adding or removing a View's shadow
+    // props on focus reconfigures its native layer, which resigns the child
+    // TextInput's first responder: the field unfocuses ~100ms after you tap it, so
+    // the form cannot be typed into at all. Same reason `elevation` must never go
+    // here — toggling Android elevation recreates the native shadow node and drops
+    // focus the same way. Both are the "tap the field, it immediately unselects" bug.
     shadowColor: tokens.auth.green,
-    shadowOpacity: 0.18,
+    shadowOpacity: 0,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
