@@ -7,4 +7,13 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // Coverage is measured over hand-written source only. Without this the 8,748 lines
+  // of generated gluestack scaffold under src/components/ui (REFACTORING_PLAN.md §8,
+  // "regenerate, never hand-edit") dominate every number the report produces.
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/components/ui/**',
+    '!src/**/*.d.ts',
+    '!src/**/__tests__/**',
+  ],
 };
