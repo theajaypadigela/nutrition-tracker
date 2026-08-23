@@ -82,7 +82,7 @@ export const CheckinCard: React.FC = () => {
       await saveMealSchedule(updated);
       setReminder(updated);
       setShowSheet(false);
-    } catch (e: any) {
+    } catch {
       Alert.alert('Error', 'Could not save schedule');
     } finally {
       setSaving(false);

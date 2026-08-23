@@ -93,7 +93,7 @@ export const MealGroup: React.FC<MealGroupProps> = ({
         <View style={styles.body}>
           <View style={styles.divider} />
           <View style={styles.itemList}>
-            {items.map((item, idx) => {
+            {items.map(item => {
               const hasMacros =
                 item.protein !== undefined ||
                 item.carbs !== undefined ||

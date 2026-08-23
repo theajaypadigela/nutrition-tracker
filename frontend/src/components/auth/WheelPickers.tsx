@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { R } from './authTheme';
 import { formatLocaleTimeFromParts } from '@/utils/timeFormatter';
 import { ageFromDob } from '@/utils/authValidation';
-import { PrimaryButton, TextLink, Banner } from './AuthControls';
+import { PrimaryButton, Banner } from './AuthControls';
 
 const ITEM = 42;
 const VISIBLE = 5;
