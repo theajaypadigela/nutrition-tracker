@@ -221,8 +221,7 @@ public class HabitService {
         String raw = date.getDayOfWeek().toString().substring(0, 3);
         String dayOfWeek = raw.substring(0, 1) + raw.substring(1).toLowerCase();
 
-        System.out.println(
-                "Fetching habits for user: " + currentUser.getId() + " on date: " + date + " (day: " + dayOfWeek + ")");
+        log.debug("Fetching habits for user {} on {} (day {})", currentUser.getId(), date, dayOfWeek);
 
         List<Habit> habits = habitRepository.findByUserIdAndRepeatDaysContaining(currentUser.getId(), dayOfWeek);
 
