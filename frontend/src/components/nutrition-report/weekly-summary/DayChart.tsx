@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 import { Text } from '@/components/ui/text';
-import { tokens, weekDayLabels, fmtNum } from './tokens';
+import { weekDayLabels, fmtNum } from './tokens';
 
 interface Props {
   values: number[]; // length 7, Mon..Sun
@@ -57,7 +58,7 @@ const DayChart: React.FC<Props> = ({ values, dailyGoal, unit, color }) => {
               x2={chartWidth}
               y1={goalY}
               y2={goalY}
-              stroke={tokens.inkMuted}
+              stroke={tokens.report.inkMuted}
               strokeWidth={1}
               strokeDasharray="4,4"
               opacity={0.55}
@@ -120,11 +121,11 @@ const DayChart: React.FC<Props> = ({ values, dailyGoal, unit, color }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: tokens.lineSoft,
+    borderColor: tokens.report.lineSoft,
   },
   legendRow: {
     flexDirection: 'row',
@@ -151,11 +152,11 @@ const styles = StyleSheet.create({
   legendDash: {
     width: 3,
     height: 1.5,
-    backgroundColor: tokens.inkMuted,
+    backgroundColor: tokens.report.inkMuted,
     borderRadius: 1,
   },
   legendText: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.2,
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   dayLabel: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 10,
     fontWeight: '600',
     marginTop: 6,
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -28,
     alignSelf: 'center',
-    backgroundColor: tokens.ink,
+    backgroundColor: tokens.report.ink,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -213,15 +214,15 @@ const styles = StyleSheet.create({
   goalBadge: {
     position: 'absolute',
     right: 0,
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: tokens.lineSoft,
+    borderColor: tokens.report.lineSoft,
   },
   goalBadgeText: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.3,

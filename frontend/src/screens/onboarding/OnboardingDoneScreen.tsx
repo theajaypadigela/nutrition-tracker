@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { tokens } from '@/theme/tokens';
 import { Animated, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { ArrowRight, Check } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -6,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { ROUTES } from '@/navigation/routeNames';
-import { PrimaryButton, T } from '@/components/auth';
+import { PrimaryButton } from '@/components/auth';
 
 /**
  * Success landing shown after call setup (or skip). Confirms the daily call time, then
@@ -36,16 +37,16 @@ export default function OnboardingDoneScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={T.surface} />
+      <StatusBar barStyle="dark-content" backgroundColor={tokens.auth.surface} />
       <View style={styles.center}>
         <Animated.View style={{ transform: [{ scale: pop }] }}>
           <LinearGradient
-            colors={[T.greenMid, T.green, T.greenDeep]}
+            colors={[tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
             start={{ x: 0.1, y: 0 }}
             end={{ x: 0.9, y: 1 }}
             style={styles.mark}
           >
-            <Check size={46} color={T.white} strokeWidth={3} />
+            <Check size={46} color={tokens.auth.white} strokeWidth={3} />
           </LinearGradient>
         </Animated.View>
 
@@ -69,7 +70,7 @@ export default function OnboardingDoneScreen() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
         <PrimaryButton
           onPress={goToDashboard}
-          trailing={<ArrowRight size={20} color={T.white} />}
+          trailing={<ArrowRight size={20} color={tokens.auth.white} />}
         >
           Go to dashboard
         </PrimaryButton>
@@ -79,7 +80,7 @@ export default function OnboardingDoneScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.surface },
+  root: { flex: 1, backgroundColor: tokens.auth.surface },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: T.green,
+    shadowColor: tokens.auth.green,
     shadowOpacity: 0.33,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 16 },
@@ -102,18 +103,18 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: -0.8,
-    color: T.ink,
+    color: tokens.auth.ink,
     marginTop: 24,
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: T.inkSoft,
+    color: tokens.auth.inkSoft,
     textAlign: 'center',
     lineHeight: 23,
     marginTop: 10,
     maxWidth: 320,
   },
-  strong: { color: T.greenDeep, fontWeight: '800' },
+  strong: { color: tokens.auth.greenDeep, fontWeight: '800' },
   footer: { paddingHorizontal: 30, paddingTop: 18 },
 });

@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   Platform,
   Pressable,
@@ -14,12 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ROUTES } from '@/navigation/routeNames';
-import {
-  PrimaryButton,
-  TextLink,
-  T,
-  R,
-} from '@/components/auth';
+import { PrimaryButton, TextLink, R } from '@/components/auth';
 import { useOnboardingMealScheduleForm } from '@/hooks/useOnboardingMealScheduleForm';
 
 /**
@@ -52,9 +48,9 @@ export default function OnboardingMealScheduleScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={T.surface} />
+      <StatusBar barStyle="dark-content" backgroundColor={tokens.auth.surface} />
       <View style={[styles.skipRow, { paddingTop: insets.top + 14 }]}>
-        <TextLink color={T.inkSoft} onPress={() => goToDone()}>
+        <TextLink color={tokens.auth.inkSoft} onPress={() => goToDone()}>
           Skip for now
         </TextLink>
       </View>
@@ -80,15 +76,15 @@ export default function OnboardingMealScheduleScreen() {
             />
           ))}
           <LinearGradient
-            colors={[T.greenMid, T.green, T.greenDeep]}
+            colors={[tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
             start={{ x: 0.1, y: 0 }}
             end={{ x: 0.9, y: 1 }}
             style={styles.ringCore}
           >
-            <Phone size={34} color={T.white} />
+            <Phone size={34} color={tokens.auth.white} />
           </LinearGradient>
           <View style={styles.sparkleBadge}>
-            <Sparkles size={15} color={T.green} fill={T.green} />
+            <Sparkles size={15} color={tokens.auth.green} fill={tokens.auth.green} />
           </View>
         </View>
 
@@ -109,30 +105,30 @@ export default function OnboardingMealScheduleScreen() {
           style={[
             styles.timeSelect,
             {
-              borderColor: hasPicked ? T.green : T.line,
-              backgroundColor: hasPicked ? T.surface : T.field,
+              borderColor: hasPicked ? tokens.auth.green : tokens.auth.line,
+              backgroundColor: hasPicked ? tokens.auth.surface : tokens.auth.field,
             },
           ]}
         >
           <View style={styles.timeIcon}>
-            <Clock size={24} color={T.green} />
+            <Clock size={24} color={tokens.auth.green} />
           </View>
           <View style={styles.timeTextBlock}>
             <Text style={styles.timeLabel}>PREFERRED TIME</Text>
             <Text
               style={[
                 styles.timeValue,
-                { color: hasPicked ? T.ink : T.inkMuted },
+                { color: hasPicked ? tokens.auth.ink : tokens.auth.inkMuted },
               ]}
             >
               {hasPicked ? formattedTime : 'Tap to choose'}
             </Text>
           </View>
-          <ChevronRight size={20} color={T.inkMuted} />
+          <ChevronRight size={20} color={tokens.auth.inkMuted} />
         </Pressable>
 
         <View style={styles.noteRow}>
-          <ShieldCheck size={15} color={T.inkMuted} />
+          <ShieldCheck size={15} color={tokens.auth.inkMuted} />
           <Text style={styles.noteText}>
             You can change or turn off calls anytime in Settings.
           </Text>
@@ -144,7 +140,7 @@ export default function OnboardingMealScheduleScreen() {
           {saving ? 'Saving…' : 'Set call time'}
         </PrimaryButton>
         <View style={styles.footerLink}>
-          <TextLink color={T.inkSoft} onPress={() => goToDone()}>
+          <TextLink color={tokens.auth.inkSoft} onPress={() => goToDone()}>
             I’ll do this later
           </TextLink>
         </View>
@@ -164,7 +160,7 @@ export default function OnboardingMealScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.surface },
+  root: { flex: 1, backgroundColor: tokens.auth.surface },
   skipRow: {
     paddingHorizontal: 20,
     alignItems: 'flex-end',
@@ -186,7 +182,7 @@ const styles = StyleSheet.create({
   ring: {
     position: 'absolute',
     borderWidth: 1.5,
-    borderColor: T.green,
+    borderColor: tokens.auth.green,
   },
   ringCore: {
     width: 84,
@@ -194,7 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: T.green,
+    shadowColor: tokens.auth.green,
     shadowOpacity: 0.33,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 14 },
@@ -207,7 +203,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: T.white,
+    backgroundColor: tokens.auth.white,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#08140e',
@@ -219,13 +215,13 @@ const styles = StyleSheet.create({
   timeTextBlock: { flex: 1 },
   headerBlock: { alignItems: 'center', marginTop: 14 },
   pill: {
-    backgroundColor: T.greenSoft,
+    backgroundColor: tokens.auth.greenSoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
   },
   pillText: {
-    color: T.greenDeep,
+    color: tokens.auth.greenDeep,
     fontSize: 11.5,
     fontWeight: '800',
     letterSpacing: 0.6,
@@ -234,7 +230,7 @@ const styles = StyleSheet.create({
     fontSize: 27,
     fontWeight: '800',
     letterSpacing: -0.8,
-    color: T.ink,
+    color: tokens.auth.ink,
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 32,
@@ -242,7 +238,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14.5,
     fontWeight: '500',
-    color: T.inkSoft,
+    color: tokens.auth.inkSoft,
     textAlign: 'center',
     lineHeight: 22,
     marginTop: 12,
@@ -261,14 +257,14 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: R.md,
-    backgroundColor: T.greenSoft,
+    backgroundColor: tokens.auth.greenSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   timeLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: T.inkMuted,
+    color: tokens.auth.inkMuted,
     letterSpacing: 0.4,
   },
   timeValue: {
@@ -284,7 +280,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 16,
   },
-  noteText: { fontSize: 12, fontWeight: '600', color: T.inkMuted },
+  noteText: { fontSize: 12, fontWeight: '600', color: tokens.auth.inkMuted },
   footer: {
     paddingHorizontal: 26,
     paddingTop: 18,

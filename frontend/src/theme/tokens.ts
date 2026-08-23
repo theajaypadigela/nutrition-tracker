@@ -1,21 +1,25 @@
 /**
- * Single source of design-token color values for the app's themed surfaces.
+ * The app's design tokens — one scale, namespaced per surface.
  *
- * Each surface theme — `callTheme` (dark call experience), the auth `T` palette,
- * the weekly-report `tokens`, and the nutrition-report chart constants — maps these
- * values into its existing exported shape, so importers and rendered pixels are
- * unchanged. Where surfaces intentionally use different shades of the "same" hue
- * (brand green #0f7a3d vs report green #0e9b6d, etc.) they keep distinct semantic
- * tokens here — do not merge them.
+ * `tokens` is the only export. Reach a colour as `tokens.<surface>.<role>` and you
+ * are one hop from its hex value. Before this, the same colour was reachable three
+ * ways — `brandGreen.base`, `authTheme.T.green`, and a literal — because each
+ * surface re-exported this module under its own names. Those views are gone; the
+ * per-surface modules now keep only what is genuinely theirs (radii, fonts,
+ * gradient stops, status logic).
+ *
+ * The raw palettes below stay separate and private, because the surfaces
+ * intentionally use different shades of the "same" hue (brand green #0f7a3d vs
+ * report green #0e9b6d, etc.). **Do not merge them.**
  */
 
 /** Neutrals shared across the light (auth + report) surfaces. */
-export const neutral = {
+const neutral = {
   white: '#ffffff',
 } as const;
 
 /** Auth/onboarding brand green scale (Nourish `AUTH_TOKENS`). */
-export const brandGreen = {
+const brandGreen = {
   base: '#0f7a3d',
   mid: '#1b9750',
   deep: '#0a4d27',
@@ -25,7 +29,7 @@ export const brandGreen = {
 } as const;
 
 /** Auth/onboarding surface neutrals (warm green-tinted grays). */
-export const authNeutral = {
+const authNeutral = {
   ink: '#0d1f16',
   inkSoft: '#48584f',
   inkMuted: '#8a988f',
@@ -36,7 +40,7 @@ export const authNeutral = {
 } as const;
 
 /** Auth/onboarding status + feedback colors. */
-export const authStatus = {
+const authStatus = {
   danger: '#d24b4b',
   dangerSoft: '#fcecec',
   warn: '#cf8a1a',
@@ -47,21 +51,21 @@ export const authStatus = {
 } as const;
 
 /** Weekly nutrition report accent blue. */
-export const reportBlue = {
+const reportBlue = {
   base: '#1769d6',
   soft: '#e7f0fc',
   deep: '#0a3a82',
 } as const;
 
 /** Weekly nutrition report health/"good" green — distinct from `brandGreen`. */
-export const reportGreen = {
+const reportGreen = {
   base: '#0e9b6d',
   deep: '#06624a',
   soft: '#dff5ec',
 } as const;
 
 /** Weekly nutrition report surface neutrals (cool blue-tinted grays). */
-export const reportNeutral = {
+const reportNeutral = {
   ink: '#0c1b22',
   inkSoft: '#4a5d68',
   inkMuted: '#7a8a93',
@@ -71,7 +75,7 @@ export const reportNeutral = {
 } as const;
 
 /** Weekly nutrition report status colors (warn/bad; "good" is `reportGreen`). */
-export const reportStatus = {
+const reportStatus = {
   warn: '#d98a16',
   warnSoft: '#fbf0db',
   bad: '#dc3545',
@@ -79,17 +83,17 @@ export const reportStatus = {
 } as const;
 
 /** Weekly report header gradient (deep blues). */
-export const reportHeaderGradient = ['#0d4ea8', '#0a3a82', '#062a63'] as const;
+const reportHeaderGradient = ['#0d4ea8', '#0a3a82', '#062a63'] as const;
 
 /** Macro chart accents (daily nutrition report cards). */
-export const macroAccent = {
+const macroAccent = {
   protein: '#3b82f6',
   carbs: '#f59e0b',
   fats: '#a855f7',
 } as const;
 
 /** Micro-nutrient card accents: icon / icon surface / deep text per nutrient. */
-export const microAccent = {
+const microAccent = {
   sugar: '#f43f5e',
   sugarSurface: '#ffe4e6',
   sugarDeep: '#be123c',
@@ -106,7 +110,7 @@ export const microAccent = {
 } as const;
 
 /** Dark, continuous call-experience palette (see callTheme.ts for rationale). */
-export const callPalette = {
+const callPalette = {
   // Surfaces (darkest → most elevated)
   background: '#0A0A0A',
   surface: '#111111',
@@ -144,4 +148,68 @@ export const callPalette = {
   onBubbleUser: '#FFFFFF',
 
   onAccent: '#FFFFFF',
+} as const;
+
+/**
+ * The public scale. Member names are the ones each surface already used, so a
+ * reader moving from `T.greenSoft` to `tokens.auth.greenSoft` sees the same word.
+ */
+export const tokens = {
+  /** Auth + onboarding screens (light, warm green-tinted). */
+  auth: {
+    ink: authNeutral.ink,
+    inkSoft: authNeutral.inkSoft,
+    inkMuted: authNeutral.inkMuted,
+    line: authNeutral.line,
+    lineSoft: authNeutral.lineSoft,
+    field: authNeutral.field,
+    surface: neutral.white,
+    bg: authNeutral.bg,
+    green: brandGreen.base,
+    greenMid: brandGreen.mid,
+    greenDeep: brandGreen.deep,
+    greenDark: brandGreen.dark,
+    greenSoft: brandGreen.soft,
+    greenSoft2: brandGreen.soft2,
+    danger: authStatus.danger,
+    dangerSoft: authStatus.dangerSoft,
+    warn: authStatus.warn,
+    warnSoft: authStatus.warnSoft,
+    ok: authStatus.ok,
+    strengthEmpty: authStatus.strengthEmpty,
+    white: neutral.white,
+  },
+
+  /** Weekly nutrition report (light, cool blue-tinted). */
+  report: {
+    ink: reportNeutral.ink,
+    inkSoft: reportNeutral.inkSoft,
+    inkMuted: reportNeutral.inkMuted,
+    surface: neutral.white,
+    bg: reportNeutral.bg,
+    line: reportNeutral.line,
+    lineSoft: reportNeutral.lineSoft,
+    primary: reportBlue.base,
+    primarySoft: reportBlue.soft,
+    primaryDeep: reportBlue.deep,
+    green: reportGreen.base,
+    greenDeep: reportGreen.deep,
+    greenSoft: reportGreen.soft,
+    good: reportGreen.base,
+    goodSoft: reportGreen.soft,
+    warn: reportStatus.warn,
+    warnSoft: reportStatus.warnSoft,
+    bad: reportStatus.bad,
+    badSoft: reportStatus.badSoft,
+    headerGradient: reportHeaderGradient,
+  },
+
+  /** The dark, continuous call experience. */
+  call: callPalette,
+
+  /** Macro chart accents. */
+  macro: macroAccent,
+
+  /** Micro-nutrient card accents. */
+  micro: microAccent,
 } as const;

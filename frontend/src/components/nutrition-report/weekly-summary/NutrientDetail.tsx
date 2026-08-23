@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, Plus, Check, AlertTriangle } from 'lucide-react-native';
@@ -9,8 +10,6 @@ import {
   statusColorMap,
   weekDayLabels,
   fmtNum,
-  tokens,
-  headerGradient,
   headerGradientLocations,
 } from './tokens';
 import DayChart from './DayChart';
@@ -73,7 +72,7 @@ const NutrientDetail: React.FC<Props> = ({
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={[...headerGradient]}
+        colors={[...tokens.report.headerGradient]}
         locations={[...headerGradientLocations]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -163,7 +162,7 @@ const NutrientDetail: React.FC<Props> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: tokens.bg,
+    backgroundColor: tokens.report.bg,
   },
   header: {
     paddingTop: 12,
@@ -284,28 +283,28 @@ const styles = StyleSheet.create({
   statCard: {
     flexBasis: '48%',
     flexGrow: 1,
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderWidth: 1,
-    borderColor: tokens.lineSoft,
+    borderColor: tokens.report.lineSoft,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   statLabel: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
   },
   statValue: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.3,
     marginTop: 4,
   },
   statSub: {
-    color: tokens.inkSoft,
+    color: tokens.report.inkSoft,
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,

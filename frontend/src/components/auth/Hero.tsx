@@ -1,7 +1,7 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { T } from './authTheme';
 
 /**
  * The rich green gradient hero band used at the top of Login/Register. A subtle
@@ -18,7 +18,7 @@ export function Hero({
 }) {
   return (
     <LinearGradient
-      colors={[T.greenMid, T.green, T.greenDeep]}
+      colors={[tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
       start={{ x: 0.15, y: 0 }}
       end={{ x: 0.85, y: 1 }}
       style={[styles.hero, { paddingTop }, style]}

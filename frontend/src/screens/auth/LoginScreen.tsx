@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -22,7 +23,6 @@ import {
   AuthPasswordField,
   PrimaryButton,
   GhostButton,
-  T,
   R,
 } from '@/components/auth';
 import { useLoginForm } from '@/hooks/useLoginForm';
@@ -52,7 +52,7 @@ export function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={T.greenMid} />
+      <StatusBar barStyle="light-content" backgroundColor={tokens.auth.greenMid} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -65,7 +65,7 @@ export function LoginScreen() {
           <Hero paddingTop={insets.top + 40}>
             <View style={styles.brandRow}>
               <BrandMark size={46} on="dark" />
-              <Wordmark color={T.white} size={22} />
+              <Wordmark color={tokens.auth.white} size={22} />
             </View>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>
@@ -125,12 +125,12 @@ export function LoginScreen() {
   );
 }
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.greenMid },
+  root: { flex: 1, backgroundColor: tokens.auth.greenMid },
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, backgroundColor: T.bg },
+  scroll: { flexGrow: 1, backgroundColor: tokens.auth.bg },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title: {
-    color: T.white,
+    color: tokens.auth.white,
     fontSize: 34,
     fontWeight: '800',
     letterSpacing: -1,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
     marginTop: -46,
-    backgroundColor: T.surface,
+    backgroundColor: tokens.auth.surface,
     borderTopLeftRadius: R.xl,
     borderTopRightRadius: R.xl,
     paddingHorizontal: 22,
@@ -162,11 +162,11 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 18,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: T.line },
+  dividerLine: { flex: 1, height: 1, backgroundColor: tokens.auth.line },
   dividerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: T.inkMuted,
+    color: tokens.auth.inkMuted,
     letterSpacing: 0.4,
   },
 });

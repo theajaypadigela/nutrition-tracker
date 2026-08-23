@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   Text,
@@ -11,7 +12,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { ASSISTANT_NAME } from '@/config/assistant';
-import { callColors, callFontFamily } from '@/theme/callTheme';
+import { callFontFamily } from '@/theme/callTheme';
 
 export type CallStatus =
   | 'idle'
@@ -268,7 +269,7 @@ export default function VoiceSessionScreen({
 
         {isProcessing && (
           <View style={styles.processingContainer}>
-            <ActivityIndicator size="small" color={callColors.brand} />
+            <ActivityIndicator size="small" color={tokens.call.brand} />
             <Text style={styles.processingText}>{processingText}</Text>
           </View>
         )}
@@ -319,12 +320,12 @@ export default function VoiceSessionScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: callColors.background,
+    backgroundColor: tokens.call.background,
   },
   panel: {
     flex: 1,
     width: '100%',
-    backgroundColor: callColors.surface,
+    backgroundColor: tokens.call.surface,
     borderRadius: 0,
     borderWidth: 0,
     overflow: 'hidden',
@@ -334,8 +335,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: callColors.border,
-    backgroundColor: callColors.surface,
+    borderBottomColor: tokens.call.border,
+    backgroundColor: tokens.call.surface,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: callColors.surfaceAvatar,
+    backgroundColor: tokens.call.surfaceAvatar,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -360,25 +361,25 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: callColors.brand,
+    backgroundColor: tokens.call.brand,
   },
   agentTitle: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
-    color: callColors.textMuted,
+    color: tokens.call.textMuted,
     fontFamily: callFontFamily,
   },
   sessionTitle: {
     marginTop: 2,
     fontSize: 21,
     fontWeight: '700',
-    color: callColors.textPrimary,
+    color: tokens.call.textPrimary,
     fontFamily: callFontFamily,
   },
   timerPill: {
-    backgroundColor: callColors.surfaceElevated,
+    backgroundColor: tokens.call.surfaceElevated,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -386,14 +387,14 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 13,
     fontWeight: '700',
-    color: callColors.textSecondary,
+    color: tokens.call.textSecondary,
   },
   statusRow: {
     marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: callColors.brandSoft,
+    backgroundColor: tokens.call.brandSoft,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -402,26 +403,26 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: callColors.brand,
+    backgroundColor: tokens.call.brand,
   },
   statusLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: callColors.brand,
+    color: tokens.call.brand,
   },
   subtitle: {
     fontSize: 12,
-    color: callColors.textSecondary,
+    color: tokens.call.textSecondary,
     flexShrink: 1,
   },
   transcriptSection: {
     flex: 1,
     minHeight: 220,
-    backgroundColor: callColors.background,
+    backgroundColor: tokens.call.background,
   },
   transcriptScroll: {
     flex: 1,
-    backgroundColor: callColors.background,
+    backgroundColor: tokens.call.background,
   },
   transcriptContent: {
     paddingHorizontal: 14,
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: callColors.surfaceAvatar,
+    backgroundColor: tokens.call.surfaceAvatar,
   },
   messageBubble: {
     maxWidth: '72%',
@@ -455,13 +456,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   assistantBubble: {
-    backgroundColor: callColors.bubbleAssistant,
-    borderColor: callColors.bubbleAssistantBorder,
+    backgroundColor: tokens.call.bubbleAssistant,
+    borderColor: tokens.call.bubbleAssistantBorder,
     borderTopLeftRadius: 8,
   },
   userBubble: {
-    backgroundColor: callColors.bubbleUser,
-    borderColor: callColors.bubbleUserBorder,
+    backgroundColor: tokens.call.bubbleUser,
+    borderColor: tokens.call.bubbleUserBorder,
     borderTopRightRadius: 8,
   },
   messageText: {
@@ -469,10 +470,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   assistantMessageText: {
-    color: callColors.onBubbleAssistant,
+    color: tokens.call.onBubbleAssistant,
   },
   userMessageText: {
-    color: callColors.onBubbleUser,
+    color: tokens.call.onBubbleUser,
     textAlign: 'right',
   },
   emptyStateWrap: {
@@ -484,13 +485,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: callColors.textPrimary,
+    color: tokens.call.textPrimary,
   },
   emptyStateBody: {
     marginTop: 6,
     fontSize: 14,
     lineHeight: 20,
-    color: callColors.textMuted,
+    color: tokens.call.textMuted,
     textAlign: 'center',
   },
   processingContainer: {
@@ -500,21 +501,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: callColors.border,
-    backgroundColor: callColors.surfaceElevated,
+    borderTopColor: tokens.call.border,
+    backgroundColor: tokens.call.surfaceElevated,
   },
   processingText: {
     flex: 1,
     fontSize: 13,
-    color: callColors.textSecondary,
+    color: tokens.call.textSecondary,
   },
   controlsBar: {
     padding: CONTROLS_BASE_PADDING,
     paddingBottom: CONTROLS_BASE_PADDING,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: callColors.border,
-    backgroundColor: callColors.surface,
+    borderTopColor: tokens.call.border,
+    backgroundColor: tokens.call.surface,
   },
   primaryButton: {
     width: '100%',
@@ -530,13 +531,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   primaryButtonNeutral: {
-    backgroundColor: callColors.brand,
+    backgroundColor: tokens.call.brand,
   },
   primaryButtonDanger: {
-    backgroundColor: callColors.decline,
+    backgroundColor: tokens.call.decline,
   },
   primaryButtonText: {
-    color: callColors.onAccent,
+    color: tokens.call.onAccent,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -545,14 +546,14 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: callColors.border,
-    backgroundColor: callColors.surfaceElevated,
+    borderColor: tokens.call.border,
+    backgroundColor: tokens.call.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   secondaryButtonText: {
-    color: callColors.textPrimary,
+    color: tokens.call.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -560,13 +561,13 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 46,
     borderRadius: 12,
-    backgroundColor: callColors.warning,
+    backgroundColor: tokens.call.warning,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   warningButtonText: {
-    color: callColors.onAccent,
+    color: tokens.call.onAccent,
     fontSize: 15,
     fontWeight: '700',
   },

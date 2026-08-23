@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   Animated,
   Dimensions,
@@ -15,7 +16,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { T, R } from './authTheme';
+import { R } from './authTheme';
 import { formatLocaleTimeFromParts } from '@/utils/timeFormatter';
 import { ageFromDob } from '@/utils/authValidation';
 import { PrimaryButton, TextLink, Banner } from './AuthControls';
@@ -98,7 +99,7 @@ function BottomSheet({
               accessibilityRole="button"
               style={styles.closeBtn}
             >
-              <X size={18} color={T.inkSoft} />
+              <X size={18} color={tokens.auth.inkSoft} />
             </Pressable>
           </View>
           <View style={styles.body}>{children}</View>
@@ -164,7 +165,7 @@ function Wheel({
               style={{
                 fontSize: d === 0 ? 22 : 18,
                 fontWeight: d === 0 ? '800' : '600',
-                color: d === 0 ? T.ink : d === 1 ? T.inkSoft : T.inkMuted,
+                color: d === 0 ? tokens.auth.ink : d === 1 ? tokens.auth.inkSoft : tokens.auth.inkMuted,
                 opacity: d === 0 ? 1 : d === 1 ? 0.65 : 0.35,
               }}
             >
@@ -184,12 +185,12 @@ function WheelFrame({ children }: { children: React.ReactNode }) {
       <View style={styles.frameRow}>{children}</View>
       <LinearGradient
         pointerEvents="none"
-        colors={[T.surface, 'rgba(255,255,255,0)']}
+        colors={[tokens.auth.surface, 'rgba(255,255,255,0)']}
         style={[styles.fade, { top: 0 }]}
       />
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(255,255,255,0)', T.surface]}
+        colors={['rgba(255,255,255,0)', tokens.auth.surface]}
         style={[styles.fade, { bottom: 0 }]}
       />
     </View>
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(8,20,14,0.5)',
   },
   sheet: {
-    backgroundColor: T.surface,
+    backgroundColor: tokens.auth.surface,
     borderTopLeftRadius: R.xl,
     borderTopRightRadius: R.xl,
     maxHeight: '92%',
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   handleWrap: { paddingTop: 10, paddingBottom: 4, alignItems: 'center' },
-  handle: { width: 40, height: 5, borderRadius: 999, backgroundColor: T.line },
+  handle: { width: 40, height: 5, borderRadius: 999, backgroundColor: tokens.auth.line },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -393,13 +394,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 14,
   },
-  title: { fontSize: 21, fontWeight: '800', color: T.ink, letterSpacing: -0.4 },
-  subtitle: { fontSize: 13, fontWeight: '500', color: T.inkSoft, marginTop: 3 },
+  title: { fontSize: 21, fontWeight: '800', color: tokens.auth.ink, letterSpacing: -0.4 },
+  subtitle: { fontSize: 13, fontWeight: '500', color: tokens.auth.inkSoft, marginTop: 3 },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: T.lineSoft,
+    backgroundColor: tokens.auth.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 6,
     borderTopWidth: 1,
-    borderTopColor: T.lineSoft,
+    borderTopColor: tokens.auth.lineSoft,
   },
   frame: { marginVertical: 6, position: 'relative' },
   centerBand: {
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: ITEM * 2,
     height: ITEM,
-    backgroundColor: T.greenSoft,
+    backgroundColor: tokens.auth.greenSoft,
     borderRadius: R.md,
   },
   frameRow: { flexDirection: 'row', gap: 6 },

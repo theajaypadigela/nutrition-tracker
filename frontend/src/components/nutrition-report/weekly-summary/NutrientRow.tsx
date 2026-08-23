@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { WeeklyNutrient } from '@/types/nutrition';
@@ -8,7 +9,6 @@ import {
   statusColorMap,
   helperText,
   fmtNum,
-  tokens,
 } from './tokens';
 
 interface Props {
@@ -85,7 +85,7 @@ const NutrientRow: React.FC<Props> = ({ nutrient, valueMode, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 1,
     borderWidth: 1,
-    borderColor: tokens.lineSoft,
+    borderColor: tokens.report.lineSoft,
   },
   topRow: {
     flexDirection: 'row',
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   name: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.1,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   helper: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 11,
     fontWeight: '500',
     flexShrink: 1,
@@ -140,20 +140,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   bigValue: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   subValue: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 11,
     fontWeight: '500',
     marginTop: 2,
   },
   barTrack: {
     height: 8,
-    backgroundColor: tokens.lineSoft,
+    backgroundColor: tokens.report.lineSoft,
     borderRadius: 999,
     overflow: 'hidden',
     position: 'relative',
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 2,
     marginLeft: -1,
-    backgroundColor: tokens.ink,
+    backgroundColor: tokens.report.ink,
     opacity: 0.55,
   },
 });

@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   ActivityIndicator,
@@ -21,7 +22,6 @@ import {
   ValueModeToggle,
 } from '@/components/nutrition-report/weekly-summary/FilterControls';
 import {
-  tokens,
   weekRangeLabel,
 } from '@/components/nutrition-report/weekly-summary/tokens';
 import { useWeeklyNutrientSummary } from '@/hooks/useWeeklyNutrientSummary';
@@ -128,7 +128,7 @@ const WeeklyNutritionSummaryScreen: React.FC = () => {
 
           {loading && allNutrients.length === 0 ? (
             <View style={styles.loading}>
-              <ActivityIndicator size="large" color={tokens.primary} />
+              <ActivityIndicator size="large" color={tokens.report.primary} />
               <Text style={styles.loadingText}>Loading nutrients…</Text>
             </View>
           ) : filtered.length === 0 ? (
@@ -170,7 +170,7 @@ const WeeklyNutritionSummaryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: tokens.bg,
+    backgroundColor: tokens.report.bg,
   },
   fill: {
     flex: 1,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: tokens.inkSoft,
+    color: tokens.report.inkSoft,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -206,19 +206,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: tokens.line,
+    borderColor: tokens.report.line,
     borderRadius: 14,
     alignItems: 'center',
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     marginTop: 6,
   },
   emptyTitle: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 15,
     fontWeight: '700',
   },
   emptySub: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 12,
     marginTop: 4,
     fontWeight: '500',

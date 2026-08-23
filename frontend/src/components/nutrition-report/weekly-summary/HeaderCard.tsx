@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
@@ -6,7 +7,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import GradeRing from './GradeRing';
 import {
-  headerGradient,
   headerGradientLocations,
   verdictOf,
   gradeOf,
@@ -80,7 +80,7 @@ const HeaderCard: React.FC<Props> = ({
 
   return (
     <LinearGradient
-      colors={[...headerGradient]}
+      colors={[...tokens.report.headerGradient]}
       locations={[...headerGradientLocations]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}

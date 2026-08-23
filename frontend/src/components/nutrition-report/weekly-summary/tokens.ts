@@ -1,50 +1,23 @@
-import {
-  neutral,
-  reportBlue,
-  reportGreen,
-  reportHeaderGradient,
-  reportNeutral,
-  reportStatus,
-} from '@/theme/tokens';
+/**
+ * Weekly-summary status logic: which nutrients want a higher/lower/in-range value,
+ * how a value scores against its goal, and the number/label formatting the cards use.
+ *
+ * Colours are NOT defined here. This module used to also export a `tokens` object
+ * that renamed `@/theme/tokens`' report palette member-for-member; that view is
+ * gone — use `tokens.report.*` directly.
+ */
 import { Direction, Status, WeeklyNutrient } from '@/types/nutrition';
+import { tokens } from '@/theme/tokens';
 import { getMondayWeekRange } from '@/utils/weekRange';
 import { DAY_CODES_MONDAY_FIRST } from '@/utils/dayCode';
 
-// Color values live in the shared token source (src/theme/tokens.ts).
-export const tokens = {
-  // text
-  ink: reportNeutral.ink,
-  inkSoft: reportNeutral.inkSoft,
-  inkMuted: reportNeutral.inkMuted,
-  // surfaces & lines
-  surface: neutral.white,
-  bg: reportNeutral.bg,
-  line: reportNeutral.line,
-  lineSoft: reportNeutral.lineSoft,
-  // brand blue
-  primary: reportBlue.base,
-  primarySoft: reportBlue.soft,
-  primaryDeep: reportBlue.deep,
-  // brand green (health / good)
-  green: reportGreen.base,
-  greenDeep: reportGreen.deep,
-  greenSoft: reportGreen.soft,
-  // status
-  good: reportGreen.base,
-  goodSoft: reportGreen.soft,
-  warn: reportStatus.warn,
-  warnSoft: reportStatus.warnSoft,
-  bad: reportStatus.bad,
-  badSoft: reportStatus.badSoft,
-} as const;
-
-export const headerGradient = reportHeaderGradient;
+/** Gradient stops for the header's three-colour blend (tokens.report.tokens.report.headerGradient). */
 export const headerGradientLocations = [0, 0.55, 1] as const;
 
 export const statusColorMap: Record<Status, { fg: string; bg: string }> = {
-  good: { fg: tokens.good, bg: tokens.goodSoft },
-  warn: { fg: tokens.warn, bg: tokens.warnSoft },
-  bad: { fg: tokens.bad, bg: tokens.badSoft },
+  good: { fg: tokens.report.good, bg: tokens.report.goodSoft },
+  warn: { fg: tokens.report.warn, bg: tokens.report.warnSoft },
+  bad: { fg: tokens.report.bad, bg: tokens.report.badSoft },
 };
 
 export function statusOf(n: Pick<WeeklyNutrient, 'amount' | 'goal' | 'dir'>): Status {

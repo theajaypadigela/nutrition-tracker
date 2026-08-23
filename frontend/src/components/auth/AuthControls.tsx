@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,7 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { AlertCircle, ShieldCheck } from 'lucide-react-native';
-import { T, R } from './authTheme';
+import { R } from './authTheme';
 
 /** Full-width gradient CTA. Shows a spinner + label while `loading`. */
 export function PrimaryButton({
@@ -48,14 +49,14 @@ export function PrimaryButton({
       ]}
     >
       <LinearGradient
-        colors={off ? ['#b4c5ba', '#b4c5ba'] : [T.greenMid, T.green, T.greenDeep]}
+        colors={off ? ['#b4c5ba', '#b4c5ba'] : [tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={styles.primaryInner}
       >
         {loading ? (
           <>
-            <ActivityIndicator color={T.white} />
+            <ActivityIndicator color={tokens.auth.white} />
             {label}
           </>
         ) : (
@@ -92,7 +93,7 @@ export function GhostButton({
 export function TextLink({
   children,
   onPress,
-  color = T.green,
+  color = tokens.auth.green,
 }: {
   children: React.ReactNode;
   onPress?: () => void;
@@ -120,15 +121,15 @@ export function Banner({
   children?: React.ReactNode;
 }) {
   const isError = tone === 'error';
-  const bg = isError ? T.dangerSoft : T.greenSoft;
-  const fg = isError ? T.danger : T.greenDeep;
+  const bg = isError ? tokens.auth.dangerSoft : tokens.auth.greenSoft;
+  const fg = isError ? tokens.auth.danger : tokens.auth.greenDeep;
   const Icon = isError ? AlertCircle : ShieldCheck;
   return (
     <View
       accessibilityRole="alert"
       style={[styles.banner, { backgroundColor: bg, borderColor: `${fg}22` }]}
     >
-      <Icon size={18} color={isError ? T.danger : T.green} />
+      <Icon size={18} color={isError ? tokens.auth.danger : tokens.auth.green} />
       <View style={{ flex: 1 }}>
         {title ? <Text style={[styles.bannerTitle, { color: fg }]}>{title}</Text> : null}
         {children ? (
@@ -152,13 +153,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   primaryText: {
-    color: T.white,
+    color: tokens.auth.white,
     fontSize: 16.5,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
   primaryShadow: {
-    shadowColor: T.green,
+    shadowColor: tokens.auth.green,
     shadowOpacity: 0.34,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
@@ -168,13 +169,13 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: R.lg,
     borderWidth: 1.6,
-    borderColor: T.line,
-    backgroundColor: T.surface,
+    borderColor: tokens.auth.line,
+    backgroundColor: tokens.auth.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ghostText: {
-    color: T.ink,
+    color: tokens.auth.ink,
     fontSize: 15.5,
     fontWeight: '700',
   },

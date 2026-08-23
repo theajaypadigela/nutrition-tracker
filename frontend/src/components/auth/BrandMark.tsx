@@ -1,14 +1,15 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { T, R } from './authTheme';
+import { R } from './authTheme';
 
 /**
  * The Nourish brand glyph — a bold leaf whose midrib doubles as a soundwave
  * (call + nutrition). Ported from the design's `AIcon.leaf`.
  */
-export function Leaf({ size = 26, color = T.white }: { size?: number; color?: string }) {
+export function Leaf({ size = 26, color = tokens.auth.white }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
@@ -32,7 +33,7 @@ export function BrandMark({
   const radius = size * (R.lg / 56);
   const inner = (
     <>
-      <Leaf size={size * 0.52} color={T.white} />
+      <Leaf size={size * 0.52} color={tokens.auth.white} />
     </>
   );
   if (on === 'dark') {
@@ -57,7 +58,7 @@ export function BrandMark({
   }
   return (
     <LinearGradient
-      colors={[T.greenMid, T.green, T.greenDeep]}
+      colors={[tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.9, y: 1 }}
       style={[
@@ -72,7 +73,7 @@ export function BrandMark({
   );
 }
 
-export function Wordmark({ color = T.ink, size = 22 }: { color?: string; size?: number }) {
+export function Wordmark({ color = tokens.auth.ink, size = 22 }: { color?: string; size?: number }) {
   return (
     <Text
       style={{
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   markShadow: {
-    shadowColor: T.green,
+    shadowColor: tokens.auth.green,
     shadowOpacity: 0.28,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },

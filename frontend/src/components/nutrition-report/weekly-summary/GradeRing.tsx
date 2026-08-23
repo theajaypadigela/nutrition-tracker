@@ -1,8 +1,8 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Text } from '@/components/ui/text';
-import { tokens } from './tokens';
 
 interface Props {
   score: number;
@@ -17,7 +17,7 @@ const GradeRing: React.FC<Props> = ({ score, grade, size = 88, stroke = 7 }) => 
   const pct = Math.max(0, Math.min(100, score)) / 100;
   const dashOffset = circumference * (1 - pct);
   const ringColor =
-    score >= 80 ? tokens.green : score >= 60 ? tokens.warn : tokens.bad;
+    score >= 80 ? tokens.report.green : score >= 60 ? tokens.report.warn : tokens.report.bad;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>

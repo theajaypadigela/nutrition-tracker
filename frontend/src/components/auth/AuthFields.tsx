@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   KeyboardTypeOptions,
   Pressable,
@@ -16,7 +17,7 @@ import {
   Lock,
   LucideIcon,
 } from 'lucide-react-native';
-import { T, R, pwStrength } from './authTheme';
+import { R, pwStrength } from './authTheme';
 
 // ─── label + footer ────────────────────────────────────────
 function FieldLabel({ label, optional }: { label: string; optional?: boolean }) {
@@ -36,7 +37,7 @@ function FieldFoot({ error, hint }: { error?: string | false; hint?: string }) {
   if (error) {
     return (
       <View style={styles.footRow} accessibilityRole="alert">
-        <AlertCircle size={15} color={T.danger} />
+        <AlertCircle size={15} color={tokens.auth.danger} />
         <Text style={styles.errorText}>{error}</Text>
       </View>
     );
@@ -82,8 +83,8 @@ export function AuthTextField({
   trailing,
 }: AuthTextFieldProps) {
   const [focus, setFocus] = useState(false);
-  const borderColor = error ? T.danger : focus ? T.green : T.line;
-  const iconColor = error ? T.danger : focus ? T.green : T.inkMuted;
+  const borderColor = error ? tokens.auth.danger : focus ? tokens.auth.green : tokens.auth.line;
+  const iconColor = error ? tokens.auth.danger : focus ? tokens.auth.green : tokens.auth.inkMuted;
   return (
     <View>
       <FieldLabel label={label} optional={optional} />
@@ -92,7 +93,7 @@ export function AuthTextField({
           styles.fieldBox,
           {
             borderColor,
-            backgroundColor: focus ? T.surface : T.field,
+            backgroundColor: focus ? tokens.auth.surface : tokens.auth.field,
           },
           focus ? styles.fieldFocusRing : null,
         ]}
@@ -107,7 +108,7 @@ export function AuthTextField({
             onBlur?.();
           }}
           placeholder={placeholder}
-          placeholderTextColor={T.inkMuted}
+          placeholderTextColor={tokens.auth.inkMuted}
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -166,9 +167,9 @@ export function AuthPasswordField({
             accessibilityLabel={show ? 'Hide password' : 'Show password'}
           >
             {show ? (
-              <EyeOff size={20} color={T.inkMuted} />
+              <EyeOff size={20} color={tokens.auth.inkMuted} />
             ) : (
-              <Eye size={20} color={T.inkMuted} />
+              <Eye size={20} color={tokens.auth.inkMuted} />
             )}
           </Pressable>
         }
@@ -181,7 +182,7 @@ export function AuthPasswordField({
                 key={i}
                 style={[
                   styles.strengthBar,
-                  { backgroundColor: i < Math.max(1, st.score) ? st.color : T.line },
+                  { backgroundColor: i < Math.max(1, st.score) ? st.color : tokens.auth.line },
                 ]}
               />
             ))}
@@ -214,8 +215,8 @@ export function PickerField({
   active?: boolean;
 }) {
   const has = !!value;
-  const borderColor = error ? T.danger : active ? T.green : T.line;
-  const iconColor = error ? T.danger : active ? T.green : T.inkMuted;
+  const borderColor = error ? tokens.auth.danger : active ? tokens.auth.green : tokens.auth.line;
+  const iconColor = error ? tokens.auth.danger : active ? tokens.auth.green : tokens.auth.inkMuted;
   return (
     <View>
       <FieldLabel label={label} optional={optional} />
@@ -224,18 +225,18 @@ export function PickerField({
         accessibilityRole="button"
         style={[
           styles.fieldBox,
-          { borderColor, backgroundColor: active ? T.surface : T.field },
+          { borderColor, backgroundColor: active ? tokens.auth.surface : tokens.auth.field },
           active ? styles.fieldFocusRing : null,
         ]}
       >
         {Icon ? <Icon size={20} color={iconColor} /> : null}
         <Text
-          style={[styles.pickerValue, { color: has ? T.ink : T.inkMuted }]}
+          style={[styles.pickerValue, { color: has ? tokens.auth.ink : tokens.auth.inkMuted }]}
           numberOfLines={1}
         >
           {has ? value : placeholder}
         </Text>
-        <ChevronDown size={18} color={T.inkMuted} />
+        <ChevronDown size={18} color={tokens.auth.inkMuted} />
       </Pressable>
       <FieldFoot error={error} />
     </View>
@@ -273,13 +274,13 @@ export function GenderChips({
               style={[
                 styles.chip,
                 {
-                  borderColor: on ? T.green : T.line,
-                  backgroundColor: on ? T.greenSoft : T.field,
+                  borderColor: on ? tokens.auth.green : tokens.auth.line,
+                  backgroundColor: on ? tokens.auth.greenSoft : tokens.auth.field,
                 },
               ]}
             >
-              {on ? <Check size={16} color={T.green} /> : null}
-              <Text style={[styles.chipText, { color: on ? T.greenDeep : T.inkSoft }]}>
+              {on ? <Check size={16} color={tokens.auth.green} /> : null}
+              <Text style={[styles.chipText, { color: on ? tokens.auth.greenDeep : tokens.auth.inkSoft }]}>
                 {o.label}
               </Text>
             </Pressable>
@@ -303,7 +304,7 @@ export function AuthCheckbox({
   error?: string | false;
   children: React.ReactNode;
 }) {
-  const boxBorder = error && !checked ? T.danger : checked ? T.green : T.inkMuted;
+  const boxBorder = error && !checked ? tokens.auth.danger : checked ? tokens.auth.green : tokens.auth.inkMuted;
   return (
     <View>
       <Pressable
@@ -315,16 +316,16 @@ export function AuthCheckbox({
         <View
           style={[
             styles.checkBox,
-            { borderColor: boxBorder, backgroundColor: checked ? T.green : 'transparent' },
+            { borderColor: boxBorder, backgroundColor: checked ? tokens.auth.green : 'transparent' },
           ]}
         >
-          {checked ? <Check size={16} color={T.white} /> : null}
+          {checked ? <Check size={16} color={tokens.auth.white} /> : null}
         </View>
         <Text style={styles.checkLabel}>{children}</Text>
       </Pressable>
       {error ? (
         <View style={[styles.footRow, { marginLeft: 36 }]} accessibilityRole="alert">
-          <AlertCircle size={15} color={T.danger} />
+          <AlertCircle size={15} color={tokens.auth.danger} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -342,10 +343,10 @@ const styles = StyleSheet.create({
   labelText: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: T.ink,
+    color: tokens.auth.ink,
   },
   optionalPill: {
-    backgroundColor: T.lineSoft,
+    backgroundColor: tokens.auth.lineSoft,
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 999,
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   optionalText: {
     fontSize: 11,
     fontWeight: '700',
-    color: T.inkMuted,
+    color: tokens.auth.inkMuted,
   },
   fieldBox: {
     flexDirection: 'row',
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
     // iOS-only glow. Do NOT add `elevation` here: toggling Android elevation on
     // focus recreates this View's native shadow node, which drops focus off the
     // child TextInput (the "tap the field, it immediately unselects" bug).
-    shadowColor: T.green,
+    shadowColor: tokens.auth.green,
     shadowOpacity: 0.18,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     padding: 0,
     fontSize: 16,
     fontWeight: '600',
-    color: T.ink,
+    color: tokens.auth.ink,
     letterSpacing: -0.2,
   },
   pickerValue: {
@@ -397,14 +398,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: T.danger,
+    color: tokens.auth.danger,
     flex: 1,
   },
   hintText: {
     marginTop: 8,
     fontSize: 12.5,
     fontWeight: '500',
-    color: T.inkMuted,
+    color: tokens.auth.inkMuted,
   },
   strengthRow: {
     marginTop: 9,
@@ -470,6 +471,6 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 20,
     fontWeight: '500',
-    color: T.inkSoft,
+    color: tokens.auth.inkSoft,
   },
 });

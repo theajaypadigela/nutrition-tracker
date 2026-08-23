@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   TextInput,
@@ -9,7 +10,6 @@ import {
 import { Search, X, SlidersHorizontal } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Status } from '@/types/nutrition';
-import { tokens } from './tokens';
 
 type FilterValue = 'all' | Status;
 type ValueMode = 'absolute' | 'percent';
@@ -26,12 +26,12 @@ export const NutrientSearchBar: React.FC<SearchProps> = ({
   const showClear = value.length > 0;
   return (
     <View style={searchStyles.wrap}>
-      <Search size={16} color={tokens.inkMuted} strokeWidth={2} />
+      <Search size={16} color={tokens.report.inkMuted} strokeWidth={2} />
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder="Search vitamins, minerals, macros…"
-        placeholderTextColor={tokens.inkMuted}
+        placeholderTextColor={tokens.report.inkMuted}
         style={searchStyles.input}
         returnKeyType="search"
       />
@@ -40,10 +40,10 @@ export const NutrientSearchBar: React.FC<SearchProps> = ({
           onPress={() => onChange('')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <X size={16} color={tokens.inkMuted} strokeWidth={2.4} />
+          <X size={16} color={tokens.report.inkMuted} strokeWidth={2.4} />
         </TouchableOpacity>
       ) : (
-        <SlidersHorizontal size={16} color={tokens.inkMuted} strokeWidth={2} />
+        <SlidersHorizontal size={16} color={tokens.report.inkMuted} strokeWidth={2} />
       )}
     </View>
   );
@@ -54,16 +54,16 @@ const searchStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderWidth: 1,
-    borderColor: tokens.line,
+    borderColor: tokens.report.line,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
   input: {
     flex: 1,
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 14,
     fontWeight: '500',
     padding: 0,
@@ -82,9 +82,9 @@ const CHIP_DEFS: Array<{
   dot?: string;
 }> = [
   { key: 'all', label: 'All' },
-  { key: 'good', label: 'On track', dot: tokens.good },
-  { key: 'warn', label: 'Close', dot: tokens.warn },
-  { key: 'bad', label: 'Off goal', dot: tokens.bad },
+  { key: 'good', label: 'On track', dot: tokens.report.good },
+  { key: 'warn', label: 'Close', dot: tokens.report.warn },
+  { key: 'bad', label: 'Off goal', dot: tokens.report.bad },
 ];
 
 export const FilterChips: React.FC<ChipsProps> = ({
@@ -141,16 +141,16 @@ const chipStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderWidth: 1,
-    borderColor: tokens.line,
+    borderColor: tokens.report.line,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   chipActive: {
-    backgroundColor: tokens.primarySoft,
-    borderColor: tokens.primary,
+    backgroundColor: tokens.report.primarySoft,
+    borderColor: tokens.report.primary,
   },
   dot: {
     width: 7,
@@ -158,22 +158,22 @@ const chipStyles = StyleSheet.create({
     borderRadius: 4,
   },
   label: {
-    color: tokens.inkSoft,
+    color: tokens.report.inkSoft,
     fontSize: 12,
     fontWeight: '600',
   },
   labelActive: {
-    color: tokens.primaryDeep,
+    color: tokens.report.primaryDeep,
     fontWeight: '700',
   },
   count: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 11,
     fontWeight: '600',
     marginLeft: 2,
   },
   countActive: {
-    color: tokens.primaryDeep,
+    color: tokens.report.primaryDeep,
     fontWeight: '700',
   },
 });
@@ -239,13 +239,13 @@ const toggleStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   count: {
-    color: tokens.inkSoft,
+    color: tokens.report.inkSoft,
     fontSize: 12,
     fontWeight: '600',
   },
   toggle: {
     flexDirection: 'row',
-    backgroundColor: tokens.lineSoft,
+    backgroundColor: tokens.report.lineSoft,
     borderRadius: 999,
     padding: 3,
   },
@@ -255,7 +255,7 @@ const toggleStyles = StyleSheet.create({
     borderRadius: 999,
   },
   optActive: {
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     shadowColor: '#0f1e28',
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 1 },
@@ -263,12 +263,12 @@ const toggleStyles = StyleSheet.create({
     elevation: 1,
   },
   optText: {
-    color: tokens.inkSoft,
+    color: tokens.report.inkSoft,
     fontSize: 12,
     fontWeight: '600',
   },
   optTextActive: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontWeight: '700',
   },
 });

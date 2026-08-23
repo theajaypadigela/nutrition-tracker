@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,7 +27,6 @@ import {
   AuthCheckbox,
   PrimaryButton,
   TextLink,
-  T,
   R,
   formatDob,
 } from '@/components/auth';
@@ -65,7 +65,7 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={T.greenMid} />
+      <StatusBar barStyle="light-content" backgroundColor={tokens.auth.greenMid} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -83,7 +83,7 @@ export default function RegisterScreen() {
                 accessibilityLabel="Back to login"
                 style={styles.backBtn}
               >
-                <ArrowLeft size={20} color={T.white} />
+                <ArrowLeft size={20} color={tokens.auth.white} />
               </Pressable>
               <BrandMark size={38} on="dark" />
             </View>
@@ -209,9 +209,9 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.greenMid },
+  root: { flex: 1, backgroundColor: tokens.auth.greenMid },
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, backgroundColor: T.surface },
+  scroll: { flexGrow: 1, backgroundColor: tokens.auth.surface },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: {
     width: 40,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    color: T.white,
+    color: tokens.auth.white,
     fontSize: 30,
     fontWeight: '800',
     letterSpacing: -0.9,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
     marginTop: -44,
-    backgroundColor: T.surface,
+    backgroundColor: tokens.auth.surface,
     borderTopLeftRadius: R.xl,
     borderTopRightRadius: R.xl,
   },
@@ -249,11 +249,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 18,
   },
-  terms: { color: T.green, fontWeight: '700' },
+  terms: { color: tokens.auth.green, fontWeight: '700' },
   footer: {
-    backgroundColor: T.surface,
+    backgroundColor: tokens.auth.surface,
     borderTopWidth: 1,
-    borderTopColor: T.lineSoft,
+    borderTopColor: tokens.auth.lineSoft,
     paddingHorizontal: 22,
     paddingTop: 14,
   },
@@ -263,5 +263,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 13,
   },
-  footerText: { fontSize: 13.5, fontWeight: '600', color: T.inkSoft },
+  footerText: { fontSize: 13.5, fontWeight: '600', color: tokens.auth.inkSoft },
 });

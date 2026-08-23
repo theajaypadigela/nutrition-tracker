@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   Modal,
@@ -13,7 +14,7 @@ import {
 import { X, Plus, Minus } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { WeeklyNutrient } from '@/types/nutrition';
-import { tokens, fmtNum } from './tokens';
+import { fmtNum } from './tokens';
 
 interface Props {
   visible: boolean;
@@ -176,7 +177,7 @@ const GoalSheet: React.FC<Props> = ({
               <Text style={styles.helperText}>{helper}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X size={16} color={tokens.ink} strokeWidth={2.4} />
+              <X size={16} color={tokens.report.ink} strokeWidth={2.4} />
             </TouchableOpacity>
           </View>
 
@@ -195,7 +196,7 @@ const GoalSheet: React.FC<Props> = ({
               onPress={() => setClampedValue(value - step)}
               style={styles.stepBtn}
             >
-              <Minus size={16} color={tokens.ink} strokeWidth={2.4} />
+              <Minus size={16} color={tokens.report.ink} strokeWidth={2.4} />
             </TouchableOpacity>
 
             <View
@@ -213,7 +214,7 @@ const GoalSheet: React.FC<Props> = ({
               onPress={() => setClampedValue(value + step)}
               style={styles.stepBtn}
             >
-              <Plus size={16} color={tokens.ink} strokeWidth={2.4} />
+              <Plus size={16} color={tokens.report.ink} strokeWidth={2.4} />
             </TouchableOpacity>
           </View>
 
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(8,20,32,0.45)',
   },
   sheet: {
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: tokens.line,
+    backgroundColor: tokens.report.line,
     marginBottom: 14,
   },
   headerRow: {
@@ -303,21 +304,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eyebrow: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   titleText: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.4,
     marginTop: 2,
   },
   helperText: {
-    color: tokens.inkSoft,
+    color: tokens.report.inkSoft,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 4,
@@ -327,12 +328,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: tokens.lineSoft,
+    backgroundColor: tokens.report.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   valueCard: {
-    backgroundColor: tokens.greenSoft,
+    backgroundColor: tokens.report.greenSoft,
     borderWidth: 1,
     borderColor: 'rgba(14,155,109,0.18)',
     borderRadius: 18,
@@ -347,20 +348,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   bigValue: {
-    color: tokens.greenDeep,
+    color: tokens.report.greenDeep,
     fontSize: 38,
     fontWeight: '800',
     letterSpacing: -1,
     lineHeight: 42,
   },
   bigUnit: {
-    color: tokens.greenDeep,
+    color: tokens.report.greenDeep,
     fontSize: 16,
     fontWeight: '700',
     paddingBottom: 6,
   },
   dailyText: {
-    color: tokens.greenDeep,
+    color: tokens.report.greenDeep,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 6,
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: tokens.lineSoft,
+    backgroundColor: tokens.report.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -388,22 +389,22 @@ const styles = StyleSheet.create({
   },
   track: {
     height: TRACK_HEIGHT,
-    backgroundColor: tokens.lineSoft,
+    backgroundColor: tokens.report.lineSoft,
     borderRadius: 999,
     overflow: 'hidden',
   },
   trackFill: {
     height: '100%',
-    backgroundColor: tokens.green,
+    backgroundColor: tokens.report.green,
   },
   knob: {
     position: 'absolute',
     width: KNOB_SIZE,
     height: KNOB_SIZE,
     borderRadius: KNOB_SIZE / 2,
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderWidth: 2,
-    borderColor: tokens.green,
+    borderColor: tokens.report.green,
     top: 0,
     shadowColor: '#0e9b6d',
     shadowOpacity: 0.3,
@@ -418,37 +419,37 @@ const styles = StyleSheet.create({
   },
   presetChip: {
     flex: 1,
-    backgroundColor: tokens.surface,
+    backgroundColor: tokens.report.surface,
     borderWidth: 1,
-    borderColor: tokens.line,
+    borderColor: tokens.report.line,
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',
   },
   presetChipActive: {
-    backgroundColor: tokens.greenSoft,
-    borderColor: tokens.green,
+    backgroundColor: tokens.report.greenSoft,
+    borderColor: tokens.report.green,
   },
   presetText: {
-    color: tokens.ink,
+    color: tokens.report.ink,
     fontSize: 13,
     fontWeight: '700',
   },
   presetTextActive: {
-    color: tokens.greenDeep,
+    color: tokens.report.greenDeep,
   },
   presetSub: {
-    color: tokens.inkMuted,
+    color: tokens.report.inkMuted,
     fontSize: 10,
     fontWeight: '600',
     marginTop: 2,
   },
   presetSubActive: {
-    color: tokens.greenDeep,
+    color: tokens.report.greenDeep,
     opacity: 0.8,
   },
   saveBtn: {
-    backgroundColor: tokens.green,
+    backgroundColor: tokens.report.green,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
