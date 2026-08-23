@@ -1,6 +1,8 @@
 # Refactoring Plan — Nutrition Tracker
 
-**Status:** Phases 1, 2 and 3 executed (2026-08-23). Phase 0 skipped by decision; Phases 4–5 not yet executed.
+**Status:** Phases 1–5 executed (2026-08-23). Phase 0 skipped by decision. Two Phase 5 items
+are deliberately not done — `import/order` (needs a new dependency, see C4) and
+`noUncheckedIndexedAccess` (see the Phase 5 deviations).
 **Prepared:** 2026-08-23 · branch `mongo-deployment`
 **Scope:** `backend/` (Spring Boot 3.4 / Java 17 / MongoDB) and `frontend/` (React Native 0.83 / TypeScript).
 
@@ -653,24 +655,152 @@ the big move rather than being rebased across it.
   `StorageKeys.habitDefinitions` instead of a raw key literal, and `AuthContext.test.tsx`
   gained the `OnboardingProvider` wrapper. F14's "split the test to match" was not done.
 
-### Phase 4 — Frontend component/hook boundaries
+### Phase 4 — Frontend component/hook boundaries — ✅ **done 2026-08-23**
 
-| # | Task | Findings |
-|---|---|---|
-| 4.1 | `useVoiceMealSession` / `useVoiceHabitSession`; move time helpers to `utils/timeFormatter.ts` | F12 |
-| 4.2 | `useRegisterForm`, `useLoginForm`, `useOnboardingMealScheduleForm` | F13 |
-| 4.3 | Unify `DayKey` / `WeekdayCode` into one `DayCode` | F17 |
-| 4.4 | Relocate the 3 loose `components/*.tsx` (`AppBar`, `BottomNavigation`, `FoodItem`) into feature or `components/common/` | F8-analogue |
+| # | Task | Findings | Status |
+|---|---|---|---|
+| 4.1 | `useVoiceMealSession` / `useVoiceHabitSession`; move time helpers to `utils/timeFormatter.ts` | F12 | ✅ |
+| 4.2 | `useRegisterForm`, `useLoginForm`, `useOnboardingMealScheduleForm` | F13 | ✅ |
+| 4.3 | Unify `DayKey` / `WeekdayCode` into one `DayCode` | F17 | ✅ |
+| 4.4 | Relocate the 3 loose `components/*.tsx` into feature or `components/common/` | F8-analogue | ✅ (2 moved, 1 deleted) |
 
-### Phase 5 — Type safety and tokens *(largest, most churn — deliberately last)*
+**Deviations from the plan as written, and why:**
 
-| # | Task | Findings |
-|---|---|---|
-| 5.1 | Re-point `@/*` at `src`; codemod the 204 deep imports | F16 |
-| 5.2 | ESLint `import/order` + `no-restricted-imports` boundary rules | F16 |
-| 5.3 | `noImplicitAny` → `strictNullChecks` → `strict` → `noUncheckedIndexedAccess`, one wave per commit | F16 |
-| 5.4 | Sweep the 246 stray hex literals into semantic tokens, file by file | F15 |
-| 5.5 | Collapse the 4 token alias layers into one namespaced scale | F15 |
+- **4.1 — the two time helpers moved verbatim, not unified.** `timesMatch` /
+  `parseTimeToMinutes` now live in `utils/timeFormatter.ts` as
+  `timesMatch` / `parseTime12hToMinutes`, but they were *not* rewritten to delegate to
+  `clockTime.parseClockTime`. That parser is anchored and range-validated; the habit one is
+  deliberately unanchored and lenient, and `timesMatch` also has a normalised-exact-match
+  fast path that makes 24-hour strings compare. Delegating would change which strings match
+  — `timesMatch('', '')` is `true` today and `habitTime` defaults to `''`. The comment on
+  the new helper says which parser to reach for.
+- **4.1 — navigation stayed in the screens.** No hook in this codebase imports
+  react-navigation, so the habit hook takes an `onRescheduled` callback for the
+  post-reschedule bounce rather than calling `navigate` itself. Matches
+  `useHabitCreationForm(onSaved)`.
+- **4.2 — `useLoginForm` preserves an asymmetry rather than fixing it.** Typing clears the
+  sign-in banner but *not* the field error; the field error only re-computes on blur and on
+  submit. That is what shipped, so it is what the hook does, with a comment saying so.
+- **4.2 — two inline styles became `StyleSheet` entries** as a side effect of extracting the
+  render (LoginScreen's field stack, the onboarding time-select text block). Lint warnings
+  76 → 74.
+- **4.3 — the two ordered arrays were renamed, and that is the point.** `ALL_DAYS` and
+  `WEEKDAY_CODES` gave no hint that one started on Sunday. They are now
+  `DAY_CODES_MONDAY_FIRST` (display order) and `DAY_CODES_SUNDAY_FIRST` (`Date#getDay()`
+  index order) in the new `utils/dayCode.ts`, with element order untouched.
+  `normalizeWeekdayCode` / `weekdayIndexToCode` keep their names — F17 is about the
+  duplicate *type*, and renaming tested exports would be diff noise.
+- **4.4 — `FoodItem.tsx` was deleted, not relocated.** It has zero importers; every
+  `FoodItem` in the tree is the *type* from `types/types.ts`. Phase 1/F1 was the subtraction
+  pass and missed it. Moving dead code to a tidier folder only makes it harder to spot next
+  time. It carried 11 of the repo's inline-style warnings (74 → 63).
+
+### Phase 5 — Type safety and tokens — ✅ **done 2026-08-23** *(5.2 and 5.3 partial by decision)*
+
+| # | Task | Findings | Status |
+|---|---|---|---|
+| 5.1 | Re-point `@/*` at `src`; codemod the deep imports | F16 | ✅ (214 specifiers, 80 files) |
+| 5.2 | ESLint `import/order` + `no-restricted-imports` boundary rules | F16 | ⚠️ boundary rules ✅; `import/order` **not done** |
+| 5.3 | `noImplicitAny` → `strictNullChecks` → `strict` → `noUncheckedIndexedAccess` | F16 | ⚠️ `strict: true` ✅; `noUncheckedIndexedAccess` **skipped by decision** |
+| 5.4 | Sweep the stray hex literals into semantic tokens | F15 | ✅ (271 → 1) |
+| 5.5 | Collapse the 4 token alias layers into one namespaced scale | F15 | ✅ |
+
+**5.5 was executed before 5.4, deliberately** — collapsing the alias layers first meant the
+literal sweep could add its new tokens straight into the final namespaces instead of writing
+them twice.
+
+**Deviations from the plan as written, and why:**
+
+- **5.1 — 214 specifiers across 80 files, not 204 across 76.** The tree moved during Phases
+  2–4. Also: `"@/*": ["src/*"]` fails as written (TS5090 without a `baseUrl`); it needs
+  `["./src/*"]`. Single-hop and `./` specifiers were left relative on purpose — they are
+  sibling/parent access, they read fine, and they do not rot under file moves. `jest.mock`
+  and `require` strings *were* rewritten, since they rot for exactly the same reason imports
+  do; `babel-plugin-module-resolver` transforms them by default, and `jest.config.js` gained
+  a matching `moduleNameMapper` as a belt-and-braces.
+- **5.2 — `import/order` is not done, and cannot be without a new dependency.** It requires
+  `eslint-plugin-import`, which is not installed, and **C4** forbids new dependencies without
+  approval. Everything in F16 item 3 that needs no dependency *is* done: three
+  `no-restricted-imports` boundary groups — no `../../`, no `api/client` outside
+  `services/api/*` (F16's stated purpose: "what stops F10 from regressing"), and no direct
+  AsyncStorage outside `services/storage/*`. All three were probed against a deliberate
+  violation and fire. Zero violations in the existing tree.
+- **5.3 — one commit, not three waves, and `noUncheckedIndexedAccess` is off.** The plan
+  sequenced `noImplicitAny` → `strictNullChecks` → `strict` expecting each wave to surface
+  real bugs. Measured, it does not:
+
+  | config | errors |
+  |---|---|
+  | `--noImplicitAny` alone | 17 |
+  | `--strictNullChecks` alone | 2 |
+  | `--noImplicitAny --strictNullChecks` | **1** |
+  | `--strict` | **1** |
+  | `--strict --noUncheckedIndexedAccess` | 29 |
+
+  The 17 and the 2 are artifacts of the intermediate configurations — TS7010/TS7018 on test
+  harnesses whose JSX return type only resolves once `strictNullChecks` is also on. Fixing
+  them would mean annotating test helpers to satisfy a config the repo never ships. So the
+  waves are collapsed and the one real error is fixed: `MacroProgressBar.tsx:91` indexed a
+  size map with an optional key.
+
+  `noUncheckedIndexedAccess` was **skipped by decision.** Of its 28 errors, 4 are inside
+  generated Gluestack code (2 in the live `ui/drawer`, 2 in dead `.web.tsx` files) which §8
+  says never to hand-edit, and the other 24 are all provably-safe accesses — regex groups,
+  `habits[0]` inside a `length > 0` guard, `s[0]` fallbacks. It would buy 24 defensive
+  guards and a §8 violation and catch no bug.
+
+- **§8's "all of `components/ui/**` is generated" is not accurate.** The generated Gluestack
+  scaffold is the lowercase subdirectories. Seven hand-written app components sit at that
+  folder's root — `CalorieRing`, `CircularProgress`, `MacroProgressBar`, `MacroRings`,
+  `QuickAddFAB`, `SearchBar`, `StreakCounter` — and two of them were edited in this phase.
+- **5.4 — 271 literals at the start, not 246**, and one is left in the tree on purpose:
+  `channels.ts:121` `lightColor: '#10b981'`, the Android notification-channel LED colour.
+  That is a platform channel property, not a painted surface.
+- **5.4 — the sweep needed a primitive layer the plan did not anticipate.** Several
+  *different* surface decisions legitimately land on the same Tailwind step (amber-600 tints
+  the habit clock glyph, the daily-report insight icon and the "High" nutrient flag). Naming
+  each separately while retyping `#d97706` three times is how the drift F15 describes starts,
+  so there is now a private `tw` ramp of the 31 Tailwind steps in use, and the semantic
+  namespaces reference it. One value, three names, one place to change it.
+- **5.4 — shorthand hex was normalised** (`#fff` → `#ffffff`, `#666` → `#666666`,
+  `#13961aff` → `#13961a`). Same rendered colour; the verifier normalises both sides before
+  comparing, so this is checked rather than assumed.
+- **5.4 — three "do not merge" pairs found and preserved,** each documented on the token:
+  `foodLog.greenDeep` #0a5226 vs `brandGreen.deep` #0a4d27; `dashboard.ink` #0f172a
+  (slate-900, the chrome) vs `dashboard.calendarInk` #111827 (gray-900, what
+  react-native-calendars was configured with); `dashboard.inkMuted` #94a3b8 vs
+  `dashboard.calendarInkMuted` #6b7280.
+- **5.4 — `tokens.settings` names values it does not endorse.** Profile, Meal schedule,
+  Reminder health and MealReminderSettings predate the design system and were never
+  restyled. Naming their `#1a1a1a`/`#666`/`#999` ramp stops it being retyped; restyling them
+  onto `auth`/`foodLog` would change pixels and is out of scope.
+- **5.5 — `callTheme.ts` was three-quarters dead.** `callColors` was a one-line alias of
+  `callPalette`, and `callRadius`, `callSpacing` and the `callTheme` bundle had **zero
+  importers** despite the module header claiming three surfaces drew from it. Only
+  `VoiceSessionScreen` ever did. The module now holds `callFontFamily` alone.
+- **5.5 — `MacrosCard`/`MealGroup` were out of scope for the alias collapse.** Each declared
+  its *own* local `const T` from raw hex — a third thing named `T`, unrelated to the auth
+  palette — so they were handled in 5.4a, not 5.5.
+
+**How the token work was verified, given no screenshot pass was possible here.** §6 asks for
+before/after screenshots because "the token sweep is only correct if the pixels are
+identical". Three mechanical checks stand in, and they are stronger than eyeballing:
+
+1. **Per-swap validation.** The sweep is table-driven; the driver resolves each target token
+   and refuses the swap unless its hex equals the literal being replaced. 205 swaps across
+   the four 5.4 commits, 0 failures.
+2. **Colour fingerprints.** For every changed file, the multiset of colours it references —
+   hex literals, `tokens.*` paths, and local aliases/palette objects/spreads resolved — is
+   compared against the previous commit. 0 differences, every commit. Probed by deliberately
+   swapping `goodSoft` for `warnSoft`: it reports `#e3f5ea: 1 -> 0`. The checker found two
+   holes in *itself* first (it undercounted `{...DEFAULT_COLORS}` spreads and did not follow
+   palette objects whose members are token references); both were fixed and the earlier
+   commits re-checked under the stricter version.
+3. **Token-map diff.** Every pre-existing token path is confirmed to resolve to exactly the
+   same value after each change: 172 paths, 0 changed, 0 dropped.
+
+A device pass is still owed for the notification/call lanes (§6 item 1) — 4.1 rewrote both
+voice lanes' orchestration, and no test covers it.
 
 ---
 
@@ -739,15 +869,30 @@ Named so nobody expects them and nobody quietly does them:
    are `api/client.ts` (401) and `mealScheduleStore` (404, on a different endpoint). Nothing
    branches on the voice endpoints' 500s. See the Phase 2 deviations for what actually changed.
 
-2. **Task 5.3 — `strict: true` rollout.** ⏳ Still open; Phase 5 not started.
+2. **Task 5.3 — `strict: true` rollout.** ✅ **Done, as one commit rather than three waves**
+   — the intermediate flag combinations produce errors the final configuration does not have
+   (see the Phase 5 deviations for the measurements). `noUncheckedIndexedAccess` is
+   **skipped**: 4 of its 28 errors are in generated code §8 protects, and the other 24 are
+   provably-safe accesses.
 
 3. **Phase 2.8 — the ~100-file package move.** ✅ **Included, landed last** as the plan
    sequenced it.
 
-4. **Sequencing.** ✅ Phases 2 and 3 were run back to back. Phases 4 and 5 remain.
+4. **Sequencing.** ✅ Phases 2 and 3 were run back to back, then 4 and 5. Within Phase 5,
+   5.5 was run before 5.4 so the literal sweep could write into the final token namespaces.
 
 5. **Phase 0 — the test safety net.** ✅ **Skipped by decision**; no new test files were
    committed. The two throwaway verification harnesses described in the Phase 2 deviations
-   stood in for tasks 0.1–0.3 and were discarded afterwards. Phase 0 is therefore still open,
-   and the risk it was written to cover is still open with it — most sharply for Phases 4–5,
-   which touch screens and type-level flags with no render tests underneath them.
+   stood in for tasks 0.1–0.3 and were discarded afterwards. Phase 0 is therefore still open.
+
+   **This is now the largest outstanding risk in the plan.** Phases 4–5 rewrote both voice
+   screens' orchestration, three auth/onboarding forms, and every colour reference in the
+   app, with no render test under any of it. The token work is covered by mechanical
+   equivalence checks (see the Phase 5 verification note) and the type work by `tsc`, but the
+   hook extractions in 4.1 and 4.2 are covered by nothing except the compiler. If any single
+   item from Phase 0 is revisited, make it 0.4 — render tests for the five screens Phases
+   4–5 touched.
+
+6. **New tests in Phases 4–5.** ⏳ Still none, per decision 5. F13 asks for the three new
+   form hooks to follow `useProfileForm`'s "shape *and test style*"; they follow the shape
+   only. `useVoiceMealSession` / `useVoiceHabitSession` are likewise untested.
