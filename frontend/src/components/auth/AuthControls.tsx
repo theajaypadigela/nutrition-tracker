@@ -49,7 +49,7 @@ export function PrimaryButton({
       ]}
     >
       <LinearGradient
-        colors={off ? ['#b4c5ba', '#b4c5ba'] : [tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
+        colors={off ? [tokens.auth.buttonDisabled, tokens.auth.buttonDisabled] : [tokens.auth.greenMid, tokens.auth.green, tokens.auth.greenDeep]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={styles.primaryInner}

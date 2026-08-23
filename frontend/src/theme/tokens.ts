@@ -148,6 +148,7 @@ const callPalette = {
   onBubbleUser: '#FFFFFF',
 
   onAccent: '#FFFFFF',
+  shadow: '#000000',
 } as const;
 
 /**
@@ -219,6 +220,10 @@ export const tokens = {
     ok: authStatus.ok,
     strengthEmpty: authStatus.strengthEmpty,
     white: neutral.white,
+    /** Card/sheet shadow on the auth + onboarding surfaces. */
+    shadow: '#08140e',
+    /** Flat fill the primary button gradient collapses to when disabled. */
+    buttonDisabled: '#b4c5ba',
   },
 
   /** Weekly nutrition report (light, cool blue-tinted). */
@@ -350,6 +355,7 @@ export const tokens = {
     amber: tw.amber600,
     violet: tw.violet600,
     red: tw.red500,
+    greenBright: tw.emerald500,
     /** Placeholder text and inactive glyphs. */
     muted: tw.gray400,
     /** One step darker than `muted`; the unselected reminder-type glyph. */
@@ -398,6 +404,46 @@ export const tokens = {
     positive: '#13961a',
     negative: tw.red600,
     neutral: tw.amber600,
+  },
+
+  /**
+   * The settings/diagnostics screens — Profile, Meal schedule, Reminder health,
+   * MealReminderSettings. These predate the Nourish design system and were never
+   * restyled: a plain white-on-off-white look with its own material-ish green and
+   * a `#1a1a1a`/`#666`/`#999` ink ramp. Named here so the values stop being
+   * retyped, NOT endorsed — restyling them onto `auth`/`foodLog` is a visual
+   * change and therefore not part of this refactor.
+   */
+  settings: {
+    bg: '#f8faf8',
+    surface: neutral.white,
+    ink: '#1a1a1a',
+    inkSoft: '#666666',
+    inkMuted: '#999999',
+    inkFaint: '#555555',
+    line: tw.gray200,
+    shadow: '#000000',
+    disabled: '#aaaaaa',
+    disabledInk: '#bbbbbb',
+    switchTrackOff: '#cccccc',
+    switchTrackOn: '#81c784',
+    switchThumbOff: '#f4f3f4',
+    green: '#2e7d32',
+    greenBg: '#f1f8f1',
+    greenLine: '#d7ebd7',
+    /**
+     * Reminder-health row status. `statusOk` and `statusError` happen to equal
+     * callPalette.accept / .decline; they are kept separate because this is a
+     * light diagnostics list, not the call surface.
+     */
+    statusOk: '#1d9e75',
+    statusWarn: '#c9821b',
+    statusError: '#e24b4a',
+    statusNa: '#9aa0a6',
+    /** "Reminders are degraded" banner. */
+    degradedBg: '#fdf2e2',
+    degradedLine: '#f0c98a',
+    degradedInk: '#8a5a12',
   },
 
   /** The dark, continuous call experience. */

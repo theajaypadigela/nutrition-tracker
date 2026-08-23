@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { VStack } from '@/components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
 import {
@@ -60,7 +61,7 @@ const ProfileScreen = () => {
           <VStack className="bg-white rounded-2xl p-10 border border-gray-200 items-center">
             <View className="flex justify-center mb-4">
               <View className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
-                <User size={36} color="#059669" />
+                <User size={36} color={tokens.icon.green} />
               </View>
             </View>
             <Text
@@ -211,7 +212,7 @@ const ProfileScreen = () => {
               className="w-full mt-4 rounded-xl shadow-lg border border-red-200 bg-gray-50"
               onPress={logout}
             >
-              <LogOut size={20} color="#ef4444" />
+              <LogOut size={20} color={tokens.icon.red} />
               <ButtonText size="md" className="text-red-500">
                 Logout
               </ButtonText>
@@ -227,15 +228,15 @@ const profileStyles = StyleSheet.create({
   mealReminderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: tokens.settings.surface,
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: tokens.settings.line,
   },
   rowIcon: { fontSize: 22, marginRight: 12 },
-  rowLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-  rowChevron: { fontSize: 22, color: '#999' },
+  rowLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: tokens.settings.ink },
+  rowChevron: { fontSize: 22, color: tokens.settings.inkMuted },
 });
 
 export default ProfileScreen;

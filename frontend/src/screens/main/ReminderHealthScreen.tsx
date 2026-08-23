@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   Text,
@@ -13,10 +14,10 @@ import { HealthStatus } from '@/services/notifications/reminderHealth';
 import { useReminderHealth } from '@/hooks/useReminderHealth';
 
 const STATUS_COLOR: Record<HealthStatus, string> = {
-  ok: '#1D9E75',
-  warn: '#C9821B',
-  error: '#E24B4A',
-  na: '#9AA0A6',
+  ok: tokens.settings.statusOk,
+  warn: tokens.settings.statusWarn,
+  error: tokens.settings.statusError,
+  na: tokens.settings.statusNa,
 };
 
 const STATUS_LABEL: Record<HealthStatus, string> = {
@@ -38,7 +39,7 @@ export default function ReminderHealthScreen() {
   if (loading && !report) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#1D9E75" />
+        <ActivityIndicator color={tokens.settings.statusOk} />
       </View>
     );
   }
@@ -93,40 +94,40 @@ export default function ReminderHealthScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { flex: 1, backgroundColor: '#f8faf8' },
+  container: { flex: 1, backgroundColor: tokens.settings.bg },
   content: { padding: 24 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, color: '#1a1a1a' },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 20, lineHeight: 20 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, color: tokens.settings.ink },
+  subtitle: { fontSize: 14, color: tokens.settings.inkSoft, marginBottom: 20, lineHeight: 20 },
   degradedBanner: {
-    backgroundColor: '#FDF2E2',
-    borderColor: '#F0C98A',
+    backgroundColor: tokens.settings.degradedBg,
+    borderColor: tokens.settings.degradedLine,
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
   },
-  degradedText: { color: '#8A5A12', fontSize: 13, lineHeight: 18 },
+  degradedText: { color: tokens.settings.degradedInk, fontSize: 13, lineHeight: 18 },
   row: {
-    backgroundColor: '#fff',
+    backgroundColor: tokens.settings.surface,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
     elevation: 1,
-    shadowColor: '#000',
+    shadowColor: tokens.settings.shadow,
     shadowOpacity: 0.05,
     shadowRadius: 5,
   },
   rowHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a', flex: 1 },
+  rowTitle: { fontSize: 16, fontWeight: '600', color: tokens.settings.ink, flex: 1 },
   statusTag: { fontSize: 12, fontWeight: '600' },
-  detail: { fontSize: 13, color: '#555', lineHeight: 18 },
+  detail: { fontSize: 13, color: tokens.settings.inkFaint, lineHeight: 18 },
   fixButton: {
     marginTop: 12,
-    backgroundColor: '#1D9E75',
+    backgroundColor: tokens.settings.statusOk,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  fixButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  fixButtonText: { color: tokens.settings.surface, fontSize: 14, fontWeight: '600' },
 });

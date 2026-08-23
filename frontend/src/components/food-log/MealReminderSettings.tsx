@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   Text,
@@ -139,8 +140,8 @@ export default function MealReminderSettings({
         <Switch
           value={reminder.enabled}
           onValueChange={toggleEnabled}
-          trackColor={{ false: '#ccc', true: '#81C784' }}
-          thumbColor={reminder.enabled ? '#2e7d32' : '#f4f3f4'}
+          trackColor={{ false: tokens.settings.switchTrackOff, true: tokens.settings.switchTrackOn }}
+          thumbColor={reminder.enabled ? tokens.settings.green : tokens.settings.switchThumbOff}
         />
       </View>
 
@@ -177,24 +178,24 @@ export default function MealReminderSettings({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: '#f1f8f1',
+    backgroundColor: tokens.settings.greenBg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d7ebd7',
+    borderColor: tokens.settings.greenLine,
     padding: 16,
     marginBottom: 16,
   },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, color: '#1a1a1a' },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, color: tokens.settings.ink },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: tokens.settings.inkSoft,
     marginBottom: 28,
     lineHeight: 20,
   },
   compactHeading: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2e7d32',
+    color: tokens.settings.green,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -203,12 +204,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: tokens.settings.surface,
     borderRadius: 14,
     padding: 18,
     marginBottom: 14,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: tokens.settings.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 6,
   },
@@ -216,19 +217,19 @@ const styles = StyleSheet.create({
   mealLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: tokens.settings.ink,
     marginBottom: 4,
   },
-  timeText: { fontSize: 22, fontWeight: '700', color: '#2e7d32' },
-  timeTextDisabled: { color: '#bbb' },
-  tapToChange: { fontSize: 11, color: '#999', marginTop: 2 },
+  timeText: { fontSize: 22, fontWeight: '700', color: tokens.settings.green },
+  timeTextDisabled: { color: tokens.settings.disabledInk },
+  tapToChange: { fontSize: 11, color: tokens.settings.inkMuted, marginTop: 2 },
   saveBtn: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: tokens.settings.green,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 4,
   },
-  saveBtnDisabled: { backgroundColor: '#aaa' },
-  saveBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  saveBtnDisabled: { backgroundColor: tokens.settings.disabled },
+  saveBtnText: { color: tokens.settings.surface, fontSize: 17, fontWeight: '700' },
 });

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   ScrollView,
@@ -117,7 +118,7 @@ const ManualFoodLogScreen = () => {
             {isSuccess && (
               <View className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
                 <HStack className="items-center gap-2">
-                  <CheckCircle size={18} stroke="#10B981" />
+                  <CheckCircle size={18} stroke={tokens.icon.greenBright} />
                   <Text className="text-sm font-semibold text-emerald-700">
                     Food entry added successfully!
                   </Text>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { ScrollView, StyleSheet } from 'react-native';
 import MealReminderSettings from '@/components/food-log/MealReminderSettings';
 
@@ -16,6 +17,6 @@ export default function MealScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8faf8' },
+  container: { flex: 1, backgroundColor: tokens.settings.bg },
   content: { padding: 24 },
 });

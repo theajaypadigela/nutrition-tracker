@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.auth.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#08140e',
+    shadowColor: tokens.auth.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
