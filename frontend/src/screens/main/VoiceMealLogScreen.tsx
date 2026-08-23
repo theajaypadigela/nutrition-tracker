@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
-import type { VoiceMealLogParams } from '../../navigation/paramTypes';
-import VoiceSessionScreen from '../../components/voice/VoiceSessionScreen';
-import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
-import { useVoiceMealSession } from '../../hooks/useVoiceMealSession';
+import { useAuth } from '@/context/AuthContext';
+import type { VoiceMealLogParams } from '@/navigation/paramTypes';
+import VoiceSessionScreen from '@/components/voice/VoiceSessionScreen';
+import { VOICE_LANE_COPY } from '@/components/voice/voiceSessionCopy';
+import { useVoiceMealSession } from '@/hooks/useVoiceMealSession';
 
 export default function VoiceMealLogScreen() {
   const navigation = useNavigation();

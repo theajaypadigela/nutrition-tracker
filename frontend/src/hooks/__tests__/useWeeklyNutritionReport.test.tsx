@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { useWeeklyNutritionReport } from '../useWeeklyNutritionReport';
-import { nutritionApi } from '../../services/api/nutritionApi';
+import { nutritionApi } from '@/services/api/nutritionApi';
 
-jest.mock('../../services/api/nutritionApi', () => ({
+jest.mock('@/services/api/nutritionApi', () => ({
   nutritionApi: {
     getWeeklyReport: jest.fn(),
     getAllNutrients: jest.fn(),

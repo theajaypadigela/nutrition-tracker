@@ -12,7 +12,7 @@ import { Mail } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { AuthStackParamList } from '@/navigation/AuthNavigator';
 import {
   BrandMark,
   Wordmark,
@@ -24,8 +24,8 @@ import {
   GhostButton,
   T,
   R,
-} from '../../components/auth';
-import { useLoginForm } from '../../hooks/useLoginForm';
+} from '@/components/auth';
+import { useLoginForm } from '@/hooks/useLoginForm';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,

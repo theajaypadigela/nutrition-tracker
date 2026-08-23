@@ -7,7 +7,7 @@ import {
   Wheat,
   Salad,
 } from 'lucide-react-native';
-import { macroAccent, microAccent } from '../../theme/tokens';
+import { macroAccent, microAccent } from '@/theme/tokens';
 import { MacroNutrient } from './types';
 
 type NutrientInput = { current: number; goal: number; weeklyGoal?: number };

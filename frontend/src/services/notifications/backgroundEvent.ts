@@ -22,12 +22,12 @@ import {
   onCallDeclined,
 } from './callLifecycle';
 import { presentIncomingCall } from './nativeIncomingCall';
-import { payloadFromData } from '../../hooks/notifications/callPayload';
+import { payloadFromData } from '@/hooks/notifications/callPayload';
 import { claimAction } from './processedActions';
 import {
   setPendingAcceptNavigation,
   PendingAcceptNavigation,
-} from '../../navigation/pendingNavigation';
+} from '@/navigation/pendingNavigation';
 import { reminderLog } from './logger';
 
 export function registerBackgroundEvent(): void {

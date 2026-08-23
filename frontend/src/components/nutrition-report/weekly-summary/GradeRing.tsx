@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { Text } from '../../ui/text';
+import { Text } from '@/components/ui/text';
 import { tokens } from './tokens';
 
 interface Props {

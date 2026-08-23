@@ -1,11 +1,11 @@
 import React from 'react';
 import { VStack } from '../ui/vstack';
 import { Text } from '../ui/text';
-import { formatIndianNumber } from '@/src/utils/numberFormatter';
+import { formatIndianNumber } from '@/utils/numberFormatter';
 import { Divider } from '../ui/divider';
 import MacroProgressBar from '../ui/MacroProgressBar';
 import { AppleIcon, Droplets, Cookie, Drumstick } from 'lucide-react-native';
-import { DailyNutritionTotals, DailyNutritionGoals } from '../../types/types';
+import { DailyNutritionTotals, DailyNutritionGoals } from '@/types/types';
 
 interface NutritionDisplayProps {
   calories: number;

@@ -4,7 +4,7 @@ import {
   normalizeMealType,
   normalizeMeals,
 } from '../meals';
-import { Meals } from '../../types/types';
+import { Meals } from '@/types/types';
 
 describe('normalizeMealType', () => {
   it('returns null for empty / nullish input', () => {

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import apiClient from '../../../api/client';
+import apiClient from '@/api/client';
 import {
   loadHabitsCached,
   saveHabitsCached,
@@ -8,10 +8,10 @@ import {
   clearHabitsCached,
   fetchHabitsFromServer,
 } from '../habitStore';
-import { Habit } from '../../../types/types';
-import { StorageKeys } from '../../storage/storageKeys';
+import { Habit } from '@/types/types';
+import { StorageKeys } from '@/services/storage/storageKeys';
 
-jest.mock('../../../api/client', () => ({
+jest.mock('@/api/client', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));

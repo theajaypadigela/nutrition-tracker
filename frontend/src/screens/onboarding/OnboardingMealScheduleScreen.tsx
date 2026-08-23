@@ -13,14 +13,14 @@ import { ChevronRight, Clock, Phone, ShieldCheck, Sparkles } from 'lucide-react-
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { ROUTES } from '../../navigation/routeNames';
+import { ROUTES } from '@/navigation/routeNames';
 import {
   PrimaryButton,
   TextLink,
   T,
   R,
-} from '../../components/auth';
-import { useOnboardingMealScheduleForm } from '../../hooks/useOnboardingMealScheduleForm';
+} from '@/components/auth';
+import { useOnboardingMealScheduleForm } from '@/hooks/useOnboardingMealScheduleForm';
 
 /**
  * One-time "daily check-in call" setup, shown right after registration. Visually the

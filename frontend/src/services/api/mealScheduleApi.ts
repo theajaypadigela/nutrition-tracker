@@ -1,4 +1,4 @@
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { HttpClient } from './types';
 
 /** Meal-reminder schedule intent as the server stores it. */

@@ -1,6 +1,6 @@
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { HttpClient } from './types';
-import { User } from '../../types/types';
+import { User } from '@/types/types';
 
 export interface LoginResponse {
   token: string;

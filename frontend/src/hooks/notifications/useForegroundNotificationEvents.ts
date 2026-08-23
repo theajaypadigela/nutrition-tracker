@@ -5,8 +5,8 @@ import {
   readOccurrenceData,
   onCallDelivered,
   onCallDeclined,
-} from '../../services/notifications/callLifecycle';
-import { presentIncomingCall } from '../../services/notifications/nativeIncomingCall';
+} from '@/services/notifications/callLifecycle';
+import { presentIncomingCall } from '@/services/notifications/nativeIncomingCall';
 import { handleAcceptCall } from '../useIncomingCall';
 import { payloadFromData } from './callPayload';
 

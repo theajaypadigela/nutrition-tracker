@@ -1,6 +1,6 @@
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { HttpClient } from './types';
-import { WeeklyNutritionReport } from '../../types/types';
+import { WeeklyNutritionReport } from '@/types/types';
 
 export interface DateRange {
   startDate: string;

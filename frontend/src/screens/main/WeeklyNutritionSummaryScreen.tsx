@@ -8,23 +8,23 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Text } from '../../components/ui/text';
+import { Text } from '@/components/ui/text';
 
-import HeaderCard from '../../components/nutrition-report/weekly-summary/HeaderCard';
-import NutrientRow from '../../components/nutrition-report/weekly-summary/NutrientRow';
-import NutrientDetail from '../../components/nutrition-report/weekly-summary/NutrientDetail';
-import GoalSheet from '../../components/nutrition-report/weekly-summary/GoalSheet';
-import Toast from '../../components/nutrition-report/weekly-summary/Toast';
+import HeaderCard from '@/components/nutrition-report/weekly-summary/HeaderCard';
+import NutrientRow from '@/components/nutrition-report/weekly-summary/NutrientRow';
+import NutrientDetail from '@/components/nutrition-report/weekly-summary/NutrientDetail';
+import GoalSheet from '@/components/nutrition-report/weekly-summary/GoalSheet';
+import Toast from '@/components/nutrition-report/weekly-summary/Toast';
 import {
   NutrientSearchBar,
   FilterChips,
   ValueModeToggle,
-} from '../../components/nutrition-report/weekly-summary/FilterControls';
+} from '@/components/nutrition-report/weekly-summary/FilterControls';
 import {
   tokens,
   weekRangeLabel,
-} from '../../components/nutrition-report/weekly-summary/tokens';
-import { useWeeklyNutrientSummary } from '../../hooks/useWeeklyNutrientSummary';
+} from '@/components/nutrition-report/weekly-summary/tokens';
+import { useWeeklyNutrientSummary } from '@/hooks/useWeeklyNutrientSummary';
 
 const WeeklyNutritionSummaryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();

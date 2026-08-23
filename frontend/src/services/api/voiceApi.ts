@@ -1,4 +1,4 @@
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { HttpClient } from './types';
 
 export type VoiceSessionPurpose = 'meal' | 'habit';

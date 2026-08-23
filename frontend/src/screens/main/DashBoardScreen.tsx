@@ -13,21 +13,21 @@ import {
   CalendarDays,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import AppBar from '../../components/common/AppBar';
+import AppBar from '@/components/common/AppBar';
 
-import { HStack } from '../../components/ui/hstack';
-import { VStack } from '../../components/ui/vstack';
-import { Text } from '../../components/ui/text';
-import HabitList from '../../components/dashboard/HabitList';
-import MealSlotSection from '../../components/dashboard/MealSlotSection';
-import DayDetailDrawer from '../../components/dashboard/DayDetailDrawer';
+import { HStack } from '@/components/ui/hstack';
+import { VStack } from '@/components/ui/vstack';
+import { Text } from '@/components/ui/text';
+import HabitList from '@/components/dashboard/HabitList';
+import MealSlotSection from '@/components/dashboard/MealSlotSection';
+import DayDetailDrawer from '@/components/dashboard/DayDetailDrawer';
 
 import {
   formatDate,
   getTodayLocalDate,
   parseLocalDateString,
-} from '../../utils/date';
-import { useDashboard } from '../../hooks/useDashboard';
+} from '@/utils/date';
+import { useDashboard } from '@/hooks/useDashboard';
 
 const styles = StyleSheet.create({
   scrollContent: {

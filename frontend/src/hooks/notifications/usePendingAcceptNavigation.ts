@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import { navigationRef } from '../../navigation/navigationRef';
+import { navigationRef } from '@/navigation/navigationRef';
 import {
   navigateToVoiceHabit,
   navigateToVoiceMealLog,
-} from '../../navigation/navigationUtils';
-import { takePendingAcceptNavigation } from '../../navigation/pendingNavigation';
+} from '@/navigation/navigationUtils';
+import { takePendingAcceptNavigation } from '@/navigation/pendingNavigation';
 
 /** Consume a pending Accept navigation recorded by the background handler on resume. */
 export function usePendingAcceptNavigation() {

@@ -10,8 +10,8 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { ASSISTANT_NAME } from '../../config/assistant';
-import { callColors, callFontFamily } from '../../theme/callTheme';
+import { ASSISTANT_NAME } from '@/config/assistant';
+import { callColors, callFontFamily } from '@/theme/callTheme';
 
 export type CallStatus =
   | 'idle'

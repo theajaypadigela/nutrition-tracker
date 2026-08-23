@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import {
   consumePendingAnswer,
   consumePendingMissedAction,
-} from '../../services/notifications/nativeIncomingCall';
+} from '@/services/notifications/nativeIncomingCall';
 import { handleAcceptCall, handleMissedLogNow } from '../useIncomingCall';
 
 /**

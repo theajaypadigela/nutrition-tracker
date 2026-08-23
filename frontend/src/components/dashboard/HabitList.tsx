@@ -5,7 +5,7 @@ import { Activity, Check, Plus } from 'lucide-react-native';
 import { HStack } from '../ui/hstack';
 import { VStack } from '../ui/vstack';
 import { Text } from '../ui/text';
-import { Habit } from '../../types/types';
+import { Habit } from '@/types/types';
 
 interface HabitListProps {
   selectedDateLabel: string;

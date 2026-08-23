@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
-import { Text } from '../../ui/text';
+import { Text } from '@/components/ui/text';
 import { tokens, weekDayLabels, fmtNum } from './tokens';
 
 interface Props {

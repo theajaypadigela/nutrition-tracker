@@ -2,8 +2,8 @@ import React from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, Plus, Check, AlertTriangle } from 'lucide-react-native';
-import { Text } from '../../ui/text';
-import { WeeklyNutrient } from '../../../types/nutrition';
+import { Text } from '@/components/ui/text';
+import { WeeklyNutrient } from '@/types/nutrition';
 import {
   statusOf,
   statusColorMap,

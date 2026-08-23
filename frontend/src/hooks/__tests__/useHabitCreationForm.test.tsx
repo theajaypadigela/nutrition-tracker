@@ -2,16 +2,16 @@ import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { Alert } from 'react-native';
 import { useHabitCreationForm } from '../useHabitCreationForm';
-import { habitApi } from '../../services/api/habitApi';
+import { habitApi } from '@/services/api/habitApi';
 import {
   requestReminderPermissions,
   scheduleHabitReminder,
-} from '../../services/notifications/reminderService';
+} from '@/services/notifications/reminderService';
 
-jest.mock('../../services/api/habitApi', () => ({
+jest.mock('@/services/api/habitApi', () => ({
   habitApi: { create: jest.fn() },
 }));
-jest.mock('../../services/notifications/reminderService', () => ({
+jest.mock('@/services/notifications/reminderService', () => ({
   requestReminderPermissions: jest.fn(() =>
     Promise.resolve({ notificationsAuthorized: true }),
   ),

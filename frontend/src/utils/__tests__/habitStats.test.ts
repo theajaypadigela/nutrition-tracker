@@ -1,5 +1,5 @@
 import { calculateHabitStats } from '../habitStats';
-import { Habit } from '../../types/types';
+import { Habit } from '@/types/types';
 
 const habit = (over: Partial<Habit>): Habit => ({
   id: 'h',

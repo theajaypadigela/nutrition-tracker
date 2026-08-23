@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { useManualFoodLogForm } from '../useManualFoodLogForm';
-import { foodLogApi } from '../../services/api/foodLogApi';
+import { foodLogApi } from '@/services/api/foodLogApi';
 
-jest.mock('../../services/api/foodLogApi', () => ({
+jest.mock('@/services/api/foodLogApi', () => ({
   foodLogApi: { addEntries: jest.fn() },
 }));
 

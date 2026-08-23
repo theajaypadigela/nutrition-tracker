@@ -7,7 +7,7 @@
  * times after reboot, DST, or travel.
  */
 
-import { DAY_CODES_SUNDAY_FIRST, DayCode } from '../../utils/dayCode';
+import { DAY_CODES_SUNDAY_FIRST, DayCode } from '@/utils/dayCode';
 import { WallClockTime } from './clockTime';
 import {
   epochToZonedParts,

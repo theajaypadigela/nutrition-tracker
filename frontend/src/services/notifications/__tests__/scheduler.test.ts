@@ -1,6 +1,6 @@
 import { computeDesiredTriggers } from '../scheduler';
 import { zonedWallTimeToEpoch } from '../time';
-import { Habit } from '../../../types/types';
+import { Habit } from '@/types/types';
 
 const TZ = 'America/New_York';
 

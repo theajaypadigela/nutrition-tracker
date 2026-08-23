@@ -18,7 +18,7 @@ import {
 import type { ReminderKind } from './notificationBuilder';
 import { drainCallResults } from './nativeIncomingCall';
 import { reminderLog } from './logger';
-import type { IncomingCallPayload } from '../../hooks/useIncomingCall';
+import type { IncomingCallPayload } from '@/hooks/useIncomingCall';
 
 function payloadToOccurrence(p: IncomingCallPayload): OccurrenceData {
   const kind: ReminderKind =

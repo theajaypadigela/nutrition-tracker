@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { useReminderHealth } from '../useReminderHealth';
-import { buildReminderHealthReport } from '../../services/notifications/reminderHealth';
+import { buildReminderHealthReport } from '@/services/notifications/reminderHealth';
 
-jest.mock('../../services/notifications/reminderHealth', () => ({
+jest.mock('@/services/notifications/reminderHealth', () => ({
   buildReminderHealthReport: jest.fn(),
 }));
 

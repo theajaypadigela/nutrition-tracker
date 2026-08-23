@@ -3,7 +3,7 @@
  * import from here; the internal modules stay private to this folder.
  */
 
-import { Habit } from '../../types/types';
+import { Habit } from '@/types/types';
 import { runReconciliation, ReconcileReason, ReconcileReport } from './reconciliation';
 import { ensureChannels } from './channels';
 import { registerIosCategories } from './iosCategories';

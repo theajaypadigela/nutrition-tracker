@@ -1,4 +1,4 @@
-import type { OccurrenceData } from '../../services/notifications/callLifecycle';
+import type { OccurrenceData } from '@/services/notifications/callLifecycle';
 import type { IncomingCallPayload } from '../useIncomingCall';
 
 /** Builds the call payload the UI/handlers use from a notification's data bag. */

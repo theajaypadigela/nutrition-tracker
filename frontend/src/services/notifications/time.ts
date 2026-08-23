@@ -8,7 +8,7 @@
  * deterministic in tests and correct across DST / travel on device.
  */
 
-import { DAY_CODES_SUNDAY_FIRST, DayCode } from '../../utils/dayCode';
+import { DAY_CODES_SUNDAY_FIRST, DayCode } from '@/utils/dayCode';
 
 export type ZonedParts = {
   year: number;

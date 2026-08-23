@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Easing } from 'react-native';
-import { Text } from '../../ui/text';
+import { Text } from '@/components/ui/text';
 
 interface Props {
   message: string | null;

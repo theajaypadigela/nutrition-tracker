@@ -15,9 +15,9 @@
  */
 
 import notifee from '@notifee/react-native';
-import { Habit } from '../../types/types';
+import { Habit } from '@/types/types';
 import { reminderLog } from './logger';
-import { DAY_CODES_SUNDAY_FIRST, DayCode } from '../../utils/dayCode';
+import { DAY_CODES_SUNDAY_FIRST, DayCode } from '@/utils/dayCode';
 import { canonicalSlotKey, parseClockTime, WallClockTime } from './clockTime';
 import {
   ScheduleIntent,

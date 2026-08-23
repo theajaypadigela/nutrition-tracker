@@ -1,10 +1,10 @@
 import { AxiosRequestConfig } from 'axios';
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { HttpClient } from './types';
 import {
   MealsResponse,
   MealVoiceInterpretationResponse,
-} from '../../types/types';
+} from '@/types/types';
 
 export interface FoodEntryInput {
   name: string;

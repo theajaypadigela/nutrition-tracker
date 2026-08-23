@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import { reconcileReminders } from '../../services/notifications/reminderService';
-import { reminderLog } from '../../services/notifications/logger';
+import { reconcileReminders } from '@/services/notifications/reminderService';
+import { reminderLog } from '@/services/notifications/logger';
 
 /** Reconciliation: cold start once auth is known, and on every foreground resume. */
 export function useReminderReconciliation(

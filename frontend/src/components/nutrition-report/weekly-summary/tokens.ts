@@ -5,10 +5,10 @@ import {
   reportHeaderGradient,
   reportNeutral,
   reportStatus,
-} from '../../../theme/tokens';
-import { Direction, Status, WeeklyNutrient } from '../../../types/nutrition';
-import { getMondayWeekRange } from '../../../utils/weekRange';
-import { DAY_CODES_MONDAY_FIRST } from '../../../utils/dayCode';
+} from '@/theme/tokens';
+import { Direction, Status, WeeklyNutrient } from '@/types/nutrition';
+import { getMondayWeekRange } from '@/utils/weekRange';
+import { DAY_CODES_MONDAY_FIRST } from '@/utils/dayCode';
 
 // Color values live in the shared token source (src/theme/tokens.ts).
 export const tokens = {

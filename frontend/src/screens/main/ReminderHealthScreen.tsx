@@ -9,8 +9,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { HealthStatus } from '../../services/notifications/reminderHealth';
-import { useReminderHealth } from '../../hooks/useReminderHealth';
+import { HealthStatus } from '@/services/notifications/reminderHealth';
+import { useReminderHealth } from '@/hooks/useReminderHealth';
 
 const STATUS_COLOR: Record<HealthStatus, string> = {
   ok: '#1D9E75',

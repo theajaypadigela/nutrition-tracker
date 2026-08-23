@@ -11,8 +11,8 @@ import {
   Easing,
 } from 'react-native';
 import { X, Plus, Minus } from 'lucide-react-native';
-import { Text } from '../../ui/text';
-import { WeeklyNutrient } from '../../../types/nutrition';
+import { Text } from '@/components/ui/text';
+import { WeeklyNutrient } from '@/types/nutrition';
 import { tokens, fmtNum } from './tokens';
 
 interface Props {

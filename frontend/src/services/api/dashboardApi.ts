@@ -1,6 +1,6 @@
-import apiClient from '../../api/client';
+import apiClient from '@/api/client';
 import { HttpClient } from './types';
-import { DashboardResponse } from '../../types/types';
+import { DashboardResponse } from '@/types/types';
 
 /** Dashboard aggregate for a given local date. */
 export const createDashboardApi = (client: HttpClient = apiClient) => ({

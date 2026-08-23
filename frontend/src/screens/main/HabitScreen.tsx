@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { VStack } from '../../components/ui/vstack';
-import { Text } from '../../components/ui/text';
-import { HStack } from '../../components/ui/hstack';
+import { VStack } from '@/components/ui/vstack';
+import { Text } from '@/components/ui/text';
+import { HStack } from '@/components/ui/hstack';
 import {
   View,
   TouchableOpacity,
@@ -18,13 +18,13 @@ import {
   Phone,
   Clock,
 } from 'lucide-react-native';
-import { Button } from '../../components/ui/button';
-import AppBar from '../../components/common/AppBar';
+import { Button } from '@/components/ui/button';
+import AppBar from '@/components/common/AppBar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../../navigation/MainTabNavigator';
-import { formatIsoTime12h } from '../../utils/timeFormatter';
-import { useHabitList } from '../../hooks/useHabitList';
+import type { MainTabParamList } from '@/navigation/MainTabNavigator';
+import { formatIsoTime12h } from '@/utils/timeFormatter';
+import { useHabitList } from '@/hooks/useHabitList';
 
 const REMINDER_TYPE_CALL = 'call';
 

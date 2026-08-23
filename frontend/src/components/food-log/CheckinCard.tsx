@@ -14,8 +14,8 @@ import {
   loadMealScheduleCached,
   saveMealSchedule,
   defaultMealSchedule,
-} from '../../services/notifications/reminderService';
-import { formatClockTimeFromParts } from '../../utils/timeFormatter';
+} from '@/services/notifications/reminderService';
+import { formatClockTimeFromParts } from '@/utils/timeFormatter';
 
 const GREEN = '#0f7a3d';
 const GREEN_SOFT = '#e6f4ec';

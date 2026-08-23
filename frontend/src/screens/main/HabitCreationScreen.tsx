@@ -15,22 +15,22 @@ import {
   Type,
   Repeat,
 } from 'lucide-react-native';
-import { VStack } from '../../components/ui/vstack';
-import { HStack } from '../../components/ui/hstack';
-import { Text } from '../../components/ui/text';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import AppBar from '../../components/common/AppBar';
-import { formatClockTime } from '../../utils/timeFormatter';
+import AppBar from '@/components/common/AppBar';
+import { formatClockTime } from '@/utils/timeFormatter';
 import {
   isAllDays,
   isWeekdaysOnly,
   isWeekendsOnly,
-} from '../../utils/daySelection';
-import { DayCode } from '../../utils/dayCode';
+} from '@/utils/daySelection';
+import { DayCode } from '@/utils/dayCode';
 import {
   ReminderType,
   useHabitCreationForm,
-} from '../../hooks/useHabitCreationForm';
+} from '@/hooks/useHabitCreationForm';
 
 const IOS_PLATFORM = 'ios';
 const REMINDER_NOTIFICATION: ReminderType = 'notification';

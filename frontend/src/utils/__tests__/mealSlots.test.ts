@@ -1,6 +1,6 @@
 import { buildMealSlotStatus, MEAL_SLOTS } from '../mealSlots';
 import { createEmptyMeals } from '../meals';
-import { Meals } from '../../types/types';
+import { Meals } from '@/types/types';
 
 describe('buildMealSlotStatus', () => {
   it('returns all four slots in canonical order, all unlogged when empty', () => {

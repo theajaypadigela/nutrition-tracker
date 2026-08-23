@@ -38,12 +38,12 @@ import {
   FoodSource,
   TopFoodSource,
 } from './types';
-import { nutritionApi } from '../../services/api/nutritionApi';
+import { nutritionApi } from '@/services/api/nutritionApi';
 import {
   addDaysToLocalDate,
   formatLocalDate,
   parseLocalDateString,
-} from '../../utils/date';
+} from '@/utils/date';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date helpers

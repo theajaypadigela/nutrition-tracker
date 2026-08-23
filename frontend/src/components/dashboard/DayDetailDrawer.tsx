@@ -14,8 +14,8 @@ import {
   DrawerContent,
   DrawerHeader,
 } from '../ui/drawer';
-import { FoodItem, Habit } from '../../types/types';
-import { FoodMacros } from '../../utils/foodCalculations';
+import { FoodItem, Habit } from '@/types/types';
+import { FoodMacros } from '@/utils/foodCalculations';
 
 interface DayDetailDrawerProps {
   isOpen: boolean;

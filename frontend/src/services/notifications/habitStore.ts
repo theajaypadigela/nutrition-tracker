@@ -18,7 +18,7 @@
  *     is armable even before (or without) a successful round-trip to the server.
  */
 
-import { Habit } from '../../types/types';
+import { Habit } from '@/types/types';
 import { habitApi } from '../api/habitApi';
 import { createJsonArrayStore } from '../storage/jsonStore';
 import { StorageKeys } from '../storage/storageKeys';

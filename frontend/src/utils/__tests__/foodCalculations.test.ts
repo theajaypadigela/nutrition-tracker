@@ -1,5 +1,5 @@
 import { calculateFoodMacros } from '../foodCalculations';
-import { FoodItem } from '../../types/types';
+import { FoodItem } from '@/types/types';
 
 const food = (over: Partial<FoodItem>): FoodItem => ({
   id: 'f',

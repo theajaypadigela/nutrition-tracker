@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { useProfileForm } from '../useProfileForm';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
-jest.mock('../../context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('@/context/AuthContext', () => ({ useAuth: jest.fn() }));
 
 const mockUseAuth = useAuth as jest.Mock;
 const updateProfile = jest.fn();

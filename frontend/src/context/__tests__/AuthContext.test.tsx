@@ -3,15 +3,15 @@ import ReactTestRenderer, { act } from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../AuthContext';
 import { OnboardingProvider } from '../OnboardingContext';
-import { authApi } from '../../services/api/authApi';
+import { authApi } from '@/services/api/authApi';
 import {
   onLoginReminders,
   onLogoutReminders,
-} from '../../services/notifications/reminderService';
+} from '@/services/notifications/reminderService';
 
 // Mock at the service boundary: AuthContext's job is token storage + user state +
 // reminder side-effects. The HTTP request shapes are covered by services/api/__tests__.
-jest.mock('../../services/api/authApi', () => ({
+jest.mock('@/services/api/authApi', () => ({
   authApi: {
     me: jest.fn(),
     login: jest.fn(),
@@ -20,7 +20,7 @@ jest.mock('../../services/api/authApi', () => ({
   },
 }));
 
-jest.mock('../../services/notifications/reminderService', () => ({
+jest.mock('@/services/notifications/reminderService', () => ({
   onLoginReminders: jest.fn(() => Promise.resolve()),
   onLogoutReminders: jest.fn(() => Promise.resolve()),
 }));

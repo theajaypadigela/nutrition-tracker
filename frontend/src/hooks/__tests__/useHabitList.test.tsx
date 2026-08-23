@@ -2,14 +2,14 @@ import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { Alert } from 'react-native';
 import { useHabitList } from '../useHabitList';
-import { habitApi } from '../../services/api/habitApi';
-import { cancelHabitReminder } from '../../services/notifications/reminderService';
-import { Habit } from '../../types/types';
+import { habitApi } from '@/services/api/habitApi';
+import { cancelHabitReminder } from '@/services/notifications/reminderService';
+import { Habit } from '@/types/types';
 
-jest.mock('../../services/api/habitApi', () => ({
+jest.mock('@/services/api/habitApi', () => ({
   habitApi: { getToday: jest.fn(), toggle: jest.fn(), remove: jest.fn() },
 }));
-jest.mock('../../services/notifications/reminderService', () => ({
+jest.mock('@/services/notifications/reminderService', () => ({
   cancelHabitReminder: jest.fn(() => Promise.resolve()),
 }));
 

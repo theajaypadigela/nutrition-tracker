@@ -1,5 +1,5 @@
 import React from 'react';
-import { VStack } from '../../components/ui/vstack';
+import { VStack } from '@/components/ui/vstack';
 import { ChevronDownIcon, LogOut, User } from 'lucide-react-native';
 import {
   View,
@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Text } from '../../components/ui/text';
-import { HStack } from '../../components/ui/hstack';
-import { Button, ButtonText } from '../../components/ui/button';
-import { Input, InputField } from '../../components/ui/input';
+import { Text } from '@/components/ui/text';
+import { HStack } from '@/components/ui/hstack';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Input, InputField } from '@/components/ui/input';
 import {
   Select,
   SelectBackdrop,
@@ -23,11 +23,11 @@ import {
   SelectItem,
   SelectPortal,
   SelectTrigger,
-} from '../../components/ui/select';
-import { useAuth } from '@/src/context/AuthContext';
+} from '@/components/ui/select';
+import { useAuth } from '@/context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
-import AppBar from '../../components/common/AppBar';
-import { useProfileForm } from '../../hooks/useProfileForm';
+import AppBar from '@/components/common/AppBar';
+import { useProfileForm } from '@/hooks/useProfileForm';
 
 const ProfileScreen = () => {
   const { user, logout } = useAuth();

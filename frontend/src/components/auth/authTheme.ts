@@ -5,7 +5,7 @@
  * the design relies on precise gradients, focus rings, and radii.
  * Color values come from the shared token source (src/theme/tokens.ts).
  */
-import { authNeutral, authStatus, brandGreen, neutral } from '../../theme/tokens';
+import { authNeutral, authStatus, brandGreen, neutral } from '@/theme/tokens';
 
 export const T = {
   ink: authNeutral.ink,

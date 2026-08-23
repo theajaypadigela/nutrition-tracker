@@ -15,8 +15,8 @@ import {
   ASSISTANT_NAME,
   ASSISTANT_VERIFIED_LABEL,
   assistantContextLabel,
-} from '../../config/assistant';
-import type { IncomingCallPayload } from '../../hooks/useIncomingCall';
+} from '@/config/assistant';
+import type { IncomingCallPayload } from '@/hooks/useIncomingCall';
 
 type IncomingCallNativeModule = {
   presentIncomingCall: (payloadJson: string) => void;

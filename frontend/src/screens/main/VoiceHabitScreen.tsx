@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
-import type { VoiceHabitParams } from '../../navigation/paramTypes';
-import VoiceSessionScreen from '../../components/voice/VoiceSessionScreen';
-import { VOICE_LANE_COPY } from '../../components/voice/voiceSessionCopy';
-import { useVoiceHabitSession } from '../../hooks/useVoiceHabitSession';
+import { useAuth } from '@/context/AuthContext';
+import type { VoiceHabitParams } from '@/navigation/paramTypes';
+import VoiceSessionScreen from '@/components/voice/VoiceSessionScreen';
+import { VOICE_LANE_COPY } from '@/components/voice/voiceSessionCopy';
+import { useVoiceHabitSession } from '@/hooks/useVoiceHabitSession';
 
 export default function VoiceHabitScreen() {
   const navigation = useNavigation();

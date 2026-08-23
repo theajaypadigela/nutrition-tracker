@@ -6,7 +6,7 @@
  * legacy schemes so a first reconciliation pass migrates them cleanly).
  */
 
-import { DayCode } from '../../utils/dayCode';
+import { DayCode } from '@/utils/dayCode';
 
 export const MEAL_DAILY_ID = 'meal-alarm-daily';
 export const MEAL_RESCHEDULE_ID = 'meal-reschedule-once';

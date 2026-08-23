@@ -6,23 +6,23 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { VStack } from '../../components/ui/vstack';
-import { HStack } from '../../components/ui/hstack';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
 import React, { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import CaloriesSummaryCard from '../../components/nutrition-report/CaloriesSummaryCard';
-import MacroNutrientsSection from '../../components/nutrition-report/MacroNutrientsSection';
-import MicroNutrientsSection from '../../components/nutrition-report/MicroNutrientsSection';
+import CaloriesSummaryCard from '@/components/nutrition-report/CaloriesSummaryCard';
+import MacroNutrientsSection from '@/components/nutrition-report/MacroNutrientsSection';
+import MicroNutrientsSection from '@/components/nutrition-report/MicroNutrientsSection';
 import {
   Lightbulb,
   RefreshCw,
   ChevronRight,
   BarChart3,
 } from 'lucide-react-native';
-import { Text } from '../../components/ui/text';
-import InsightsBadge from '../../components/nutrition-report/InsightsBadge';
-import AppBar from '../../components/common/AppBar';
-import { useWeeklyNutritionReport } from '../../hooks/useWeeklyNutritionReport';
+import { Text } from '@/components/ui/text';
+import InsightsBadge from '@/components/nutrition-report/InsightsBadge';
+import AppBar from '@/components/common/AppBar';
+import { useWeeklyNutritionReport } from '@/hooks/useWeeklyNutritionReport';
 
 const NutritionReportScreen = () => {
   const navigation = useNavigation();

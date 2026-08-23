@@ -17,4 +17,4 @@ export type {
   FoodSource,
   InsightVariant,
   Insight,
-} from '../../types/nutrition';
+} from '@/types/nutrition';

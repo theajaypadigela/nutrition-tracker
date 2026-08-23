@@ -7,8 +7,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Search, X, SlidersHorizontal } from 'lucide-react-native';
-import { Text } from '../../ui/text';
-import { Status } from '../../../types/nutrition';
+import { Text } from '@/components/ui/text';
+import { Status } from '@/types/nutrition';
 import { tokens } from './tokens';
 
 type FilterValue = 'all' | Status;

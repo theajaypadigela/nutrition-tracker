@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '../ui/text';
 import { Drumstick, Apple, Droplets, Cookie } from 'lucide-react-native';
-import { NutritionTotals, DailyNutritionGoals } from '../../types/types';
+import { NutritionTotals, DailyNutritionGoals } from '@/types/types';
 
 const T = {
   ink: '#16241c',

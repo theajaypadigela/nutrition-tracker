@@ -4,9 +4,9 @@ import { ArrowRight, Check } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useOnboarding } from '@/src/context/OnboardingContext';
-import { ROUTES } from '../../navigation/routeNames';
-import { PrimaryButton, T } from '../../components/auth';
+import { useOnboarding } from '@/context/OnboardingContext';
+import { ROUTES } from '@/navigation/routeNames';
+import { PrimaryButton, T } from '@/components/auth';
 
 /**
  * Success landing shown after call setup (or skip). Confirms the daily call time, then

@@ -17,8 +17,8 @@ import {
   loadMealScheduleCached,
   saveMealSchedule,
   defaultMealSchedule,
-} from '../../services/notifications/reminderService';
-import { formatClockTimeFromParts } from '../../utils/timeFormatter';
+} from '@/services/notifications/reminderService';
+import { formatClockTimeFromParts } from '@/utils/timeFormatter';
 
 type Props = {
   /**

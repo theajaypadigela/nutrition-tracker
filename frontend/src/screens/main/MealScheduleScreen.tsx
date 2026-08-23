@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import MealReminderSettings from '../../components/food-log/MealReminderSettings';
+import MealReminderSettings from '@/components/food-log/MealReminderSettings';
 
 /**
  * Standalone "Meal Reminders" screen (reached from Profile). The controls themselves live in

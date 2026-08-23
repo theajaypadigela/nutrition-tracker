@@ -14,7 +14,7 @@ import { ArrowLeft, Calendar, Mail, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { AuthStackParamList } from '@/navigation/AuthNavigator';
 import {
   BrandMark,
   Hero,
@@ -29,8 +29,8 @@ import {
   T,
   R,
   formatDob,
-} from '../../components/auth';
-import { useRegisterForm } from '../../hooks/useRegisterForm';
+} from '@/components/auth';
+import { useRegisterForm } from '@/hooks/useRegisterForm';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,

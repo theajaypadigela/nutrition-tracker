@@ -16,8 +16,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T, R } from './authTheme';
-import { formatLocaleTimeFromParts } from '../../utils/timeFormatter';
-import { ageFromDob } from '../../utils/authValidation';
+import { formatLocaleTimeFromParts } from '@/utils/timeFormatter';
+import { ageFromDob } from '@/utils/authValidation';
 import { PrimaryButton, TextLink, Banner } from './AuthControls';
 
 const ITEM = 42;

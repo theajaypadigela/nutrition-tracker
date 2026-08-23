@@ -7,13 +7,13 @@ import {
   RefreshControl,
 } from 'react-native';
 import { CheckCircle } from 'lucide-react-native';
-import { Text } from '../../components/ui/text';
-import { VStack } from '../../components/ui/vstack';
-import { HStack } from '../../components/ui/hstack';
-import { Input, InputField } from '../../components/ui/input';
-import { Button, ButtonText } from '../../components/ui/button';
-import { Divider } from '../../components/ui/divider';
-import AppBar from '../../components/common/AppBar';
+import { Text } from '@/components/ui/text';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Input, InputField } from '@/components/ui/input';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Divider } from '@/components/ui/divider';
+import AppBar from '@/components/common/AppBar';
 import {
   Select,
   SelectItem,
@@ -25,13 +25,13 @@ import {
   SelectContent,
   SelectDragIndicatorWrapper,
   SelectDragIndicator,
-} from '../../components/ui/select';
+} from '@/components/ui/select';
 import { ChevronDownIcon } from 'lucide-react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { MealType } from '../../types/types';
-import { getTodayLocalDate } from '../../utils/date';
-import { useManualFoodLogForm } from '../../hooks/useManualFoodLogForm';
-import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
+import { MealType } from '@/types/types';
+import { getTodayLocalDate } from '@/utils/date';
+import { useManualFoodLogForm } from '@/hooks/useManualFoodLogForm';
+import { FoodStackParamList } from '@/navigation/FoodStackNavigator';
 
 const MEAL_TYPES: { label: string; value: MealType }[] = [
   { label: 'Breakfast', value: 'breakfast' },

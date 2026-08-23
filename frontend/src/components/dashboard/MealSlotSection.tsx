@@ -6,9 +6,9 @@ import { HStack } from '../ui/hstack';
 import { VStack } from '../ui/vstack';
 import { Divider } from '../ui/divider';
 import { Text } from '../ui/text';
-import { FoodItem, Meals } from '../../types/types';
-import { MealSlotStatus } from '../../utils/mealSlots';
-import { FoodMacros, calculateFoodMacros } from '../../utils/foodCalculations';
+import { FoodItem, Meals } from '@/types/types';
+import { MealSlotStatus } from '@/utils/mealSlots';
+import { FoodMacros, calculateFoodMacros } from '@/utils/foodCalculations';
 import MealBreakdown, { MealBreakdownDetails } from './MealBreakdown';
 
 interface MealSlotSectionProps {

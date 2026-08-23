@@ -29,7 +29,7 @@ import {
   HABIT_PUSH_CHANNEL_ID,
   MISSED_CHANNEL_ID,
 } from './channels';
-import { assistantContextLabel, callNotificationTitle } from '../../config/assistant';
+import { assistantContextLabel, callNotificationTitle } from '@/config/assistant';
 
 export type ReminderKind = 'meal-call' | 'habit-call' | 'habit-push';
 

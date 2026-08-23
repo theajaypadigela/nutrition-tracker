@@ -4,8 +4,8 @@ import notifee from '@notifee/react-native';
 import {
   readOccurrenceData,
   onCallDeclined,
-} from '../../services/notifications/callLifecycle';
-import { claimAction } from '../../services/notifications/processedActions';
+} from '@/services/notifications/callLifecycle';
+import { claimAction } from '@/services/notifications/processedActions';
 import { handleAcceptCall } from '../useIncomingCall';
 import { payloadFromData } from './callPayload';
 

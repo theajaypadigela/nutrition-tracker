@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { HStack } from '../ui/hstack';
 import { Text } from '../ui/text';
-import { FoodItem } from '../../types/types';
+import { FoodItem } from '@/types/types';
 
 export interface MealBreakdownDetails {
   slotLabel?: string;

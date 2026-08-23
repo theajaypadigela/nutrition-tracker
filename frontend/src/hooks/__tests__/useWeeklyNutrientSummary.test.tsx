@@ -4,9 +4,9 @@ import {
   buildWeeklyNutrient,
   useWeeklyNutrientSummary,
 } from '../useWeeklyNutrientSummary';
-import { nutritionApi } from '../../services/api/nutritionApi';
+import { nutritionApi } from '@/services/api/nutritionApi';
 
-jest.mock('../../services/api/nutritionApi', () => ({
+jest.mock('@/services/api/nutritionApi', () => ({
   nutritionApi: { getAllNutrients: jest.fn(), setNutrientTarget: jest.fn() },
 }));
 

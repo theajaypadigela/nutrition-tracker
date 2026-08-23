@@ -7,12 +7,12 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { Text } from '../../components/ui/text';
-import { MealGroup } from '../../components/food-log/MealGroup';
-import { EditFoodDrawer } from '../../components/food-log/EditFoodDrawer';
-import { FoodLogHeader } from '../../components/food-log/FoodLogHeader';
-import { CheckinCard } from '../../components/food-log/CheckinCard';
-import { MacrosCard } from '../../components/food-log/MacrosCard';
+import { Text } from '@/components/ui/text';
+import { MealGroup } from '@/components/food-log/MealGroup';
+import { EditFoodDrawer } from '@/components/food-log/EditFoodDrawer';
+import { FoodLogHeader } from '@/components/food-log/FoodLogHeader';
+import { CheckinCard } from '@/components/food-log/CheckinCard';
+import { MacrosCard } from '@/components/food-log/MacrosCard';
 import {
   useNavigation,
   useFocusEffect,
@@ -21,12 +21,12 @@ import {
 } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Plus, Mic, Clock } from 'lucide-react-native';
-import { getTodayLocalDate } from '../../utils/date';
-import { formatEpochTime12h } from '../../utils/timeFormatter';
-import { useFoodLog } from '../../hooks/useFoodLog';
-import { FoodStackParamList } from '../../navigation/FoodStackNavigator';
-import { navigateToVoiceMealLog } from '../../navigation/navigationUtils';
-import MealReminderSettings from '../../components/food-log/MealReminderSettings';
+import { getTodayLocalDate } from '@/utils/date';
+import { formatEpochTime12h } from '@/utils/timeFormatter';
+import { useFoodLog } from '@/hooks/useFoodLog';
+import { FoodStackParamList } from '@/navigation/FoodStackNavigator';
+import { navigateToVoiceMealLog } from '@/navigation/navigationUtils';
+import MealReminderSettings from '@/components/food-log/MealReminderSettings';
 
 type FoodLogNavigationProp = StackNavigationProp<FoodStackParamList, 'FoodLog'>;
 type FoodLogRouteProp = RouteProp<FoodStackParamList, 'FoodLog'>;
