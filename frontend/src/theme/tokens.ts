@@ -204,6 +204,51 @@ export const tokens = {
     headerGradient: reportHeaderGradient,
   },
 
+  /**
+   * The food-log surface (meal cards, check-in card, macro card, day header).
+   * A warm green-tinted scale that was declared THREE times in raw hex —
+   * MealGroup's local `T`, MacrosCard's local `T`, and CheckinCard's
+   * GREEN/LINE/INK consts — with the same values each time.
+   */
+  foodLog: {
+    ink: '#16241c',
+    inkSoft: '#52635a',
+    inkMuted: authNeutral.inkMuted,
+    line: '#e7ede9',
+    lineSoft: '#f1f5f2',
+    bg: '#eef2f0',
+    surface: neutral.white,
+    green: brandGreen.base,
+    greenMid: brandGreen.mid,
+    greenSoft: brandGreen.soft,
+    /** Deliberately NOT brandGreen.deep (#0a4d27) — the day header runs darker. */
+    greenDeep: '#0a5226',
+    /** Top stop of the day-header gradient. */
+    greenBright: '#14914a',
+    good: '#0f9b54',
+    goodSoft: '#e3f5ea',
+    warn: '#d98a16',
+    warnSoft: '#fbf0db',
+    low: '#e0573e',
+    lowSoft: '#fdeae3',
+    purple: '#7c3aed',
+    purpleSoft: '#f0e9fb',
+    blue: '#2a64c4',
+    blueSoft: '#e7eefb',
+    amber: '#e08a16',
+    amberSoft: '#fff1d9',
+    shadow: '#102818',
+    switchTrackOff: authStatus.strengthEmpty,
+    switchThumb: neutral.white,
+    // "your log may be out of date" banner
+    staleBg: '#fffbeb',
+    staleLine: '#fde68a',
+    staleInk: '#b45309',
+    staleInkSoft: '#92400e',
+    staleIcon: '#d97706',
+    headerGradient: ['#14914a', brandGreen.base, '#0a5226'],
+  },
+
   /** The dark, continuous call experience. */
   call: callPalette,
 

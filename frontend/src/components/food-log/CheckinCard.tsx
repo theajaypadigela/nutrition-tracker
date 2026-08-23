@@ -16,17 +16,9 @@ import {
   defaultMealSchedule,
 } from '@/services/notifications/reminderService';
 import { formatClockTimeFromParts } from '@/utils/timeFormatter';
+import { tokens } from '@/theme/tokens';
 
-const GREEN = '#0f7a3d';
-const GREEN_SOFT = '#e6f4ec';
-const GREEN_DEEP = '#0a5226';
-const GREEN_MID = '#1b9750';
-const PURPLE = '#7c3aed';
-const LINE = '#e7ede9';
-const LINE_SOFT = '#f1f5f2';
-const INK = '#16241c';
-const INK_SOFT = '#52635a';
-const INK_MUTED = '#8a988f';
+const T = tokens.foodLog;
 
 const TIME_SLOTS = [
   { label: '12:00 PM', hour: 12, minute: 0 },
@@ -105,9 +97,9 @@ export const CheckinCard: React.FC = () => {
         {/* header row */}
         <View style={styles.headerRow}>
           <View style={styles.iconWrap}>
-            <Phone size={20} color="#fff" strokeWidth={2} />
+            <Phone size={20} color={T.surface} strokeWidth={2} />
             <View style={styles.sparkBadge}>
-              <Zap size={9} color="#fff" fill="#fff" />
+              <Zap size={9} color={T.surface} fill={T.surface} />
             </View>
           </View>
 
@@ -121,9 +113,9 @@ export const CheckinCard: React.FC = () => {
           <Switch
             value={reminder.enabled}
             onValueChange={toggleEnabled}
-            trackColor={{ false: '#cdd6d0', true: GREEN }}
-            thumbColor="#fff"
-            ios_backgroundColor="#cdd6d0"
+            trackColor={{ false: T.switchTrackOff, true: T.green }}
+            thumbColor={T.surface}
+            ios_backgroundColor={T.switchTrackOff}
           />
         </View>
 
@@ -135,19 +127,19 @@ export const CheckinCard: React.FC = () => {
           style={[
             styles.timeBtn,
             {
-              backgroundColor: reminder.enabled ? GREEN_SOFT : LINE_SOFT,
+              backgroundColor: reminder.enabled ? T.greenSoft : T.lineSoft,
               opacity: reminder.enabled ? 1 : 0.55,
             },
           ]}
         >
-          <Clock size={18} color={GREEN} strokeWidth={2} />
+          <Clock size={18} color={T.green} strokeWidth={2} />
           <View style={{ flex: 1 }}>
             <Text style={styles.timeMain}>Today at {timeLabel}</Text>
             <Text style={styles.timeEta}>Next call {etaLabel}</Text>
           </View>
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Edit</Text>
-            <ChevronRight size={14} color={GREEN} strokeWidth={2.2} />
+            <ChevronRight size={14} color={T.green} strokeWidth={2.2} />
           </View>
         </TouchableOpacity>
       </View>
@@ -179,7 +171,7 @@ export const CheckinCard: React.FC = () => {
                 onPress={() => setShowSheet(false)}
                 style={styles.closeBtn}
               >
-                <X size={16} color={INK_SOFT} strokeWidth={2.2} />
+                <X size={16} color={T.inkSoft} strokeWidth={2.2} />
               </TouchableOpacity>
             </View>
 
@@ -230,12 +222,12 @@ export const CheckinCard: React.FC = () => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: T.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: LINE,
-    shadowColor: '#102818',
+    borderColor: T.line,
+    shadowColor: T.shadow,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
     shadowRadius: 20,
@@ -250,10 +242,10 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: GREEN,
+    backgroundColor: T.green,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: GREEN,
+    shadowColor: T.green,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -267,27 +259,27 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: PURPLE,
+    backgroundColor: T.purple,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: T.surface,
   },
   title: {
     fontSize: 15,
     fontWeight: '700',
-    color: INK,
+    color: T.ink,
   },
   subtitle: {
     fontSize: 12.5,
-    color: INK_SOFT,
+    color: T.inkSoft,
     marginTop: 2,
     fontWeight: '500',
   },
   timeBtn: {
     marginTop: 13,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: T.line,
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -297,12 +289,12 @@ const styles = StyleSheet.create({
   timeMain: {
     fontSize: 15,
     fontWeight: '800',
-    color: GREEN_DEEP,
+    color: T.greenDeep,
     letterSpacing: -0.2,
   },
   timeEta: {
     fontSize: 11.5,
-    color: INK_SOFT,
+    color: T.inkSoft,
     fontWeight: '600',
     marginTop: 1,
   },
@@ -314,7 +306,7 @@ const styles = StyleSheet.create({
   editLabel: {
     fontSize: 12.5,
     fontWeight: '700',
-    color: GREEN,
+    color: T.green,
   },
   // sheet
   backdrop: {
@@ -323,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: T.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
@@ -334,7 +326,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: LINE,
+    backgroundColor: T.line,
     alignSelf: 'center',
     marginBottom: 14,
   },
@@ -345,7 +337,7 @@ const styles = StyleSheet.create({
   },
   sheetSuper: {
     fontSize: 11,
-    color: INK_MUTED,
+    color: T.inkMuted,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -353,13 +345,13 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 21,
     fontWeight: '800',
-    color: INK,
+    color: T.ink,
     marginTop: 4,
     letterSpacing: -0.3,
   },
   sheetSub: {
     fontSize: 12.5,
-    color: INK_SOFT,
+    color: T.inkSoft,
     marginTop: 4,
     fontWeight: '500',
   },
@@ -367,7 +359,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 999,
-    backgroundColor: LINE_SOFT,
+    backgroundColor: T.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -382,32 +374,32 @@ const styles = StyleSheet.create({
   slot: {
     flex: 1,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: T.line,
     borderRadius: 13,
     paddingVertical: 13,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: T.surface,
   },
   slotActive: {
     borderWidth: 1.5,
-    borderColor: GREEN,
-    backgroundColor: GREEN_SOFT,
+    borderColor: T.green,
+    backgroundColor: T.greenSoft,
   },
   slotText: {
     fontSize: 14,
     fontWeight: '700',
-    color: INK_SOFT,
+    color: T.inkSoft,
   },
   slotTextActive: {
-    color: GREEN_DEEP,
+    color: T.greenDeep,
   },
   saveBtn: {
     marginTop: 18,
-    backgroundColor: GREEN,
+    backgroundColor: T.green,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
-    shadowColor: GREEN,
+    shadowColor: T.green,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 14,
@@ -416,6 +408,6 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: T.surface,
   },
 });

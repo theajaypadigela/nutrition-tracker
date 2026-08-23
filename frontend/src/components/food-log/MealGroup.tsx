@@ -3,28 +3,17 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../ui/text';
 import { ChevronDown, Edit2, Trash2, Plus, Zap } from 'lucide-react-native';
 import { FoodItem } from './types';
+import { tokens } from '@/theme/tokens';
 
-const T = {
-  ink: '#16241c',
-  inkSoft: '#52635a',
-  inkMuted: '#8a988f',
-  line: '#e7ede9',
-  lineSoft: '#f1f5f2',
-  green: '#0f7a3d',
-  greenSoft: '#e6f4ec',
-  purple: '#7c3aed',
-  low: '#e0573e',
-  lowSoft: '#fdeae3',
-  blue: '#2a64c4',
-  blueSoft: '#e7eefb',
-};
+const T = tokens.foodLog;
 
+/** [surface, ink] tint pair per meal slot. */
 const MEAL_TINTS: Record<string, [string, string]> = {
-  breakfast: ['#fff1d9', '#e08a16'],
-  lunch: ['#e6f4ec', '#0f9b54'],
-  snacks: ['#f0e9fb', '#7c3aed'],
-  snack: ['#f0e9fb', '#7c3aed'],
-  dinner: ['#e7eefb', '#2a64c4'],
+  breakfast: [T.amberSoft, T.amber],
+  lunch: [T.greenSoft, T.good],
+  snacks: [T.purpleSoft, T.purple],
+  snack: [T.purpleSoft, T.purple],
+  dinner: [T.blueSoft, T.blue],
 };
 
 const MEAL_ICONS: Record<string, string> = {
@@ -57,7 +46,7 @@ export const MealGroup: React.FC<MealGroupProps> = ({
   if (items.length === 0) return null;
 
   const key = mealType.toLowerCase();
-  const tint = MEAL_TINTS[key] ?? ['#f1f5f2', '#52635a'];
+  const tint = MEAL_TINTS[key] ?? [T.lineSoft, T.inkSoft];
   const icon = MEAL_ICONS[key] ?? '🍽️';
   const mealCalories = items.reduce((sum, item) => sum + (item.calories || 0), 0);
   const displayName = mealType.charAt(0).toUpperCase() + mealType.slice(1);
@@ -192,12 +181,12 @@ function fmtG(v: number): string {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: T.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e7ede9',
+    borderColor: T.line,
     overflow: 'hidden',
-    shadowColor: '#102818',
+    shadowColor: T.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 2,
@@ -286,7 +275,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#f0e9fb',
+    backgroundColor: T.purpleSoft,
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 999,
@@ -323,7 +312,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#e7ede9',
+    borderColor: T.line,
     borderRadius: 12,
     paddingVertical: 10,
     flexDirection: 'row',

@@ -3,18 +3,9 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from '../ui/text';
 import { Drumstick, Apple, Droplets, Cookie } from 'lucide-react-native';
 import { NutritionTotals, DailyNutritionGoals } from '@/types/types';
+import { tokens } from '@/theme/tokens';
 
-const T = {
-  ink: '#16241c',
-  inkMuted: '#8a988f',
-  lineSoft: '#f1f5f2',
-  good: '#0f9b54',
-  goodSoft: '#e3f5ea',
-  warn: '#d98a16',
-  warnSoft: '#fbf0db',
-  low: '#e0573e',
-  lowSoft: '#fdeae3',
-};
+const T = tokens.foodLog;
 
 type MacroStatus = 'good' | 'warn' | 'low';
 
@@ -121,13 +112,13 @@ export const MacrosCard: React.FC<MacrosCardProps> = ({ totals, dailyGoals }) =>
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: T.surface,
     borderRadius: 20,
     padding: 16,
     paddingBottom: 6,
     borderWidth: 1,
-    borderColor: '#e7ede9',
-    shadowColor: '#102818',
+    borderColor: T.line,
+    shadowColor: T.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 2,

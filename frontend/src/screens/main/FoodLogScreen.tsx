@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   ScrollView,
@@ -112,7 +113,7 @@ const FoodLogScreen = () => {
         {/* rescheduled call banner */}
         {Boolean(mealRescheduleTime) && (
           <View style={styles.rescheduleBanner}>
-            <Clock size={16} color="#D97706" strokeWidth={2} />
+            <Clock size={16} color={tokens.foodLog.staleIcon} strokeWidth={2} />
             <Text style={styles.rescheduleText}>
               Meal logging call rescheduled for{' '}
               <Text style={styles.rescheduleTime}>
@@ -195,7 +196,7 @@ const FoodLogScreen = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#eef2f0',
+    backgroundColor: tokens.foodLog.bg,
   },
   scroll: {
     flex: 1,
@@ -209,9 +210,9 @@ const styles = StyleSheet.create({
   rescheduleBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
+    backgroundColor: tokens.foodLog.staleBg,
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: tokens.foodLog.staleLine,
     borderRadius: 14,
     padding: 12,
     gap: 8,
@@ -219,11 +220,11 @@ const styles = StyleSheet.create({
   rescheduleText: {
     flex: 1,
     fontSize: 13,
-    color: '#b45309',
+    color: tokens.foodLog.staleInk,
   },
   rescheduleTime: {
     fontWeight: '700',
-    color: '#92400e',
+    color: tokens.foodLog.staleInkSoft,
   },
   mealsHeader: {
     flexDirection: 'row',
@@ -235,12 +236,12 @@ const styles = StyleSheet.create({
   mealsTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#16241c',
+    color: tokens.foodLog.ink,
     letterSpacing: -0.1,
   },
   mealsCal: {
     fontSize: 12,
-    color: '#8a988f',
+    color: tokens.foodLog.inkMuted,
     fontWeight: '700',
   },
   mealList: {
@@ -253,10 +254,10 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#7c3aed',
+    backgroundColor: tokens.foodLog.purple,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: tokens.foodLog.purple,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 22,
@@ -269,10 +270,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#0f7a3d',
+    backgroundColor: tokens.foodLog.green,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0f7a3d',
+    shadowColor: tokens.foodLog.green,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.42,
     shadowRadius: 22,

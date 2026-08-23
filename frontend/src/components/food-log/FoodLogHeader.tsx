@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../ui/text';
 import LinearGradient from 'react-native-linear-gradient';
@@ -30,7 +31,7 @@ export const FoodLogHeader: React.FC<FoodLogHeaderProps> = ({
 
   return (
     <LinearGradient
-      colors={['#14914a', '#0f7a3d', '#0a5226']}
+      colors={[tokens.foodLog.greenBright, tokens.foodLog.green, tokens.foodLog.greenDeep]}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.9, y: 1 }}
       style={[styles.container, { paddingTop: Math.max(insets.top, 8) }]}
@@ -41,7 +42,7 @@ export const FoodLogHeader: React.FC<FoodLogHeaderProps> = ({
       {/* top bar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={onBack} style={styles.iconBtn} activeOpacity={0.8}>
-          <ArrowLeft size={20} color="#fff" strokeWidth={2.2} />
+          <ArrowLeft size={20} color={tokens.foodLog.surface} strokeWidth={2.2} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.screenTitle}>Food log</Text>
@@ -70,7 +71,7 @@ export const FoodLogHeader: React.FC<FoodLogHeaderProps> = ({
               cx={size / 2}
               cy={size / 2}
               r={r}
-              stroke="#fff"
+              stroke={tokens.foodLog.surface}
               strokeWidth={stroke}
               fill="none"
               strokeLinecap="round"
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: tokens.foodLog.surface,
     letterSpacing: -0.2,
   },
   dateText: {
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   consumedVal: {
     fontSize: 34,
     fontWeight: '800',
-    color: '#fff',
+    color: tokens.foodLog.surface,
     letterSpacing: -1,
     lineHeight: 38,
   },
@@ -197,13 +198,13 @@ const styles = StyleSheet.create({
   statValueBig: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#fff',
+    color: tokens.foodLog.surface,
     letterSpacing: -0.5,
   },
   statValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#fff',
+    color: tokens.foodLog.surface,
     letterSpacing: -0.3,
   },
   statUnit: {
