@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    shadowColor: '#0f1e28',
+    shadowColor: tokens.report.shadowSoft,
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 0,

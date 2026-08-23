@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View } from 'react-native';
 import { HStack } from '../ui/hstack';
 import { VStack } from '../ui/vstack';
@@ -18,27 +19,27 @@ const FLAG_CONFIG: Record<
 > = {
   low: {
     label: 'Low',
-    bar: '#f87171', // red-400
-    badge: '#fef2f2', // red-50
-    text: '#dc2626', // red-600
+    bar: tokens.nutrientFlag.lowBar, // red-400
+    badge: tokens.nutrientFlag.lowBadge, // red-50
+    text: tokens.nutrientFlag.lowText, // red-600
   },
   ok: {
     label: 'OK',
-    bar: '#4ade80', // green-400
-    badge: '#f0fdf4', // green-50
-    text: '#16a34a', // green-600
+    bar: tokens.nutrientFlag.okBar, // green-400
+    badge: tokens.nutrientFlag.okBadge, // green-50
+    text: tokens.nutrientFlag.okText, // green-600
   },
   high: {
     label: 'High',
-    bar: '#fbbf24', // amber-400
-    badge: '#fffbeb', // amber-50
-    text: '#d97706', // amber-600
+    bar: tokens.nutrientFlag.highBar, // amber-400
+    badge: tokens.nutrientFlag.highBadge, // amber-50
+    text: tokens.nutrientFlag.highText, // amber-600
   },
   none: {
     label: '—',
-    bar: '#d1d5db', // gray-300
-    badge: '#f9fafb', // gray-50
-    text: '#9ca3af', // gray-400
+    bar: tokens.nutrientFlag.noneBar, // gray-300
+    badge: tokens.nutrientFlag.noneBadge, // gray-50
+    text: tokens.nutrientFlag.noneText, // gray-400
   },
 };
 
@@ -80,7 +81,7 @@ const NutritionCard = ({
       <HStack className="justify-between items-start mb-2">
         <VStack className="gap-1 flex-1 mr-3">
           <HStack className="gap-2 items-center">
-            {pinned && <Pin size={12} color="#3b82f6" fill="#3b82f6" />}
+            {pinned && <Pin size={12} color={tokens.nutrientFlag.pin} fill={tokens.nutrientFlag.pin} />}
             <Text size="sm" className="font-bold text-gray-800">
               {name}
             </Text>
@@ -89,7 +90,7 @@ const NutritionCard = ({
               size="sm"
               variant="solid"
               action="muted"
-              style={{ backgroundColor: '#f1f5f9' }}
+              style={{ backgroundColor: tokens.nutrientFlag.track }}
             >
               <BadgeText className="text-gray-500 text-[9px] font-semibold capitalize">
                 {type}

@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   grade: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,

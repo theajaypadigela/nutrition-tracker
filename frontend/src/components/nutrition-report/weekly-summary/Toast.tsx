@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { tokens } from '@/theme/tokens';
 import { Animated, StyleSheet, Easing } from 'react-native';
 import { Text } from '@/components/ui/text';
 
@@ -60,11 +61,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 90,
     alignSelf: 'center',
-    backgroundColor: '#0c1b22',
+    backgroundColor: tokens.report.ink,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    shadowColor: '#081420',
+    shadowColor: tokens.report.shadow,
     shadowOpacity: 0.25,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 24,
@@ -72,7 +73,7 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   text: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',

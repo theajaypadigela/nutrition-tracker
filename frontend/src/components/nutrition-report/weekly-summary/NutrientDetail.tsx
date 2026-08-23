@@ -80,11 +80,11 @@ const NutrientDetail: React.FC<Props> = ({
       >
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
-            <ChevronLeft size={20} color="#ffffff" strokeWidth={2.4} />
+            <ChevronLeft size={20} color={tokens.report.surface} strokeWidth={2.4} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Nutrient detail</Text>
           <TouchableOpacity onPress={onSetGoal} style={styles.setGoalBtn}>
-            <Plus size={14} color="#ffffff" strokeWidth={2.6} />
+            <Plus size={14} color={tokens.report.surface} strokeWidth={2.6} />
             <Text style={styles.setGoalText}>Set goal</Text>
           </TouchableOpacity>
         </View>
@@ -109,9 +109,9 @@ const NutrientDetail: React.FC<Props> = ({
             style={[styles.verdictBadge, { backgroundColor: colors.fg }]}
           >
             {status === 'good' ? (
-              <Check size={14} color="#ffffff" strokeWidth={3} />
+              <Check size={14} color={tokens.report.surface} strokeWidth={3} />
             ) : (
-              <AlertTriangle size={14} color="#ffffff" strokeWidth={2.6} />
+              <AlertTriangle size={14} color={tokens.report.surface} strokeWidth={2.6} />
             )}
           </View>
           <Text style={[styles.verdictText, { color: colors.fg }]}>
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   setGoalText: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   nutrientName: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   bigValue: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 32,
     fontWeight: '800',
     letterSpacing: -0.6,

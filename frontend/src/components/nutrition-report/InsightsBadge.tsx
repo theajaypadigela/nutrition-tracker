@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View } from 'react-native';
 import { Text } from '../ui/text';
 import { TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react-native';
@@ -27,16 +28,16 @@ interface Theme {
 
 const theme: Theme = {
   positive: {
-    color: '#13961a',
-    icon: <TrendingUp size={20} color={'#13961aff'} />,
+    color: tokens.insight.positive,
+    icon: <TrendingUp size={20} color={tokens.insight.positive} />,
   },
   negative: {
-    color: '#dc2626',
-    icon: <AlertTriangle size={20} color={'#dc2626'} />,
+    color: tokens.insight.negative,
+    icon: <AlertTriangle size={20} color={tokens.insight.negative} />,
   },
   neutral: {
-    color: '#d97706',
-    icon: <TrendingDown size={20} color={'#d97706'} />,
+    color: tokens.insight.neutral,
+    icon: <TrendingDown size={20} color={tokens.insight.neutral} />,
   },
 };
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View } from 'react-native';
 import { HStack } from '../ui/hstack';
 import { VStack } from '../ui/vstack';
@@ -18,11 +19,11 @@ const MicroNutrientCard: React.FC<MicroNutrientCardProps> = ({ item }) => {
     <View
       style={{
         width: 160,
-        backgroundColor: '#fff',
+        backgroundColor: tokens.report.surface,
         borderRadius: 16,
         padding: 20,
         borderWidth: 1,
-        borderColor: '#e5e7eb',
+        borderColor: tokens.report.cardLineNeutral,
         gap: 12,
       }}
     >

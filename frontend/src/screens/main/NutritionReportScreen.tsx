@@ -6,6 +6,7 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
+import { tokens } from '@/theme/tokens';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import React, { useEffect } from 'react';
@@ -61,7 +62,7 @@ const NutritionReportScreen = () => {
       <AppBar title="Nutrition Report" showProfileShortcut />
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0284c7" />
+          <ActivityIndicator size="large" color={tokens.report.spinner} />
           <Text className="mt-4 text-gray-600">Loading nutrition data...</Text>
         </View>
       ) : (
@@ -90,17 +91,17 @@ const NutritionReportScreen = () => {
           <VStack className="p-6 bg-white border rounded-2xl border-gray-200 m-6 gap-4">
             <HStack className="gap-2 items-center justify-between">
               <HStack className="gap-2 items-center">
-                <Lightbulb size={20} color={'#d97706'} />
+                <Lightbulb size={20} color={tokens.report.insightIcon} />
                 <Text size="md" className="font-bold">
                   {usingFallback ? 'Smart Insights' : 'AI Insights'}
                 </Text>
                 {insightsLoading && (
-                  <ActivityIndicator size="small" color="#d97706" />
+                  <ActivityIndicator size="small" color={tokens.report.insightIcon} />
                 )}
               </HStack>
               {!insightsLoading && reportData && canShowInsights && (
                 <TouchableOpacity onPress={fetchAiInsights} className="p-2">
-                  <RefreshCw size={18} color="#d97706" />
+                  <RefreshCw size={18} color={tokens.report.insightIcon} />
                 </TouchableOpacity>
               )}
             </HStack>
@@ -131,7 +132,7 @@ const NutritionReportScreen = () => {
             style={styles.navCard}
           >
             <View style={styles.navIconWrap}>
-              <BarChart3 size={20} color="#0a3a82" strokeWidth={2.2} />
+              <BarChart3 size={20} color={tokens.report.primaryDeep} strokeWidth={2.2} />
             </View>
             <View style={styles.navTextCol}>
               <Text style={styles.navTitle}>All nutrients · weekly view</Text>
@@ -139,7 +140,7 @@ const NutritionReportScreen = () => {
                 Score, search, day-by-day chart, custom goals
               </Text>
             </View>
-            <ChevronRight size={20} color="#0a3a82" strokeWidth={2.2} />
+            <ChevronRight size={20} color={tokens.report.primaryDeep} strokeWidth={2.2} />
           </TouchableOpacity>
 
           <View style={styles.listFooter} />
@@ -167,31 +168,31 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#cfdcef',
-    backgroundColor: '#eaf2fc',
+    borderColor: tokens.report.cardLine,
+    backgroundColor: tokens.report.cardBg,
     gap: 14,
   },
   navIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: tokens.report.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#cfdcef',
+    borderColor: tokens.report.cardLine,
   },
   navTextCol: {
     flex: 1,
   },
   navTitle: {
-    color: '#0a3a82',
+    color: tokens.report.primaryDeep,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.1,
   },
   navSub: {
-    color: '#3f5b86',
+    color: tokens.report.inkFaint,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 3,

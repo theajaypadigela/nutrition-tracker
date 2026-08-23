@@ -45,8 +45,8 @@ const Orb: React.FC = () => (
   <Svg width={220} height={220} style={styles.orb}>
     <Defs>
       <RadialGradient id="orbGrad" cx="50%" cy="50%" r="50%">
-        <Stop offset="0%" stopColor="#0e9b6d" stopOpacity={0.4} />
-        <Stop offset="100%" stopColor="#0e9b6d" stopOpacity={0} />
+        <Stop offset="0%" stopColor={tokens.report.green} stopOpacity={0.4} />
+        <Stop offset="100%" stopColor={tokens.report.green} stopOpacity={0} />
       </RadialGradient>
     </Defs>
     <Circle cx={110} cy={110} r={110} fill="url(#orbGrad)" />
@@ -99,7 +99,7 @@ const HeaderCard: React.FC<Props> = ({
           style={styles.iconBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ChevronLeft size={20} color="#ffffff" strokeWidth={2.4} />
+          <ChevronLeft size={20} color={tokens.report.surface} strokeWidth={2.4} />
         </TouchableOpacity>
         <View style={styles.titleWrap}>
           <Text style={styles.title} numberOfLines={1}>
@@ -111,7 +111,7 @@ const HeaderCard: React.FC<Props> = ({
 
       <View style={styles.weekNav}>
         <TouchableOpacity onPress={onPrevWeek} style={styles.weekChevron} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <ChevronLeft size={18} color="#ffffff" strokeWidth={2.4} />
+          <ChevronLeft size={18} color={tokens.report.surface} strokeWidth={2.4} />
         </TouchableOpacity>
         <View style={styles.weekLabelStack}>
           <Text style={styles.weekEyebrow}>{weekLabelText}</Text>
@@ -123,7 +123,7 @@ const HeaderCard: React.FC<Props> = ({
           style={[styles.weekChevron, isCurrentWeek && styles.weekChevronDisabled]}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ChevronRight size={18} color="#ffffff" strokeWidth={2.4} />
+          <ChevronRight size={18} color={tokens.report.surface} strokeWidth={2.4} />
         </TouchableOpacity>
       </View>
 
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     height: 38,
   },
   title: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   weekRange: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   verdict: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   miniStatValue: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: -0.2,

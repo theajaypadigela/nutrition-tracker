@@ -256,7 +256,7 @@ const toggleStyles = StyleSheet.create({
   },
   optActive: {
     backgroundColor: tokens.report.surface,
-    shadowColor: '#0f1e28',
+    shadowColor: tokens.report.shadowSoft,
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,

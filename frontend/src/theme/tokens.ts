@@ -151,6 +151,47 @@ const callPalette = {
 } as const;
 
 /**
+ * The Tailwind steps the app actually uses. Private: reach them through a semantic
+ * name below. They exist as a layer because several *different* surface decisions
+ * legitimately land on the same step — amber-600 tints the habit clock glyph, the
+ * daily-report insight icon, and the "High" nutrient flag — and each of those wants
+ * its own name without the hex being written three times.
+ */
+const tw = {
+  emerald500: '#10b981',
+  emerald600: '#059669',
+  emerald700: '#047857',
+  emerald800: '#065f46',
+  teal700: '#0f766e',
+  green400: '#4ade80',
+  green500: '#22c55e',
+  green600: '#16a34a',
+  green50: '#f0fdf4',
+  blue500: '#3b82f6',
+  sky600: '#0284c7',
+  violet600: '#7c3aed',
+  amber400: '#fbbf24',
+  amber600: '#d97706',
+  amber50: '#fffbeb',
+  yellow500: '#eab308',
+  red400: '#f87171',
+  red500: '#ef4444',
+  red600: '#dc2626',
+  red50: '#fef2f2',
+  slate400: '#94a3b8',
+  slate500: '#64748b',
+  slate900: '#0f172a',
+  slate100: '#f1f5f9',
+  gray300: '#d1d5db',
+  gray200: '#e5e7eb',
+  gray400: '#9ca3af',
+  gray500: '#6b7280',
+  gray800: '#1f2937',
+  gray900: '#111827',
+  gray50: '#f9fafb',
+} as const;
+
+/**
  * The public scale. Member names are the ones each surface already used, so a
  * reader moving from `T.greenSoft` to `tokens.auth.greenSoft` sees the same word.
  */
@@ -202,6 +243,18 @@ export const tokens = {
     bad: reportStatus.bad,
     badSoft: reportStatus.badSoft,
     headerGradient: reportHeaderGradient,
+    /** Card shadow on the weekly-summary sheets and toast. */
+    shadow: '#081420',
+    /** A lighter card shadow — the filter bar and nutrient rows. */
+    shadowSoft: '#0f1e28',
+    /** Daily-report "open weekly summary" card. */
+    cardBg: '#eaf2fc',
+    cardLine: '#cfdcef',
+    inkFaint: '#3f5b86',
+    spinner: tw.sky600,
+    insightIcon: tw.amber600,
+    /** Micro-nutrient card hairline. */
+    cardLineNeutral: tw.gray200,
   },
 
   /**
@@ -262,15 +315,16 @@ export const tokens = {
    */
   dashboard: {
     surface: neutral.white,
-    green: '#059669',
-    greenDeep: '#047857',
-    greenDeepest: '#065f46',
-    greenBright: '#10b981',
+    green: tw.emerald600,
+    greenDeep: tw.emerald700,
+    greenDeepest: tw.emerald800,
+    greenBright: tw.emerald500,
+    /** Not a Tailwind step — the AppBar's own presence dot. */
     greenAccent: '#0ea371',
-    teal: '#0f766e',
-    ink: '#0f172a',
-    inkSoft: '#64748b',
-    inkMuted: '#94a3b8',
+    teal: tw.teal700,
+    ink: tw.slate900,
+    inkSoft: tw.slate500,
+    inkMuted: tw.slate400,
     /** AppBar hairline. */
     line: '#e4f1ea',
     /** Chip / avatar-well border. */
@@ -280,10 +334,10 @@ export const tokens = {
     /** BottomNavigation hairline. */
     navLine: '#dceadf',
     /** Back-chevron ink — a step off `ink`, kept as it was. */
-    chevron: '#1f2937',
-    calendarInk: '#111827',
-    calendarInkMuted: '#6b7280',
-    calendarInkDisabled: '#d1d5db',
+    chevron: tw.gray800,
+    calendarInk: tw.gray900,
+    calendarInkMuted: tw.gray500,
+    calendarInkDisabled: tw.gray300,
   },
 
   /**
@@ -291,16 +345,59 @@ export const tokens = {
    * glyphs — no surfaces are painted with these.
    */
   icon: {
-    green: '#059669',
-    blue: '#3b82f6',
-    amber: '#d97706',
-    violet: '#7c3aed',
-    red: '#ef4444',
+    green: tw.emerald600,
+    blue: tw.blue500,
+    amber: tw.amber600,
+    violet: tw.violet600,
+    red: tw.red500,
     /** Placeholder text and inactive glyphs. */
-    muted: '#9ca3af',
+    muted: tw.gray400,
     /** One step darker than `muted`; the unselected reminder-type glyph. */
-    mutedStrong: '#6b7280',
+    mutedStrong: tw.gray500,
     onAccent: neutral.white,
+  },
+
+  /**
+   * Nutrient flag chips and trend bars (NutritionCard, NutritionDetailDrawer).
+   * The four bar colours were declared twice — once in NutritionCard's FLAG_CONFIG
+   * and again in the drawer's local getBarColor switch.
+   */
+  nutrientFlag: {
+    lowBar: tw.red400,
+    lowBadge: tw.red50,
+    lowText: tw.red600,
+    okBar: tw.green400,
+    okBadge: tw.green50,
+    okText: tw.green600,
+    highBar: tw.amber400,
+    highBadge: tw.amber50,
+    highText: tw.amber600,
+    noneBar: tw.gray300,
+    noneBadge: tw.gray50,
+    noneText: tw.gray400,
+    /** Pinned-nutrient marker + the loading spinner on the nutrient lists. */
+    pin: tw.blue500,
+    /** Track behind an inline nutrient bar. */
+    track: tw.slate100,
+    /** Refresh glyph on the all-nutrients card. */
+    refresh: tw.gray500,
+  },
+
+  /** The daily-report progress ring's four bands plus its empty track. */
+  progressRing: {
+    good: tw.green500,
+    warn: tw.yellow500,
+    bad: tw.red500,
+    info: tw.blue500,
+    track: tw.gray300,
+  },
+
+  /** Weekly insight badge. */
+  insight: {
+    /** Not a Tailwind step; the badge's own green. */
+    positive: '#13961a',
+    negative: tw.red600,
+    neutral: tw.amber600,
   },
 
   /** The dark, continuous call experience. */

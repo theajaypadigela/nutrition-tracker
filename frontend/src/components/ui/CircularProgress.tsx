@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { tokens } from '@/theme/tokens';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { VStack } from './vstack';
@@ -43,11 +44,11 @@ interface CircularProgressProps {
 
 // Hex codes for tailwind colors - moved outside component to avoid recreating on every render
 const DEFAULT_COLORS = {
-  green: '#22c55e',
-  yellow: '#eab308',
-  red: '#ef4444',
-  blue: '#3b82f6',
-  gray: '#d1d5db',
+  green: tokens.progressRing.good,
+  yellow: tokens.progressRing.warn,
+  red: tokens.progressRing.bad,
+  blue: tokens.progressRing.info,
+  gray: tokens.progressRing.track,
 };
 
 const CircularProgress: React.FC<CircularProgressProps> = ({

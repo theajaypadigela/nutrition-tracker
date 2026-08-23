@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   ActivityIndicator,
@@ -117,7 +118,7 @@ const NutrientListFooter: React.FC<NutrientListFooterProps> = ({
   if (loading) {
     inner = (
       <View className="mx-6 bg-white border-l border-r border-b border-gray-200 rounded-b-2xl mb-6 py-12 items-center justify-center">
-        <ActivityIndicator size="small" color="#3b82f6" />
+        <ActivityIndicator size="small" color={tokens.nutrientFlag.pin} />
         <Text className="text-xs text-gray-400 mt-2">Loading nutrients…</Text>
       </View>
     );
@@ -409,7 +410,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
                     onPress={() => setShowRangePicker(v => !v)}
                     className="flex-row items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg"
                   >
-                    <CalendarIcon size={13} color="#3b82f6" />
+                    <CalendarIcon size={13} color={tokens.nutrientFlag.pin} />
                     <Text className="text-xs font-semibold text-blue-600">
                       {dateRangeLabel}
                     </Text>
@@ -419,7 +420,7 @@ const AllNutritionsCard: React.FC<AllNutritionsCardProps> = ({
                     onPress={fetchNutrients}
                     className="p-1.5 bg-gray-100 rounded-lg"
                   >
-                    <RefreshCw size={14} color="#6b7280" />
+                    <RefreshCw size={14} color={tokens.nutrientFlag.refresh} />
                   </TouchableOpacity>
                 </HStack>
               </HStack>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { ScrollView } from 'react-native';
 import {
   Actionsheet,
@@ -346,13 +347,13 @@ const NutritionDetailDrawer: React.FC<NutritionDetailDrawerProps> = ({
                         const getBarColor = (key: string) => {
                           switch (key) {
                             case 'low':
-                              return '#f87171'; // red-400
+                              return tokens.nutrientFlag.lowBar; // red-400
                             case 'high':
-                              return '#fbbf24'; // amber-400
+                              return tokens.nutrientFlag.highBar; // amber-400
                             case 'ok':
-                              return '#4ade80'; // green-400
+                              return tokens.nutrientFlag.okBar; // green-400
                             default:
-                              return '#d1d5db'; // gray-300
+                              return tokens.nutrientFlag.noneBar; // gray-300
                           }
                         };
 

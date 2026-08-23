@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   tooltipText: {
-    color: '#ffffff',
+    color: tokens.report.surface,
     fontSize: 10,
     fontWeight: '700',
   },
