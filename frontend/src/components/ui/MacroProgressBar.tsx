@@ -88,7 +88,7 @@ const MacroProgressBar = (props: MacroProgressBarProps) => {
     }
   }, [current, goal, is_healthy]);
 
-  const DisplaySize = size[propsSize] || size.xl;
+  const DisplaySize = propsSize ? size[propsSize] : size.xl;
 
   const DisplayColor = useMemo(() => {
     return getProgressTheme(current, goal, is_healthy);
