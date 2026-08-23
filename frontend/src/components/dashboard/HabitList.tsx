@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, TouchableOpacity } from 'react-native';
 import { Activity, Check, Plus } from 'lucide-react-native';
 
@@ -37,7 +38,7 @@ const HabitList = ({
     <HStack className="flex items-center justify-between">
       <HStack className="items-center gap-2">
         <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-          <Activity size={18} stroke="#059669" strokeWidth={2.5} />
+          <Activity size={18} stroke={tokens.dashboard.green} strokeWidth={2.5} />
         </View>
         <Text size="xl" className="font-semibold text-gray-900">
           Habits for {selectedDateLabel}
@@ -48,7 +49,7 @@ const HabitList = ({
           onPress={onCreateHabit}
           className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center"
         >
-          <Plus size={18} color="#FFFFFF" strokeWidth={2.7} />
+          <Plus size={18} color={tokens.dashboard.surface} strokeWidth={2.7} />
         </TouchableOpacity>
       ) : null}
     </HStack>
@@ -107,7 +108,7 @@ const HabitList = ({
                 }`}
               >
                 <View className="w-[18px] h-[18px] rounded-full bg-emerald-600 items-center justify-center flex-shrink-0">
-                  <Check size={9} color="#FFFFFF" strokeWidth={2.5} />
+                  <Check size={9} color={tokens.dashboard.surface} strokeWidth={2.5} />
                 </View>
                 <Text className="flex-1 text-[13px] text-gray-900">{item.name}</Text>
                 <View className="rounded-full bg-emerald-50 px-2.5 py-[3px]">

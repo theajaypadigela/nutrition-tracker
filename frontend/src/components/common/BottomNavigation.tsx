@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -56,7 +57,7 @@ const TabItem: React.FC<TabItemProps> = ({ tab, isActive, onPress }) => {
         <View style={styles.iconWrap}>
           <Icon
             size={isActive ? 22 : 18}
-            color={isActive ? '#047857' : '#94A3B8'}
+            color={isActive ? tokens.dashboard.greenDeep : tokens.dashboard.inkMuted}
             strokeWidth={isActive ? 2.8 : 1.8}
           />
         </View>
@@ -107,13 +108,13 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tokens.dashboard.surface,
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: '#DCEADF',
+    borderColor: tokens.dashboard.navLine,
     paddingHorizontal: 8,
     paddingVertical: 10,
-    shadowColor: '#0F172A',
+    shadowColor: tokens.dashboard.ink,
     shadowOpacity: 0.06,
     shadowRadius: 18,
     shadowOffset: {
@@ -157,11 +158,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     fontWeight: '700',
-    color: '#94A3B8',
+    color: tokens.dashboard.inkMuted,
     letterSpacing: 0.15,
   },
   labelActive: {
-    color: '#065F46',
+    color: tokens.dashboard.greenDeepest,
     fontSize: 13,
   },
 });

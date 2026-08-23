@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   ScrollView,
@@ -41,17 +42,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tokens.dashboard.surface,
     borderWidth: 0,
     borderColor: 'transparent',
     opacity: 1,
   },
   calendarDaySelected: {
-    backgroundColor: '#059669',
+    backgroundColor: tokens.dashboard.green,
   },
   calendarDayToday: {
     borderWidth: 1.5,
-    borderColor: '#10B981',
+    borderColor: tokens.dashboard.greenBright,
   },
   calendarDayDisabled: {
     opacity: 0.45,
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#10B981',
+    backgroundColor: tokens.dashboard.greenBright,
   },
   calendar: {
     borderRadius: 20,
@@ -114,15 +115,15 @@ const DashBoardScreen = () => {
     const marked: Record<string, any> = {
       [selectedDate]: {
         selected: true,
-        selectedColor: '#059669',
-        selectedTextColor: '#FFFFFF',
+        selectedColor: tokens.dashboard.green,
+        selectedTextColor: tokens.dashboard.surface,
       },
     };
 
     if (todayKey !== selectedDate) {
       marked[todayKey] = {
         marked: true,
-        dotColor: '#0F766E',
+        dotColor: tokens.dashboard.teal,
       };
     }
 
@@ -232,7 +233,7 @@ const DashBoardScreen = () => {
             <HStack className="items-center justify-between px-1 pb-2">
               <HStack className="items-center gap-2">
                 <View className="w-9 h-9 rounded-full bg-emerald-50 items-center justify-center">
-                  <CalendarDays size={16} color="#047857" strokeWidth={2.4} />
+                  <CalendarDays size={16} color={tokens.dashboard.greenDeep} strokeWidth={2.4} />
                 </View>
                 <VStack>
                   <Text className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
@@ -265,27 +266,27 @@ const DashBoardScreen = () => {
               dayComponent={renderCalendarDay}
               renderArrow={direction =>
                 direction === 'left' ? (
-                  <ChevronLeft size={18} color="#059669" strokeWidth={2.4} />
+                  <ChevronLeft size={18} color={tokens.dashboard.green} strokeWidth={2.4} />
                 ) : (
-                  <ChevronRight size={18} color="#059669" strokeWidth={2.4} />
+                  <ChevronRight size={18} color={tokens.dashboard.green} strokeWidth={2.4} />
                 )
               }
               style={styles.calendar}
               theme={{
-                calendarBackground: '#FFFFFF',
-                monthTextColor: '#111827',
-                textSectionTitleColor: '#6B7280',
+                calendarBackground: tokens.dashboard.surface,
+                monthTextColor: tokens.dashboard.calendarInk,
+                textSectionTitleColor: tokens.dashboard.calendarInkMuted,
                 textDayFontWeight: '600',
                 textDayHeaderFontWeight: '700',
                 textMonthFontWeight: '800',
                 textMonthFontSize: 17,
                 textDayFontSize: 14,
                 textDayHeaderFontSize: 12,
-                dayTextColor: '#111827',
-                textDisabledColor: '#D1D5DB',
-                arrowColor: '#059669',
-                selectedDotColor: '#FFFFFF',
-                todayTextColor: '#047857',
+                dayTextColor: tokens.dashboard.calendarInk,
+                textDisabledColor: tokens.dashboard.calendarInkDisabled,
+                arrowColor: tokens.dashboard.green,
+                selectedDotColor: tokens.dashboard.surface,
+                todayTextColor: tokens.dashboard.greenDeep,
               }}
             />
           </View>

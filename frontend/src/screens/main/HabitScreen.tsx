@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { tokens } from '@/theme/tokens';
 import { VStack } from '@/components/ui/vstack';
 import { Text } from '@/components/ui/text';
 import { HStack } from '@/components/ui/hstack';
@@ -99,9 +100,9 @@ const HabitScreen = () => {
                 >
                   <Button variant="link" onPress={() => toggleHabit(habit.id)}>
                     {habit.completed ? (
-                      <CheckCircle size={24} color="#059669" />
+                      <CheckCircle size={24} color={tokens.icon.green} />
                     ) : (
-                      <Circle size={24} color="#9CA3AF" />
+                      <Circle size={24} color={tokens.icon.muted} />
                     )}
                   </Button>
                   <VStack className="flex-1">
@@ -119,9 +120,9 @@ const HabitScreen = () => {
                       </Text>
                       <HStack className="items-center gap-1">
                         {habit.reminderType === REMINDER_TYPE_CALL ? (
-                          <Phone size={10} color="#7C3AED" />
+                          <Phone size={10} color={tokens.icon.violet} />
                         ) : (
-                          <Bell size={10} color="#D97706" />
+                          <Bell size={10} color={tokens.icon.amber} />
                         )}
                         <Text
                           size="xs"
@@ -160,7 +161,7 @@ const HabitScreen = () => {
                     </HStack>
                     {isRescheduled && (
                       <HStack className="self-start max-w-full items-center gap-1 mt-2 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200">
-                        <Clock size={12} color="#D97706" />
+                        <Clock size={12} color={tokens.icon.amber} />
                         <Text
                           size="xs"
                           numberOfLines={2}
@@ -177,7 +178,7 @@ const HabitScreen = () => {
                     onPress={() => deleteHabit(habit.id)}
                     className="w-8 h-8 flex items-center justify-center rounded-full ml-auto bg-red-50"
                   >
-                    <Trash2 size={16} color="#EF4444" />
+                    <Trash2 size={16} color={tokens.icon.red} />
                   </Button>
                 </HStack>
               );
@@ -192,7 +193,7 @@ const HabitScreen = () => {
         className="absolute bottom-36 right-6 w-14 h-14 rounded-full bg-emerald-500 items-center justify-center"
         style={styles.floatingButton}
       >
-        <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />
+        <Plus size={28} color={tokens.icon.onAccent} strokeWidth={2.5} />
       </TouchableOpacity>
     </View>
   );
@@ -200,7 +201,7 @@ const HabitScreen = () => {
 
 const styles = StyleSheet.create({
   floatingButton: {
-    shadowColor: '#059669',
+    shadowColor: tokens.icon.green,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

@@ -249,6 +249,60 @@ export const tokens = {
     headerGradient: ['#14914a', brandGreen.base, '#0a5226'],
   },
 
+  /**
+   * The dashboard and app chrome (AppBar, BottomNavigation, calendar, habit and
+   * meal-slot cards). An emerald + slate scale, distinct from `foodLog`'s warm
+   * greens and from `auth`'s brand green.
+   *
+   * It carries TWO near-identical neutral ramps on purpose: `ink`/`inkSoft`/
+   * `inkMuted` are the slate ramp the chrome uses, and `calendar*` are the gray
+   * ramp react-native-calendars was configured with. #0f172a vs #111827 and
+   * #94a3b8 vs #6b7280 are one step apart — **do not merge them** without
+   * re-checking the calendar against the rest of the chrome.
+   */
+  dashboard: {
+    surface: neutral.white,
+    green: '#059669',
+    greenDeep: '#047857',
+    greenDeepest: '#065f46',
+    greenBright: '#10b981',
+    greenAccent: '#0ea371',
+    teal: '#0f766e',
+    ink: '#0f172a',
+    inkSoft: '#64748b',
+    inkMuted: '#94a3b8',
+    /** AppBar hairline. */
+    line: '#e4f1ea',
+    /** Chip / avatar-well border. */
+    lineTint: '#d5e8dd',
+    /** Chip / avatar-well fill. */
+    bgTint: '#f4faf7',
+    /** BottomNavigation hairline. */
+    navLine: '#dceadf',
+    /** Back-chevron ink — a step off `ink`, kept as it was. */
+    chevron: '#1f2937',
+    calendarInk: '#111827',
+    calendarInkMuted: '#6b7280',
+    calendarInkDisabled: '#d1d5db',
+  },
+
+  /**
+   * Icon accents shared by the habit screens. Tailwind steps, used only to tint
+   * glyphs — no surfaces are painted with these.
+   */
+  icon: {
+    green: '#059669',
+    blue: '#3b82f6',
+    amber: '#d97706',
+    violet: '#7c3aed',
+    red: '#ef4444',
+    /** Placeholder text and inactive glyphs. */
+    muted: '#9ca3af',
+    /** One step darker than `muted`; the unselected reminder-type glyph. */
+    mutedStrong: '#6b7280',
+    onAccent: neutral.white,
+  },
+
   /** The dark, continuous call experience. */
   call: callPalette,
 

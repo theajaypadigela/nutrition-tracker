@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, TouchableOpacity } from 'react-native';
 import { Apple, ChevronRight } from 'lucide-react-native';
 
@@ -48,7 +49,7 @@ const MealSlotSection = ({
   <VStack className="w-full bg-white rounded-2xl p-4 border border-gray-200 gap-3">
     <HStack className="flex items-center gap-2">
       <View className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-        <Apple size={18} stroke="#059669" strokeWidth={2.5} />
+        <Apple size={18} stroke={tokens.dashboard.green} strokeWidth={2.5} />
       </View>
       <Text size="xl" className="font-semibold text-gray-900">
         Food for {selectedDateLabel}
@@ -183,7 +184,7 @@ const MealSlotSection = ({
                 </HStack>
 
                 <HStack className="items-center gap-1 mt-1.5">
-                  <ChevronRight size={9} color="#9ca3af" strokeWidth={2} />
+                  <ChevronRight size={9} color={tokens.icon.muted} strokeWidth={2} />
                   <Text className="text-[10px] text-gray-400">
                     {isExpanded ? 'Tap to close' : 'Tap to view'}
                   </Text>

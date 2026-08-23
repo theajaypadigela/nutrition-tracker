@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import {
   View,
   ScrollView,
@@ -95,7 +96,7 @@ const HabitCreationScreen = () => {
           <VStack className="bg-white rounded-2xl p-5 border border-gray-200 gap-3">
             <HStack className="items-center gap-2.5">
               <View className="w-9 h-9 rounded-full bg-emerald-50 items-center justify-center">
-                <Type size={16} color="#059669" />
+                <Type size={16} color={tokens.icon.green} />
               </View>
               <Text size="lg" className="font-semibold text-gray-900">
                 Habit Name
@@ -105,7 +106,7 @@ const HabitCreationScreen = () => {
               value={habitName}
               onChangeText={setHabitName}
               placeholder="e.g., Morning Run, Read Books..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={tokens.icon.muted}
               className="bg-gray-50 rounded-xl px-4 py-3.5 text-gray-900 text-base border border-gray-200"
             />
           </VStack>
@@ -114,7 +115,7 @@ const HabitCreationScreen = () => {
           <VStack className="bg-white rounded-2xl p-5 border border-gray-200 gap-4">
             <HStack className="items-center gap-2.5">
               <View className="w-9 h-9 rounded-full bg-blue-50 items-center justify-center">
-                <Repeat size={16} color="#3B82F6" />
+                <Repeat size={16} color={tokens.icon.blue} />
               </View>
               <VStack>
                 <Text size="lg" className="font-semibold text-gray-900">
@@ -219,7 +220,7 @@ const HabitCreationScreen = () => {
           <VStack className="bg-white rounded-2xl p-5 border border-gray-200 gap-3">
             <HStack className="items-center gap-2.5">
               <View className="w-9 h-9 rounded-full bg-amber-50 items-center justify-center">
-                <Clock size={16} color="#D97706" />
+                <Clock size={16} color={tokens.icon.amber} />
               </View>
               <Text size="lg" className="font-semibold text-gray-900">
                 Reminder Time
@@ -233,7 +234,7 @@ const HabitCreationScreen = () => {
               <Text size="md" className="text-gray-900 font-medium">
                 {formatClockTime(reminderTime)}
               </Text>
-              <Clock size={18} color="#9CA3AF" />
+              <Clock size={18} color={tokens.icon.muted} />
             </TouchableOpacity>
 
             {showTimePicker && (
@@ -260,7 +261,7 @@ const HabitCreationScreen = () => {
           <VStack className="bg-white rounded-2xl p-5 border border-gray-200 gap-4">
             <HStack className="items-center gap-2.5">
               <View className="w-9 h-9 rounded-full bg-purple-50 items-center justify-center">
-                <Bell size={16} color="#7C3AED" />
+                <Bell size={16} color={tokens.icon.violet} />
               </View>
               <Text size="lg" className="font-semibold text-gray-900">
                 Reminder Type
@@ -288,8 +289,8 @@ const HabitCreationScreen = () => {
                     size={18}
                     color={
                       reminderType === REMINDER_NOTIFICATION
-                        ? '#059669'
-                        : '#6B7280'
+                        ? tokens.icon.green
+                        : tokens.icon.mutedStrong
                     }
                   />
                 </View>
@@ -343,7 +344,7 @@ const HabitCreationScreen = () => {
                 >
                   <Phone
                     size={18}
-                    color={reminderType === REMINDER_CALL ? '#059669' : '#6B7280'}
+                    color={reminderType === REMINDER_CALL ? tokens.icon.green : tokens.icon.mutedStrong}
                   />
                 </View>
                 <VStack className="flex-1">

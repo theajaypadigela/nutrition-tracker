@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View } from 'react-native';
 import { Check } from 'lucide-react-native';
 
@@ -74,7 +75,7 @@ const DayDetailDrawer = ({
                 >
                   {item.completed ? (
                     <View className="w-[20px] h-[20px] rounded-full bg-gray-900 items-center justify-center">
-                      <Check size={10} color="#FFFFFF" strokeWidth={2.5} />
+                      <Check size={10} color={tokens.dashboard.surface} strokeWidth={2.5} />
                     </View>
                   ) : (
                     <View className="w-[20px] h-[20px] rounded-full border border-gray-300" />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { tokens } from '@/theme/tokens';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
 import { ChevronLeft, User } from 'lucide-react-native';
@@ -82,7 +83,7 @@ const AppBar: React.FC<AppBarProps> = ({
             {profileInitials}
           </Text>
         ) : (
-          <User size={18} color="#047857" strokeWidth={2.3} />
+          <User size={18} color={tokens.dashboard.greenDeep} strokeWidth={2.3} />
         )}
       </TouchableOpacity>
     ) : null);
@@ -98,7 +99,7 @@ const AppBar: React.FC<AppBarProps> = ({
               style={styles.backButton}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <ChevronLeft size={20} color="#1F2937" strokeWidth={2.4} />
+              <ChevronLeft size={20} color={tokens.dashboard.chevron} strokeWidth={2.4} />
             </TouchableOpacity>
           ) : null}
 
@@ -133,9 +134,9 @@ const AppBar: React.FC<AppBarProps> = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: tokens.dashboard.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4F1EA',
+    borderBottomColor: tokens.dashboard.line,
   },
   container: {
     paddingHorizontal: 20,
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D5E8DD',
-    backgroundColor: '#F4FAF7',
+    borderColor: tokens.dashboard.lineTint,
+    backgroundColor: tokens.dashboard.bgTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -166,14 +167,14 @@ const styles = StyleSheet.create({
     width: 4,
     height: 28,
     borderRadius: 2,
-    backgroundColor: '#0EA371',
+    backgroundColor: tokens.dashboard.greenAccent,
     marginRight: 12,
   },
   titleStack: {
     flex: 1,
   },
   title: {
-    color: '#0F172A',
+    color: tokens.dashboard.ink,
     fontWeight: '800',
     letterSpacing: 0.1,
   },
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 2,
-    color: '#64748B',
+    color: tokens.dashboard.inkSoft,
     fontWeight: '600',
     letterSpacing: 0.15,
   },
@@ -198,13 +199,13 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D5E8DD',
-    backgroundColor: '#F4FAF7',
+    borderColor: tokens.dashboard.lineTint,
+    backgroundColor: tokens.dashboard.bgTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileInitials: {
-    color: '#047857',
+    color: tokens.dashboard.greenDeep,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
