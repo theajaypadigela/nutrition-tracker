@@ -3,6 +3,11 @@
 **Status:** Phases 1–5 executed (2026-08-23). Phase 0 skipped by decision. Two Phase 5 items
 are deliberately not done — `import/order` (needs a new dependency, see C4) and
 `noUncheckedIndexedAccess` (see the Phase 5 deviations).
+**§10 audited the outstanding work; §11 records executing it (2026-08-23).** Everything in
+§10 that was not blocked on a dependency decision or a human is now done: Phase 0 tasks
+0.1/0.2/0.3/0.5, the five hook tests, the `OnboardingContext` test, the tail of 2.7, the ten
+`System.out.println` sites and the three lint errors. **Still open:** 0.4 and 5.2 (both need a
+C4 sign-off), 10.7 (a decision), and §6's device walkthrough.
 **Prepared:** 2026-08-23 · branch `mongo-deployment`
 **Scope:** `backend/` (Spring Boot 3.4 / Java 17 / MongoDB) and `frontend/` (React Native 0.83 / TypeScript).
 
@@ -896,3 +901,249 @@ Named so nobody expects them and nobody quietly does them:
 6. **New tests in Phases 4–5.** ⏳ Still none, per decision 5. F13 asks for the three new
    form hooks to follow `useProfileForm`'s "shape *and test style*"; they follow the shape
    only. `useVoiceMealSession` / `useVoiceHabitSession` are likewise untested.
+
+---
+
+## 10. Pending Work — audited against the tree 2026-08-23
+
+Everything Phases 1–5 record as done is verified present: the four F1 deletions and both F2
+shims are gone, `modules/food/seed/` is gone, **0** deep relative imports remain against
+**249** `@/` import lines, exactly **1** hex literal survives outside `theme/tokens.ts`
+(the deliberate `channels.ts:121` channel LED), `strict: true` is set, all three
+`no-restricted-imports` boundary groups are in `.eslintrc.js`, and six
+`@ConfigurationProperties` records exist. `./mvnw test` passes; `npx tsc --noEmit` passes;
+`npm test` passes (29 suites, 183 tests, 1 suite skipped — the pre-existing `App.test.tsx`).
+
+What follows is what is **not** done, ordered by risk.
+
+### 10.1 Phase 0 — never executed. Still the largest outstanding risk.
+
+Decision 5 deferred it and decision 6 left it deferred. Phases 2–5 have since rewritten both
+voice lanes, three auth/onboarding forms, all eight backend module packages, and every colour
+reference in the app — on top of the same 4 backend and 30 frontend test files the baseline
+started with.
+
+| # | Task | State in the tree | Blocked? |
+|---|---|---|---|
+| 0.1 | `@WebMvcTest` slice per controller | **10 controllers, 0 slices.** `AuthController`, `ProfileController`, `DashboardController`, `HabitController`, `MealScheduleController`, `VoiceLogController`, and the four F6 split-outs (`FoodEntryController`, `NutritionReportController`, `NutrientPreferenceController`, `NutritionInsightsController`) | No |
+| 0.2 | Unit tests for the retry helpers, both keyword sets | `AiRetryPolicy` + `AiRetryProperties` were extracted in 2.1 and have **no test**. This is the one 2.x extraction with genuinely shared behaviour behind it | No |
+| 0.3 | `@SpringBootTest` context-load smoke test | Absent. The `ApplicationContextRunner` harness that stood in for it (8 binding checks) was run and **discarded** — see the Phase 2 deviations | No |
+| 0.4 | Render tests for the 5 screens Phases 4–5 touched | Absent — **and blocked, see below** | **Yes** |
+| 0.5 | `collectCoverageFrom` excluding `src/components/ui/**` | `jest.config.js` has `preset`, `setupFiles` and `moduleNameMapper` only. No coverage config, so the 8,748 generated lines still distort any number produced | No |
+
+**0.4 is blocked on a dependency decision, and the plan did not know that.** There is no
+`@testing-library/react-native` in `package.json` and no `transformIgnorePatterns` in
+`jest.config.js`. `__tests__/App.test.tsx` is skipped for exactly this reason and documents
+it: rendering a real component pulls the gluestack-ui + nativewind + `@expo/html-elements`
+tree, which ships untransformed ESM/JSX the default RN preset does not transpile. So 0.4
+needs a transform config plus almost certainly a new dev dependency — a **C4 sign-off**,
+like `import/order` in 10.4.
+
+### 10.2 Tests for the hooks Phases 4–5 created — not blocked, and the cheapest item here
+
+Decision 6 is still open. F13 asked the three form hooks to follow `useProfileForm`'s "shape
+*and test style*"; they follow the shape only.
+
+| Hook | Source | Test |
+|---|---|---|
+| `useVoiceMealSession` | ✅ | ❌ |
+| `useVoiceHabitSession` | ✅ | ❌ |
+| `useRegisterForm` | ✅ | ❌ |
+| `useLoginForm` | ✅ | ❌ |
+| `useOnboardingMealScheduleForm` | ✅ | ❌ |
+
+**These do not hit 0.4's blocker.** The three existing form-hook tests
+(`useProfileForm`, `useHabitCreationForm`, `useManualFoodLogForm`) use a headless harness — a
+`Harness()` component that calls the hook and returns `null`, driven by `react-test-renderer`
++ `act`, with the API module `jest.mock`ed. Nothing renders, so nothing pulls the
+untransformed dep tree. The five hooks above are testable **today, with no new dependency**,
+by copying `src/hooks/__tests__/useManualFoodLogForm.test.tsx`.
+
+Given 0.4 is gated and this is not, this is the highest value-per-effort item in §10: it puts
+a net under 4.1 and 4.2, which decision 5 admits are "covered by nothing except the compiler".
+
+### 10.3 F14 — the `AuthContext` test was never split
+
+3.5 split `OnboardingContext` out of `AuthContext`, but `src/context/__tests__/AuthContext.test.tsx`
+was only mechanically adjusted (wrapped in `OnboardingProvider`). There is **no
+`OnboardingContext` test**, so the newly extracted context — including the inverted provider
+order and the `useCallback` fix that 3.5 needed — is unasserted.
+
+### 10.4 Phase 5 items closed by decision, recorded so they are not re-litigated
+
+| # | Item | Status |
+|---|---|---|
+| 5.2 | `import/order` | **Open, needs approval.** `eslint-plugin-import` is still not in `package.json`; C4 forbids adding it unasked. The rest of F16 item 3 is done |
+| 5.3 | `noUncheckedIndexedAccess` | **Closed — skipped by decision.** 4 of its 28 errors sit in §8-protected generated code, the other 24 are provably safe. Re-open only if the §8 boundary changes |
+
+### 10.5 Task 2.7 — the config migration is still partial
+
+Ten `@Value` sites remain, exactly the set the Phase 2 deviations named:
+
+| Property | Site |
+|---|---|
+| `cors.allowed-origins` | `config/SecurityConfig.java:32` |
+| `mongo.*` (4) | `config/MongoClientTuningConfig.java:15-18` |
+| `ai.provider` | `modules/nutrition/ai/AiTextService.java:26` |
+| `spoonacular.api.*` (2) | `modules/nutrition/provider/SpoonacularNutritionProvider.java:41-42` |
+| `usda.api.*` (2) | `modules/nutrition/provider/UsdaNutritionProvider.java:48-49` |
+
+All ten are **constructor parameters**, not fields, so F7's testability complaint does not
+apply to them — this is tidiness, not risk. Low priority.
+
+### 10.6 `System.out.println` — 10 sites, and one the plan never recorded
+
+F7 swapped `EnvConfig`'s printlns for SLF4J. Ten remain, none of them in `EnvConfig`:
+
+- **`security/jwt/JwtAuthenticationFilter.java:44,45,48,56,61,64,72,74,78`** — nine lines
+  **per authenticated request**, including `"Extracted email: " + email` and the loaded
+  username. The Phase 2 deviations flagged this ("outside F7's stated scope but a worse
+  instance of the same defect") and it is still there. This is a PII-in-logs issue as much
+  as a logging-hygiene one.
+- **`modules/habit/service/HabitService.java:224`** — prints the user id and date on every
+  `getHabitsByDate` call. **Not recorded anywhere in this plan**; found in this audit.
+
+Both are one-line swaps to the SLF4J logger their classes can already reach, and the two
+`JwtAuthenticationFilter` lines that name the user should drop to `DEBUG` or lose the value.
+
+### 10.7 The dead onboarding pair — a decision, not a task
+
+3.5 documented this and deliberately left it. Confirmed still true: `setOnboardingCallTime`
+has **no caller outside `OnboardingContext` itself**, so `onboardingCallTime` is always
+`null` and the `ROUTES.ONBOARDING_DONE` branch at `navigation/AppNavigator.tsx:44-45` is
+unreachable. The chosen time reaches the Done screen as a navigation param from
+`OnboardingMealScheduleScreen.tsx:34` instead. Deleting the pair is provably
+behaviour-identical but removes a navigator branch — **your call.**
+
+### 10.8 The two human passes §6 requires
+
+- **§6 item 1 — device walkthrough of `docs/NOTIFICATION_TESTING.md`:** schedule → fire →
+  accept → reschedule → miss → follow-up, both the meal and habit lanes. Owed since 4.1
+  rewrote both voice lanes' orchestration, and nothing automated covers it. This is the one
+  that gates a merge.
+- **§6 item 3 — boot with a full `.env`** and confirm every property resolves. Mostly what
+  0.3 automates; until 0.3 exists, this stays manual.
+
+§6 item 2, the visual diff, was substituted with the three mechanical equivalence checks
+recorded at the end of Phase 5 — per-swap validation, colour fingerprints, token-map diff.
+That substitution is stronger than eyeballing and is treated as closed.
+
+### 10.9 Pre-existing lint debt — `npm run lint` is red
+
+Not caused by this plan, but §6 makes `npm run lint` a per-commit gate and that gate does not
+currently pass. **3 errors, 62 warnings.** All three errors are `@typescript-eslint/no-unused-vars`
+and `git blame` puts all three in commit `4829f31` (2026-07-02), well before this work:
+
+- `components/auth/WheelPickers.tsx:22` — `TextLink` imported, never used
+- `components/food-log/CheckinCard.tsx:85` — `catch (e: any)`, `e` never used
+- `components/food-log/MealGroup.tsx:96` — `idx` param never used (rename to `_idx`)
+
+Three-line fix. Worth doing simply so the gate means something.
+
+### 10.10 Worth committing if Phase 0 is revisited
+
+The two throwaway harnesses from Phase 2 — the standalone-MockMvc route inventory (13 `/food`
+routes → expected handlers) and the `ApplicationContextRunner` binding suite (8 checks) — were
+written, run against the tree both before and after the 2.8 package move, and then discarded.
+They are most of tasks 0.1 and 0.3 already proven to work on this codebase. Recovering them
+from the Phase 2 description is cheaper than writing 0.1/0.3 from scratch.
+
+### Suggested order, if you pick this up
+
+1. **10.9** (3 lines, makes the lint gate meaningful) and **10.6** (10 lines, stops leaking
+   emails into logs) — trivial, unblocked, independently mergeable.
+2. **10.2** — five hook tests on the existing headless-harness pattern. Puts the first real
+   net under Phase 4. No new dependency, no decision needed.
+3. **10.1 tasks 0.2, 0.5, then 0.1 and 0.3** — backend-side Phase 0, none of it blocked;
+   0.2 covers the one extraction with shared behaviour behind it, 0.5 is a config line.
+4. **Decisions:** 10.7 (delete the dead onboarding pair?) and 10.4/5.2 + 10.1/0.4 (approve
+   `eslint-plugin-import` and a RN render-testing setup?). Both are yours, and 0.4 stays
+   blocked until the second one lands.
+5. **10.8 item 1** — the device pass, before anything touching notifications merges.
+6. **10.5** — the last ten `@Value` sites, whenever the backend is quiet.
+
+---
+
+## 11. Execution of §10 — 2026-08-23
+
+Nine commits, `cfa2b0b`..`0ee0b25`. Suites at the end: **backend 140 tests** (was 12),
+**frontend 357** (was 183, 1 suite still skipped), `npx tsc --noEmit` clean, `npm run lint`
+**0 errors** (was 3), 62 pre-existing warnings.
+
+| §10 item | Commit | Outcome |
+|---|---|---|
+| 10.9 lint errors | `cfa2b0b` | 3 fixed; the §6 lint gate now passes |
+| 10.6 `System.out.println` | `81ecc2a` | all 10 → SLF4J; grep is empty |
+| 0.5 coverage scope | `fcac520` | `collectCoverageFrom` excludes `src/components/ui/**` |
+| 0.2 AI retry helpers | `ca3b183` | 32 tests, both keyword sets |
+| 0.1 controller slices | `d3b9050` | 10 slices, 78 tests |
+| 10.2 hook tests | `2b75a12` | 5 hooks, 168 tests |
+| 10.3 `OnboardingContext` | `64f0278` | 14 tests |
+| 10.5 config migration | `efe5d95` | 5 new records; **0** `@Value` in `src/main` |
+| 0.3 context smoke tests | `0ee0b25` | 18 tests over the real property set |
+
+### Coverage baseline
+
+Recorded with the `src/components/ui/**` exclusion in place, before and after:
+
+| | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|
+| Before | 27.86% | 15.24% | 26.88% | 27.71% |
+| After | **37.66%** | **23.26%** | **33.46%** | **37.81%** |
+
+### The tests were mutation-checked, not just run
+
+34 deliberate defects were injected into production code one at a time and the suites re-run;
+**all 34 were caught**. Nine on the frontend hooks (the reschedule default, the navigate-back
+delay, the `not_completed` short-circuit, the duplicate-parse guard, the future-date clamp,
+the name trim, the field-error asymmetry, the first-press rule, the onboarding clear), 15 on
+the controllers and retry policy (every pinned route, the 404, the 401, the bad-credentials
+status, the 503 ordering, the webhook 202, the retryable set, the backoff guard, the cause
+chain, the attempts floor), and 10 on the config migration.
+
+### What Phase 0 found, pinned rather than fixed (C1)
+
+- An unparseable path/query date is a `MethodArgumentTypeMismatchException`, which
+  `GlobalExceptionHandler` has no specific handler for. It answers **500, not 400.**
+- `ProfileController` catches `Exception` itself and returns its own `{message: …}` body, not
+  the uniform `{timestamp, status, error, message}` every other endpoint produces.
+- `interpret-transcript` rejects a blank transcript with the uniform shape while
+  `parse-transcript` rejects one with `{error: …}`. Same controller, two error contracts.
+- **`.env` outranks everything.** `EnvConfig` publishes it with `addFirst`, so it beats
+  `@SpringBootTest(properties = …)`, OS environment variables and command-line arguments.
+  A developer's `.env` silently wins over anything they pass explicitly. The smoke tests work
+  around it with an `ApplicationContextInitializer`, which is the only hook that runs later.
+- **The app cannot finish starting if MongoDB is unreachable.** `MongoConfig.ensureIndexes`
+  runs on `ApplicationReadyEvent` and rethrows anything that is not an index-name conflict, so
+  a boot-time outage is a hard startup failure. Nothing else in startup connects;
+  `support/OfflineMongo` overrides exactly `indexOps` so the smoke tests need no database.
+
+Each is a real defect or surprise. None was fixed, because C1 forbids it and none is in scope.
+They are now characterised, so fixing any of them is a deliberate, test-visible change.
+
+### Deviations from §10 as written
+
+- **0.1** needed `support/ControllerSliceTest`, which §10 did not anticipate: `@WebMvcTest`
+  includes `Filter` beans, so it drags in `JwtAuthenticationFilter` and fails for want of a
+  `JwtTokenProvider`. Excluded centrally rather than in ten files. `spring-security-test` is
+  not a dependency and C4 forbids adding it, so slices run `addFilters = false` and assert the
+  anonymous-caller branches through a mocked `CurrentUserProvider`.
+- **0.3** was split into two classes, because a defaults context and a fully-populated context
+  cannot be the same context. §10.10 hoped the discarded `ApplicationContextRunner` harness
+  could be recovered; it was not needed — a real `@SpringBootTest` works once the two
+  environment problems above are handled, and is stronger.
+- **10.9** dropped `MealGroup`'s unused `idx` parameter rather than renaming it to `_idx`.
+  Same effect, less noise.
+- **10.5** removed `AiTextService`'s package-private String constructor rather than keeping it
+  as a test-only door. Its two call sites now pass `new AiProperties("stub")`.
+
+### Still open
+
+| # | Item | Why it is still open |
+|---|---|---|
+| 0.4 | Render tests for the 5 screens | **Needs a C4 sign-off.** No `@testing-library/react-native`, no `transformIgnorePatterns`. Unchanged from §10.1. |
+| 5.2 | `import/order` | **Needs a C4 sign-off** for `eslint-plugin-import`. Unchanged from §10.4. |
+| 10.7 | The dead onboarding pair | **A decision, not a task.** Still true: `setOnboardingCallTime` has no caller outside the context, so `AppNavigator.tsx:44-45` is unreachable. Note that `OnboardingContext.test.tsx` now pins the pair's current behaviour, so deleting it means deleting those assertions too — which is the right way round. |
+| 10.8 item 1 | Device walkthrough of `docs/NOTIFICATION_TESTING.md` | **A human pass.** Still gates a merge; both voice lanes now have unit-level cover, but nothing exercises a real notification firing on a device. |
+| 10.8 item 2 | Boot with a full `.env` | **Discharged by 0.3** for property resolution. What remains is genuinely manual: confirming the real credentials work against the live services. |
+| — | 1 skipped frontend suite | `__tests__/App.test.tsx`, skipped since before this plan, for the same reason 0.4 is blocked. |
