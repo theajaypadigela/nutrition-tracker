@@ -113,6 +113,30 @@ describe('computeDesiredTriggers — habit recurrence', () => {
     expect(plan.specs.get('habit-push-p1')?.isCall).toBe(false);
   });
 
+  it('suppresses recurring habit calls but keeps local call-me-back reschedules', () => {
+    const plan = computeDesiredTriggers({
+      meal: { hour: 20, minute: 0, enabled: true },
+      habits: [
+        habit({ id: 'call', reminderType: 'call' }),
+        habit({ id: 'push', reminderType: 'notification' }),
+      ],
+      reschedules: [
+        { id: 'habit-reschedule-call-08:00', kind: 'habit-call', fireAt: NOW + 1_000 },
+        { id: 'meal-reschedule-once', kind: 'meal-call', fireAt: NOW + 2_000 },
+      ],
+      nowEpoch: NOW,
+      timeZone: TZ,
+      suppressHabitCalls: true,
+    });
+
+    expect(plan.desired.map(item => item.id).sort()).toEqual([
+      'habit-push-push',
+      'habit-reschedule-call-08:00',
+      'meal-alarm-daily',
+      'meal-reschedule-once',
+    ]);
+  });
+
   it('records an unparseable reminderTime instead of scheduling an 8am default', () => {
     const plan = computeDesiredTriggers({
       meal: NO_MEAL,

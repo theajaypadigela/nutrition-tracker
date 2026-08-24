@@ -19,6 +19,8 @@ import {
   setToken,
 } from '../services/storage/tokenStorage';
 import { useOnboarding } from './OnboardingContext';
+import { unregisterCurrentIosVoipToken } from '../services/notifications/voipTokenService';
+import { setPendingAcceptNavigation } from '../navigation/pendingNavigation';
 
 interface AuthContextType {
   user: User | null;
@@ -53,6 +55,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const { beginOnboarding, resetOnboarding } = useOnboarding();
 
   const logout = useCallback(async () => {
+    // The DELETE endpoint is authenticated, so unregister before removing the JWT.
+    await unregisterCurrentIosVoipToken().catch(() => false);
+    await setPendingAcceptNavigation(null);
     await clearToken();
     setUser(null);
     resetOnboarding();

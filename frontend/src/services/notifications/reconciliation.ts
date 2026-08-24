@@ -15,6 +15,7 @@
  */
 
 import notifee from '@notifee/react-native';
+import { Platform } from 'react-native';
 import { reminderLog } from './logger';
 import { resolveDeviceTimeZone } from './time';
 import { ensureChannels } from './channels';
@@ -42,6 +43,7 @@ import { recordMissed, missedKey, listMissedNeedingFollowUp, markFollowUpShown }
 import { buildMissedFollowUp } from './notificationBuilder';
 import { reconcileExpiredAnswers } from './callLifecycle';
 import { applyCallResultMarkers } from './callMarkers';
+import { isIosVoipTokenRegistered } from './voipRegistrationStore';
 
 export type ReconcileReason =
   | 'cold-start'
@@ -146,6 +148,8 @@ async function doReconcile(options: {
     );
   }
   const reschedules: RescheduleEntry[] = await listReschedules();
+  const suppressLocalHabitCalls =
+    Platform.OS === 'ios' && (await isIosVoipTokenRegistered());
 
   // Apply terminal call markers the native surface recorded while the app was away (DECLINED, and
   // MISSED for calls that rang out), BEFORE the pending-answer missed sweep below so a decline /
@@ -182,17 +186,21 @@ async function doReconcile(options: {
     reschedules: futureReschedules,
     nowEpoch,
     timeZone,
+    suppressHabitCalls: suppressLocalHabitCalls,
   });
 
-  // When the habit set is not authoritative (fetch failed; armed from cache), never prune
-  // habit-* triggers (avoid nuking live ones on a transient outage). Otherwise prune any
-  // app-owned orphan. An explicit habit change (forceHabitPrune) overrides the guard: the
-  // cache was just updated by the user's create/edit/delete, so the stale old-time-slot
-  // trigger must be cancelled now instead of ringing alongside the new one.
-  const suppressHabitPrune = skippedHabits && !options.forceHabitPrune;
-  const ownedIdPredicate = suppressHabitPrune
-    ? (id: string) => isAppOwnedTriggerId(id) && !id.startsWith('habit-')
-    : isAppOwnedTriggerId;
+  // When the habit set is not authoritative, protect habit push/reschedule triggers from a
+  // transient empty cache. A successful PushKit registration is the one exception: recurring
+  // `habit-call-*` triggers must still be pruned to prevent duplicate local + remote calls.
+  // An explicit habit edit uses its freshly-updated cache and may prune normally.
+  let ownedIdPredicate = isAppOwnedTriggerId;
+  if (skippedHabits && !options.forceHabitPrune) {
+    ownedIdPredicate = suppressLocalHabitCalls
+      ? (id: string) =>
+          isAppOwnedTriggerId(id) &&
+          (!id.startsWith('habit-') || id.startsWith('habit-call-'))
+      : (id: string) => isAppOwnedTriggerId(id) && !id.startsWith('habit-');
+  }
 
   const diff = diffTriggers(plan.desired, pendingIds, { ownedIdPredicate });
 

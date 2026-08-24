@@ -70,6 +70,8 @@ export type DesiredInput = {
   reschedules: RescheduleEntry[];
   nowEpoch: number;
   timeZone: string;
+  /** iOS PushKit registration is authoritative for habit calls; keep meal/push local. */
+  suppressHabitCalls?: boolean;
 };
 
 function allWeekdays(days: Set<DayCode>): boolean {
@@ -153,6 +155,7 @@ export function computeDesiredTriggers(input: DesiredInput): DesiredPlan {
     }
 
     if (habit.reminderType === 'call') {
+      if (input.suppressHabitCalls) continue;
       const key = canonicalSlotKey(habit.reminderTime)!;
       const existing = callSlots.get(key);
       if (existing) {

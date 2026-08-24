@@ -1,9 +1,34 @@
+import { NativeModules, Platform } from 'react-native';
+
+const LOCAL_API_PORT = 5050;
+
 /**
- * Centralized runtime configuration.
+ * Resolves the local development API address for each runtime.
  *
- * react-native-config is NOT installed, so this is a plain TS module rather than a
- * native env bridge. To switch environments, change API_BASE_URL here (or wire a
- * build-time define / process.env replacement in metro/babel) — but keep the value
- * out of scattered source files.
+ * Android uses adb reverse, so localhost is correct there. An iOS Simulator also shares
+ * the Mac's localhost, but a physical iPhone does not. During a device build Metro's bundle
+ * URL contains the development Mac's reachable host, so reuse that host for the backend.
  */
-export const API_BASE_URL = 'http://localhost:5050/';
+export function resolveLocalApiBaseUrl(
+  platform: string,
+  scriptUrl?: string,
+): string {
+  let host = 'localhost';
+
+  if (platform === 'ios' && scriptUrl) {
+    const match = scriptUrl.match(/^https?:\/\/(\[[^\]]+\]|[^/:?#]+)(?::\d+)?/i);
+    if (match?.[1]) {
+      host = match[1];
+    }
+  }
+
+  return `http://${host}:${LOCAL_API_PORT}/`;
+}
+
+const metroScriptUrl = (NativeModules.SourceCode as { scriptURL?: string } | undefined)
+  ?.scriptURL;
+
+export const API_BASE_URL = resolveLocalApiBaseUrl(
+  Platform.OS,
+  metroScriptUrl,
+);

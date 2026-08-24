@@ -1,6 +1,10 @@
 import { navigationRef } from './navigationRef';
 import { ROUTES } from './routeNames';
-import type { VoiceHabitParams, VoiceMealLogParams } from './paramTypes';
+import type {
+  IncomingCallParams,
+  VoiceHabitParams,
+  VoiceMealLogParams,
+} from './paramTypes';
 
 /**
  * Typed wrappers around the imperative navigationRef. These are the ONLY place that touches
@@ -14,6 +18,10 @@ export function navigateToVoiceHabit(params: VoiceHabitParams): void {
 
 export function navigateToVoiceMealLog(params: VoiceMealLogParams): void {
   navigationRef.navigate(ROUTES.VOICE_MEAL_LOG, params);
+}
+
+export function navigateToIncomingCall(params: IncomingCallParams): void {
+  navigationRef.navigate(ROUTES.INCOMING_CALL, params);
 }
 
 export function navigateToMainTabs(): void {

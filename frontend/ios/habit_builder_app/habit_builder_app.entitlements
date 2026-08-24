@@ -3,13 +3,22 @@
 <plist version="1.0">
 	<dict>
 		<!--
-		  Time-Sensitive notifications entitlement. The reminder payloads already set
-		  interruptionLevel: 'timeSensitive', but that is inert without this entitlement.
-		  NOTE: this file must be linked to the target via the CODE_SIGN_ENTITLEMENTS build
-		  setting in Xcode (the project was never built from this repo, so it is not wired
-		  in project.pbxproj yet). Compile-verified only.
+		  Time-Sensitive notifications entitlement. The reminder payloads set
+		  interruptionLevel: 'timeSensitive', which iOS silently downgrades to 'active'
+		  without this — reminders then get held in the Scheduled Summary and suppressed
+		  by Focus, which is indistinguishable from "reminders don't work".
+		  Linked to the target via CODE_SIGN_ENTITLEMENTS in project.pbxproj (both Debug
+		  and Release). Device builds additionally need "Time Sensitive Notifications"
+		  enabled on the App ID; automatic signing adds it on first device build.
 		-->
 		<key>com.apple.developer.usernotifications.time-sensitive</key>
 		<true/>
+		<!--
+		  Required for the server-driven PushKit VoIP path. APS_ENVIRONMENT is defined per build
+		  configuration in project.pbxproj: development for Debug and production for Release.
+		  The signed provisioning profile must carry the matching Push Notifications capability.
+		-->
+		<key>aps-environment</key>
+		<string>$(APS_ENVIRONMENT)</string>
 	</dict>
 </plist>

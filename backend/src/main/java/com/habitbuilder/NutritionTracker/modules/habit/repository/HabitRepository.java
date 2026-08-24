@@ -11,6 +11,8 @@ public interface HabitRepository extends MongoRepository<Habit, String> {
 
     List<Habit> findByUserId(String userId);
 
+    List<Habit> findByReminderTypeIgnoreCase(String reminderType);
+
     List<Habit> findByUserIdAndRepeatDaysContaining(String userId, String dayOfWeek);
 
     List<Habit> findByUserIdAndReminderTime(String userId, LocalTime reminderTime);

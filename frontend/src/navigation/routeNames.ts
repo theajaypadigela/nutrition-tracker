@@ -9,6 +9,7 @@ export const ROUTES = {
   ONBOARDING_DONE: 'OnboardingDone',
   PROFILE: 'Profile',
   REMINDER_HEALTH: 'ReminderHealth',
+  INCOMING_CALL: 'IncomingCall',
   VOICE_MEAL_LOG: 'VoiceMealLog',
   VOICE_HABIT: 'VoiceHabit',
 } as const;

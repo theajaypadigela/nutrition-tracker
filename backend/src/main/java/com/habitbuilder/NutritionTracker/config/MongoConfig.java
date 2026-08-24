@@ -18,6 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoCommandException;
+import com.habitbuilder.NutritionTracker.modules.notification.entity.IosVoipDeviceToken;
+import com.habitbuilder.NutritionTracker.modules.notification.entity.VoipCallDispatch;
 import com.habitbuilder.NutritionTracker.modules.nutrition.entity.NutritionCache;
 
 import java.time.LocalTime;
@@ -34,7 +36,10 @@ public class MongoConfig {
         MongoTemplate mongoTemplate = event.getApplicationContext().getBean(MongoTemplate.class);
         MongoMappingContext mongoMappingContext = event.getApplicationContext().getBean(MongoMappingContext.class);
         IndexResolver resolver = new MongoPersistentEntityIndexResolver(mongoMappingContext);
-        for (Class<?> entity : List.of(NutritionCache.class)) {
+        for (Class<?> entity : List.of(
+                NutritionCache.class,
+                IosVoipDeviceToken.class,
+                VoipCallDispatch.class)) {
             IndexOperations indexOps = mongoTemplate.indexOps(entity);
             resolver.resolveIndexFor(entity)
                     .forEach(indexDefinition -> ensureIndexSafely(indexOps, indexDefinition, entity));

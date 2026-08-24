@@ -33,6 +33,12 @@ export const StorageKeys = {
 
   /** Exactly-once guard for notification actions across a cold start. */
   processedActions: 'reminder_processed_actions_v1',
+
+  /** One-shot notification-to-navigation hand-off across headless/UI processes. */
+  pendingCallNavigation: 'pending_call_navigation_v1',
+
+  /** Whether this install successfully registered its current iOS PushKit token. */
+  iosVoipTokenRegistered: 'ios_voip_token_registered_v1',
 } as const;
 
 export type StorageKey = (typeof StorageKeys)[keyof typeof StorageKeys];

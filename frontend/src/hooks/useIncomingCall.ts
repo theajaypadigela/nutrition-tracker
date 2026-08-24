@@ -1,11 +1,19 @@
+import notifee from '@notifee/react-native';
 import { navigationRef } from '../navigation/navigationRef';
 import {
+  goBackOrMainTabs,
+  navigateToIncomingCall,
   navigateToVoiceHabit,
   navigateToVoiceMealLog,
 } from '../navigation/navigationUtils';
 import { clearMealReschedule } from '../services/notifications/reminderService';
-import { onCallAccepted, type OccurrenceData } from '../services/notifications/callLifecycle';
+import {
+  onCallAccepted,
+  onCallDeclined,
+  type OccurrenceData,
+} from '../services/notifications/callLifecycle';
 import type { ReminderKind } from '../services/notifications/notificationBuilder';
+import { dismissIncomingCall } from '../services/notifications/nativeIncomingCall';
 
 export type IncomingCallType = 'meal' | 'habit';
 
@@ -29,6 +37,8 @@ export type IncomingCallPayload = {
   reminderKind?: ReminderKind;
   isRescheduled?: boolean;
 };
+
+type HandleCallOptions = { skipNavigation?: boolean };
 
 function payloadToOccurrence(payload: IncomingCallPayload): OccurrenceData {
   const kind: ReminderKind =
@@ -78,19 +88,49 @@ function navigateToVoiceForPayload(payload: IncomingCallPayload): void {
   });
 }
 
+/** Shows the React incoming-call fallback without accepting or starting a voice session. */
+export function showIncomingCall(payload: IncomingCallPayload): void {
+  navigateWhenReady(() => navigateToIncomingCall(payload));
+}
+
 /**
- * Runs the lifecycle for an ACCEPTED call and navigates into the voice session. The native call
- * screen already stopped the ringtone and dismissed the call notification before handing the
- * accepted payload back, so this only resolves the pending-answer marker and routes the user.
+ * Runs the lifecycle for an ACCEPTED call and navigates into the voice session. On iOS CallKit
+ * remains active for VoIP execution until useVapiSession ends/fails and dismisses it.
  */
-export async function handleAcceptCall(payload: IncomingCallPayload): Promise<void> {
+export async function handleAcceptCall(
+  payload: IncomingCallPayload,
+  options: HandleCallOptions = {},
+): Promise<void> {
+  if (payload.notificationId) {
+    await notifee.cancelDisplayedNotification(payload.notificationId).catch(() => {});
+  }
   await onCallAccepted(payloadToOccurrence(payload)).catch(() => {});
 
   if (payload.type === 'meal') {
     await clearMealReschedule().catch(() => {});
   }
 
-  navigateToVoiceForPayload(payload);
+  if (!options.skipNavigation) {
+    navigateToVoiceForPayload(payload);
+  }
+}
+
+/** Resolves a fallback notification decline and clears any one-shot meal callback state. */
+export async function handleDeclineCall(
+  payload: IncomingCallPayload,
+  options: HandleCallOptions = {},
+): Promise<void> {
+  dismissIncomingCall();
+  if (payload.notificationId) {
+    await notifee.cancelDisplayedNotification(payload.notificationId).catch(() => {});
+  }
+  await onCallDeclined(payloadToOccurrence(payload)).catch(() => {});
+  if (payload.type === 'meal') {
+    await clearMealReschedule().catch(() => {});
+  }
+  if (!options.skipNavigation) {
+    navigateWhenReady(goBackOrMainTabs);
+  }
 }
 
 /**

@@ -45,7 +45,7 @@ yarn android
 
 Android note:
 
-- `npm run android` now auto-configures `adb reverse` for `tcp:5000` and `tcp:8081` before and after install.
+- `npm run android` now auto-configures `adb reverse` for `tcp:5050` and `tcp:8081` before and after install.
 - This removes the recurring manual step after reconnecting a device over USB/Wi-Fi.
 
 If you need to apply port forwarding without reinstalling the app:
@@ -64,6 +64,10 @@ npm run adb:reverse
 ```
 
 ### iOS
+
+For local development on a physical iPhone, keep the Mac and iPhone on the same
+network. The app derives the Mac host from Metro's bundle URL and connects to the
+backend on port `5050`; the iOS Simulator continues to use `localhost`.
 
 For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
 

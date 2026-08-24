@@ -3,17 +3,24 @@ import { Platform } from 'react-native';
 import notifee from '@notifee/react-native';
 import {
   readOccurrenceData,
-  onCallDeclined,
 } from '@/services/notifications/callLifecycle';
 import { claimAction } from '@/services/notifications/processedActions';
-import { handleAcceptCall } from '../useIncomingCall';
+import {
+  iosCallInteractionKey,
+  readInitialIosCallInteraction,
+} from '@/services/notifications/iosCallInteraction';
+import {
+  handleAcceptCall,
+  handleDeclineCall,
+  showIncomingCall,
+} from '../useIncomingCall';
 import { payloadFromData } from './callPayload';
 
 /**
- * iOS-only cold-start recovery for a call notification's Accept/Decline action tapped while the
- * app was killed. (On Android the call is accepted/declined natively and the accepted payload is
- * picked up by useNativeIncomingCallResults — Notifee's getInitialNotification is not involved.)
- * Deduped against the background handler.
+ * Legacy iOS cold-start fallback for a call notification interaction while the app was
+ * killed. Modern Notifee versions also emit the interaction to onForegroundEvent, so every
+ * path shares the same exactly-once claim. (Android accepts/declines natively and is picked
+ * up by useNativeIncomingCallResults.)
  */
 export function useColdStartNotification() {
   useEffect(() => {
@@ -30,16 +37,23 @@ export function useColdStartNotification() {
       const isCall = occ.kind === 'meal-call' || occ.kind === 'habit-call';
       if (!isCall) return;
 
-      const actionId = initialNotification.pressAction?.id;
-      if (actionId !== 'accept' && actionId !== 'decline') return;
+      const interaction = readInitialIosCallInteraction(
+        initialNotification.pressAction?.id,
+      );
+      if (!interaction) return;
 
-      const claimed = await claimAction(`${notificationId ?? 'unknown'}:${actionId}`);
+      const claimed = await claimAction(
+        iosCallInteractionKey(notificationId, interaction),
+      );
       if (!claimed) return; // background handler already processed this action
 
-      if (actionId === 'accept') {
-        handleAcceptCall(payloadFromData(data, notificationId, occ)).catch(() => {});
+      const payload = payloadFromData(data, notificationId, occ);
+      if (interaction === 'open') {
+        showIncomingCall(payload);
+      } else if (interaction === 'accept') {
+        handleAcceptCall(payload).catch(() => {});
       } else {
-        onCallDeclined(occ).catch(() => {});
+        handleDeclineCall(payload, { skipNavigation: true }).catch(() => {});
       }
     });
   }, []);

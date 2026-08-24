@@ -11,17 +11,19 @@ import { usePendingAcceptNavigation } from './hooks/notifications/usePendingAcce
 import { useColdStartNotification } from './hooks/notifications/useColdStartNotification';
 import { useForegroundNotificationEvents } from './hooks/notifications/useForegroundNotificationEvents';
 import { useNativeIncomingCallResults } from './hooks/notifications/useNativeIncomingCallResults';
+import { useVoipTokenSync } from './hooks/notifications/useVoipTokenSync';
 
 function AppShell() {
   const { isAuthenticated, isInitializing } = useAuth();
 
-  // Notification lifecycle: init channels -> reconcile schedule -> consume pending Accept (iOS)
-  // -> cold-start action recovery (iOS) -> foreground events -> consume native call answers
-  // (Android, the full-screen-call platform). The incoming call itself is drawn by the native
-  // IncomingCallActivity (see android/.../incomingcall), so there is no in-app call surface here.
+  // Notification lifecycle: initialize categories, sync PushKit, reconcile local fallback,
+  // recover persisted notification navigation, then consume live/durable native call actions.
+  // Android and registered iOS calls use native surfaces; standard iOS body taps intentionally
+  // land on the React IncomingCall fallback so voice never starts without an explicit Answer.
   useNotificationInit();
+  useVoipTokenSync(isInitializing, isAuthenticated);
   useReminderReconciliation(isInitializing, isAuthenticated);
-  usePendingAcceptNavigation();
+  usePendingAcceptNavigation(isInitializing, isAuthenticated);
   useColdStartNotification();
   useForegroundNotificationEvents();
   useNativeIncomingCallResults();

@@ -4,10 +4,18 @@ import notifee, { EventType } from '@notifee/react-native';
 import {
   readOccurrenceData,
   onCallDelivered,
-  onCallDeclined,
 } from '@/services/notifications/callLifecycle';
 import { presentIncomingCall } from '@/services/notifications/nativeIncomingCall';
-import { handleAcceptCall } from '../useIncomingCall';
+import { claimAction } from '@/services/notifications/processedActions';
+import {
+  iosCallInteractionKey,
+  readIosCallInteraction,
+} from '@/services/notifications/iosCallInteraction';
+import {
+  handleAcceptCall,
+  handleDeclineCall,
+  showIncomingCall,
+} from '../useIncomingCall';
 import { payloadFromData } from './callPayload';
 
 /**
@@ -15,8 +23,8 @@ import { payloadFromData } from './callPayload';
  *  - Android: on DELIVERED, classify staleness + record the pending-answer marker, dismiss the
  *    silent heartbeat, and ring the NATIVE full-screen call (a real takeover even with the app
  *    open). Accept/Decline happen natively, so there are no Notifee actions to handle here.
- *  - iOS (true-call out of scope): the OS presents the call notification; we handle its
- *    Accept/Decline actions.
+ *  - iOS: a foreground local trigger is promoted to CallKit when the native module is available;
+ *    the standard notification remains as fallback otherwise.
  */
 export function useForegroundNotificationEvents() {
   useEffect(() => {
@@ -31,25 +39,50 @@ export function useForegroundNotificationEvents() {
       if (type === EventType.DELIVERED) {
         onCallDelivered(occ, notificationId)
           .then(({ suppress }) => {
-            if (Platform.OS !== 'android') return;
-            if (notificationId) {
+            if (Platform.OS !== 'android' && Platform.OS !== 'ios') return;
+
+            if (suppress) {
+              if (notificationId) {
+                notifee.cancelDisplayedNotification(notificationId).catch(() => {});
+              }
+              return;
+            }
+
+            const presented = presentIncomingCall(
+              payloadFromData(data, notificationId, occ),
+            );
+            // Android's notification is a silent alarm carrier. On iOS cancel the duplicate
+            // standard banner only after CallKit was successfully requested.
+            if ((Platform.OS === 'android' || presented) && notificationId) {
               notifee.cancelDisplayedNotification(notificationId).catch(() => {});
             }
-            if (suppress) return;
-            presentIncomingCall(payloadFromData(data, notificationId, occ));
           })
           .catch(() => {});
         return;
       }
 
-      // iOS notification actions.
-      if (type === EventType.ACTION_PRESS) {
-        if (detail.pressAction?.id === 'accept') {
-          handleAcceptCall(payloadFromData(data, notificationId, occ)).catch(() => {});
-        } else if (detail.pressAction?.id === 'decline') {
-          onCallDeclined(occ).catch(() => {});
-        }
-      }
+      if (Platform.OS !== 'ios') return;
+
+      // A body tap opens the fallback call UI; only the explicit Accept action starts voice.
+      const interaction = readIosCallInteraction(type, detail.pressAction?.id);
+      if (!interaction) return;
+
+      // A cold-start interaction can also be surfaced through getInitialNotification.
+      // Claim before acting so only one path can navigate/start Vapi.
+      claimAction(iosCallInteractionKey(notificationId, interaction))
+        .then(claimed => {
+          if (!claimed) return;
+          const payload = payloadFromData(data, notificationId, occ);
+          if (interaction === 'open') {
+            showIncomingCall(payload);
+            return;
+          }
+          if (interaction === 'accept') {
+            return handleAcceptCall(payload);
+          }
+          return handleDeclineCall(payload, { skipNavigation: true });
+        })
+        .catch(() => {});
     });
   }, []);
 }

@@ -12,15 +12,20 @@ import VoiceMealLogScreen from '../screens/main/VoiceMealLogScreen';
 import VoiceHabitScreen from '../screens/main/VoiceHabitScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import ReminderHealthScreen from '../screens/main/ReminderHealthScreen';
+import IncomingCallScreen from '../screens/main/IncomingCallScreen';
 import { navigationRef } from './navigationRef';
 import { ROUTES } from './routeNames';
-import type { VoiceHabitParams, VoiceMealLogParams } from './paramTypes';
+import type {
+  IncomingCallParams,
+  VoiceHabitParams,
+  VoiceMealLogParams,
+} from './paramTypes';
 
 export { navigationRef };
 
-// The incoming call itself is a NATIVE screen (android/.../incomingcall/IncomingCallActivity),
-// not a React route — so there are no IncomingMealCall/IncomingHabitCall routes. Accepting a call
-// navigates straight into the voice session below.
+// Android and PushKit-capable iOS delivery use native incoming-call surfaces. IncomingCall is the
+// deliberate fallback for a tap on a standard iOS notification: it still asks the user to answer
+// rather than treating a notification-body tap as consent to start the microphone.
 export type RootStackParamList = {
   MainTabs: undefined;
   MealSchedule: undefined;
@@ -28,6 +33,7 @@ export type RootStackParamList = {
   OnboardingDone: { callTime?: string } | undefined;
   Profile: undefined;
   ReminderHealth: undefined;
+  IncomingCall: IncomingCallParams;
   VoiceMealLog: VoiceMealLogParams;
   VoiceHabit: VoiceHabitParams;
 };
@@ -76,6 +82,16 @@ const AuthenticatedNavigator = () => {
           headerShown: true,
           title: 'Reminder health',
           presentation: 'card',
+        }}
+      />
+      <RootStack.Screen
+        name="IncomingCall"
+        component={IncomingCallScreen}
+        options={{
+          presentation: 'modal',
+          gestureEnabled: false,
+          headerShown: false,
+          cardStyle: { backgroundColor: 'transparent' },
         }}
       />
       <RootStack.Screen

@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.habitbuilder.NutritionTracker.config.properties.AiProperties;
+import com.habitbuilder.NutritionTracker.config.properties.ApnsVoipProperties;
 import com.habitbuilder.NutritionTracker.config.properties.CorsProperties;
 import com.habitbuilder.NutritionTracker.config.properties.GeminiProperties;
 import com.habitbuilder.NutritionTracker.config.properties.GroqProperties;
@@ -109,6 +110,17 @@ class ApplicationContextSmokeTest {
                     "vapi.assistant-id=shared-assistant",
                     "vapi.meal-assistant-id=meal-assistant",
                     "vapi.habit-assistant-id=habit-assistant",
+                    "apns.voip.enabled=false",
+                    "apns.voip.team-id=test-team-id",
+                    "apns.voip.key-id=test-key-id",
+                    "apns.voip.private-key-base64=test-private-key-base64",
+                    "apns.voip.bundle-id=com.example.habitbuilder",
+                    "apns.voip.environment=sandbox",
+                    "apns.voip.connect-timeout-ms=5555",
+                    "apns.voip.request-timeout-ms=6666",
+                    "apns.voip.due-window-seconds=180",
+                    "apns.voip.retry-backoff-seconds=45",
+                    "apns.voip.max-attempts=4",
                     "security.log.level=WARN",
                     "server.port=0")
                     .applyTo(environment);
@@ -134,6 +146,7 @@ class ApplicationContextSmokeTest {
                 "nutritionInsightsController",
                 "nutritionReportController",
                 "habitController",
+                "iosVoipTokenController",
                 "mealScheduleController",
                 "voiceLogController");
 
@@ -184,6 +197,23 @@ class ApplicationContextSmokeTest {
         assertEquals("meal-assistant", properties.resolvedMealAssistantId());
         assertEquals("habit-assistant", properties.resolvedHabitAssistantId());
         assertEquals("meal-assistant", properties.dedicatedMealAssistantId());
+    }
+
+    @Test
+    void apnsVoipPropertiesBindWithoutEnablingAnInvalidProvider() {
+        ApnsVoipProperties properties = context.getBean(ApnsVoipProperties.class);
+
+        assertEquals(false, properties.enabled());
+        assertEquals("test-team-id", properties.teamId());
+        assertEquals("test-key-id", properties.keyId());
+        assertEquals("test-private-key-base64", properties.privateKeyBase64());
+        assertEquals("com.example.habitbuilder", properties.bundleId());
+        assertEquals("sandbox", properties.normalizedEnvironment());
+        assertEquals(5555, properties.connectTimeoutMs());
+        assertEquals(6666, properties.requestTimeoutMs());
+        assertEquals(180L, properties.dueWindowSeconds());
+        assertEquals(45L, properties.retryBackoffSeconds());
+        assertEquals(4, properties.maxAttempts());
     }
 
     @Test

@@ -109,10 +109,9 @@ export function buildReminderNotification(input: BuildCallInput): Notification {
     ios: {
       sound: 'default',
       interruptionLevel: 'timeSensitive',
-      // categoryId enables Accept/Decline action buttons on iOS (registered in iosCategories.ts).
-      // iOS true-call (CallKit/PushKit) is out of scope; iOS calls are delivered as standard
-      // time-sensitive notifications with Accept/Decline actions, so they must be presented in
-      // the foreground (no native takeover and no in-app banner on iOS).
+      // Standard time-sensitive delivery is the iOS fallback until PushKit registration succeeds.
+      // In the foreground JS promotes fresh call delivery to CallKit and cancels this duplicate;
+      // category actions/body taps remain usable for fallback and local reschedule notifications.
       ...(isCall ? { categoryId: isMeal ? 'meal-call' : 'habit-call' } : {}),
       foregroundPresentationOptions: { banner: true, list: true, sound: true, badge: true },
     },

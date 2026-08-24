@@ -1,48 +1,88 @@
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { navigationRef } from '@/navigation/navigationRef';
 import {
+  navigateToIncomingCall,
   navigateToVoiceHabit,
   navigateToVoiceMealLog,
 } from '@/navigation/navigationUtils';
-import { takePendingAcceptNavigation } from '@/navigation/pendingNavigation';
+import {
+  subscribeToPendingNavigation,
+  takePendingAcceptNavigation,
+  type PendingAcceptNavigation,
+} from '@/navigation/pendingNavigation';
 
-/** Consume a pending Accept navigation recorded by the background handler on resume. */
-export function usePendingAcceptNavigation() {
+/** Consume a persisted call navigation recorded by a background/headless handler. */
+export function usePendingAcceptNavigation(
+  isInitializing: boolean,
+  isAuthenticated: boolean,
+) {
   useEffect(() => {
-    const consumePending = () => {
-      const pending = takePendingAcceptNavigation();
-      if (!pending) return;
-      // Poll for navigator readiness rather than relying on a future AppState event —
-      // if the navigator becomes ready while the app stays 'active', no further event
-      // fires and the pending navigation would otherwise be lost.
-      const run = () => {
-        if (!navigationRef.isReady()) {
-          setTimeout(run, 150);
-          return;
-        }
-        if (pending.screen === 'VoiceHabit') {
-          navigateToVoiceHabit({
-            habitId: pending.habitId,
-            habitName: pending.habitName,
-            habitTime: pending.habitTime,
-            autoStart: true,
-          });
-        } else {
-          navigateToVoiceMealLog({
-            mealSlotId: pending.mealSlotId,
-            autoStart: true,
-          });
-        }
+    // IncomingCall/Voice* live only in the authenticated root stack. Do not atomically take and
+    // clear the durable hand-off until that stack can actually accept the navigation.
+    if (Platform.OS !== 'ios' || isInitializing || !isAuthenticated) return;
+    let disposed = false;
+    let readinessTimer: ReturnType<typeof setTimeout> | undefined;
+    let pollingTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const navigateWhenReady = (pending: PendingAcceptNavigation) => {
+      if (disposed) return;
+      if (!navigationRef.isReady()) {
+        readinessTimer = setTimeout(() => navigateWhenReady(pending), 150);
+        return;
+      }
+
+      if (pending.screen === 'IncomingCall') {
+        navigateToIncomingCall(pending.payload);
+      } else if (pending.screen === 'VoiceHabit') {
+        navigateToVoiceHabit({
+          habitId: pending.habitId,
+          habitName: pending.habitName,
+          habitTime: pending.habitTime,
+          autoStart: true,
+        });
+      } else {
+        navigateToVoiceMealLog({
+          mealSlotId: pending.mealSlotId,
+          autoStart: true,
+        });
+      }
+    };
+
+    const consumePending = async (): Promise<boolean> => {
+      const pending = await takePendingAcceptNavigation();
+      if (disposed || !pending) return false;
+      navigateWhenReady(pending);
+      return true;
+    };
+
+    // A UI bridge can mount just before a separate Notifee headless bridge finishes its
+    // AsyncStorage write. Brief polling closes that cross-runtime write-after-first-read race.
+    const pollForLateHeadlessWrite = () => {
+      if (pollingTimer) clearTimeout(pollingTimer);
+      const deadline = Date.now() + 3_000;
+      const poll = async () => {
+        const consumed = await consumePending().catch(() => false);
+        if (disposed || consumed || Date.now() >= deadline) return;
+        pollingTimer = setTimeout(poll, 250);
       };
-      run();
+      poll().catch(() => {});
     };
 
     // Consume immediately on mount (cold start) and on every resume.
-    consumePending();
+    pollForLateHeadlessWrite();
     const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') consumePending();
+      if (nextAppState === 'active') pollForLateHeadlessWrite();
     });
-    return () => subscription.remove();
-  }, []);
+    const unsubscribePending = subscribeToPendingNavigation(() => {
+      consumePending().catch(() => {});
+    });
+    return () => {
+      disposed = true;
+      if (readinessTimer) clearTimeout(readinessTimer);
+      if (pollingTimer) clearTimeout(pollingTimer);
+      subscription.remove();
+      unsubscribePending();
+    };
+  }, [isAuthenticated, isInitializing]);
 }

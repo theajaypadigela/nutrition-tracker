@@ -1,3 +1,5 @@
+import type { IncomingCallPayload } from '@/hooks/useIncomingCall';
+
 /**
  * Shared navigation param shapes, reused by RootStackParamList (AppNavigator), the typed
  * navigation helpers (navigationUtils), and the pending-accept hand-off (pendingNavigation),
@@ -16,3 +18,6 @@ export type VoiceMealLogParams = {
   /** Optional date the in-app mic entry point is logging for (defaults to today). */
   selectedDate?: string;
 };
+
+/** Full occurrence payload shown by the iOS notification fallback call screen. */
+export type IncomingCallParams = IncomingCallPayload;

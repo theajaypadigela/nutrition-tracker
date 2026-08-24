@@ -2,15 +2,14 @@
  * Notifee background (headless) event handler — registered in index.js BEFORE registerComponent
  * and outside the bundle-load try/catch, so a ringing call is never orphaned by a JS load failure.
  *
- * Android (the true-call platform): a call reminder fires a SILENT heartbeat notification. On its
+ * Android local delivery: a call reminder fires a SILENT heartbeat notification. On its
  * DELIVERED event (which Notifee runs in a headless JS task even when the app is killed) we run
  * the call lifecycle (staleness suppression + the pending-answer marker), cancel the heartbeat,
  * and ask the NATIVE incoming-call surface to ring — which draws the full-screen call over the
  * lockscreen with no React rendering on the critical path.
  *
- * iOS (true-call out of scope): calls are plain time-sensitive notifications; we handle their
- * Accept/Decline actions here exactly as before (record terminal status, record a pending Accept
- * navigation the app consumes on resume).
+ * iOS local notifications remain the fallback when PushKit/CallKit is not registered. This
+ * handler persists body-tap/Accept navigation so a separate UI process can consume it safely.
  */
 
 import notifee, { EventType } from '@notifee/react-native';
@@ -18,17 +17,21 @@ import { Platform } from 'react-native';
 import {
   readOccurrenceData,
   onCallDelivered,
-  onCallAccepted,
-  onCallDeclined,
 } from './callLifecycle';
 import { presentIncomingCall } from './nativeIncomingCall';
 import { payloadFromData } from '@/hooks/notifications/callPayload';
 import { claimAction } from './processedActions';
 import {
+  iosCallInteractionKey,
+  readIosCallInteraction,
+} from './iosCallInteraction';
+import {
   setPendingAcceptNavigation,
-  PendingAcceptNavigation,
+  type PendingAcceptNavigation,
 } from '@/navigation/pendingNavigation';
+import { ROUTES } from '@/navigation/routeNames';
 import { reminderLog } from './logger';
+import { handleAcceptCall, handleDeclineCall } from '@/hooks/useIncomingCall';
 
 export function registerBackgroundEvent(): void {
   notifee.onBackgroundEvent(async ({ type, detail }) => {
@@ -53,28 +56,42 @@ export function registerBackgroundEvent(): void {
       return;
     }
 
-    // From here: iOS notification actions only (Android calls use native buttons, so the
+    // From here: iOS interactions only (Android calls use native buttons, so the
     // heartbeat carries no Notifee actions and never reaches this branch).
-    if (type !== EventType.ACTION_PRESS) return;
-    const actionId = detail.pressAction?.id;
-    if (actionId !== 'accept' && actionId !== 'decline') return;
+    if (Platform.OS !== 'ios') return;
+    const interaction = readIosCallInteraction(type, detail.pressAction?.id);
+    if (!interaction) return;
 
-    // Exactly-once: the same cold-start action may also reach getInitialNotification.
-    const claimed = await claimAction(`${notificationId ?? 'unknown'}:${actionId}`);
+    // Exactly-once: iOS can surface the same launch interaction again to the
+    // foreground listener or legacy getInitialNotification fallback.
+    const claimed = await claimAction(
+      iosCallInteractionKey(notificationId, interaction),
+    );
     if (!claimed) {
       reminderLog.debug('bg.action_deduped', 'Background action already processed', {
         notificationId,
-        actionId,
+        actionId: interaction,
       });
       return;
     }
 
-    if (actionId === 'decline') {
-      await onCallDeclined(occ);
+    if (interaction === 'decline') {
+      await handleDeclineCall(payloadFromData(data, notificationId, occ), {
+        skipNavigation: true,
+      });
       return;
     }
 
-    await onCallAccepted(occ);
+    const payload = payloadFromData(data, notificationId, occ);
+    if (interaction === 'open') {
+      await setPendingAcceptNavigation({
+        screen: ROUTES.INCOMING_CALL,
+        payload,
+      });
+      return;
+    }
+
+    await handleAcceptCall(payload, { skipNavigation: true });
     const pending: PendingAcceptNavigation =
       occ.kind === 'meal-call'
         ? { screen: 'VoiceMealLog', mealSlotId: data?.mealSlotId ?? 'daily' }
@@ -84,6 +101,6 @@ export function registerBackgroundEvent(): void {
             habitName: occ.habitName,
             habitTime: occ.habitTime,
           };
-    setPendingAcceptNavigation(pending);
+    await setPendingAcceptNavigation(pending);
   });
 }

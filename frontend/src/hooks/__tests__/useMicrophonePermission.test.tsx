@@ -8,7 +8,7 @@ jest.mock('react-native-permissions', () => ({
     IOS: { MICROPHONE: 'ios.microphone' },
     ANDROID: { RECORD_AUDIO: 'android.record_audio' },
   },
-  RESULTS: { GRANTED: 'granted', DENIED: 'denied' },
+  RESULTS: { GRANTED: 'granted', DENIED: 'denied', UNAVAILABLE: 'unavailable' },
   check: jest.fn(),
   request: jest.fn(),
 }));
@@ -63,5 +63,19 @@ describe('useMicrophonePermission', () => {
       result = await fn.current();
     });
     expect(result).toBe(false);
+  });
+
+  // UNAVAILABLE means the handler could not be consulted (on iOS: the Microphone handler
+  // pod was not compiled in), not that the user said no. Blocking the call there strands
+  // the user behind an alert they cannot act on; the OS still prompts at capture time.
+  it('proceeds without prompting when the handler is unavailable', async () => {
+    mockCheck.mockResolvedValueOnce('unavailable');
+    const fn = renderPermissionFn();
+    let result: boolean | undefined;
+    await act(async () => {
+      result = await fn.current();
+    });
+    expect(result).toBe(true);
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 });

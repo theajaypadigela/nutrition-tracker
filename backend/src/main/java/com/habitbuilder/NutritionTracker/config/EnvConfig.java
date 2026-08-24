@@ -65,6 +65,17 @@ public class EnvConfig implements EnvironmentPostProcessor {
             "vapi.meal-assistant-id",
             "vapi.habit-assistant-id",
             "vapi.webhook-secret",
+            "apns.voip.enabled",
+            "apns.voip.team-id",
+            "apns.voip.key-id",
+            "apns.voip.private-key-base64",
+            "apns.voip.bundle-id",
+            "apns.voip.environment",
+            "apns.voip.connect-timeout-ms",
+            "apns.voip.request-timeout-ms",
+            "apns.voip.due-window-seconds",
+            "apns.voip.retry-backoff-seconds",
+            "apns.voip.max-attempts",
             "spring.data.mongodb.uri",
             "security.log.level");
 
@@ -144,8 +155,10 @@ public class EnvConfig implements EnvironmentPostProcessor {
 
             logger.info("Loaded " + consumedKeys.size() + " settings from .env at " + loadedFrom);
             warnAboutUnsupportedKeys(dotenv, consumedKeys);
-        } catch (Exception e) {
-            logger.warn("Error loading .env file: " + e.getMessage(), e);
+        } catch (Exception ignored) {
+            // Parsing failures can echo the offending line. Keep API keys and signing material
+            // out of startup logs even when the local .env is malformed.
+            logger.warn("Error loading .env file; environment values were not published");
         }
     }
 

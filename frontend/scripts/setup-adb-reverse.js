@@ -3,7 +3,7 @@
 const { spawnSync } = require('child_process');
 const { resolveAndroidEnv } = require('./android-env');
 
-const REQUIRED_REVERSE_PORTS = ['5000', '8081'];
+const REQUIRED_REVERSE_PORTS = ['5050', '8081'];
 const { env: ANDROID_ENV, adbPath: ADB_PATH } = resolveAndroidEnv();
 
 function runAdb(args, options = {}) {

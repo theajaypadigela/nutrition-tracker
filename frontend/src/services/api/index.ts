@@ -13,3 +13,4 @@ export * from './nutritionApi';
 export * from './dashboardApi';
 export * from './mealScheduleApi';
 export * from './voiceApi';
+export * from './notificationApi';

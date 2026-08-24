@@ -11,6 +11,10 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		CA1100012E01D4A700AB17E5 /* IncomingCallModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1101012E01D4A700AB17E5 /* IncomingCallModule.swift */; };
+		CA1100022E01D4A700AB17E5 /* IncomingCallPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1101022E01D4A700AB17E5 /* IncomingCallPayload.swift */; };
+		CA1100032E01D4A700AB17E5 /* IncomingCallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1101032E01D4A700AB17E5 /* IncomingCallStore.swift */; };
+		CA1100042E01D4A700AB17E5 /* IncomingCallBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = CA1101042E01D4A700AB17E5 /* IncomingCallBridge.m */; };
 		DD9D7FBCE2D87E0117A24E8D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -24,7 +28,12 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-habit_builder_app.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-habit_builder_app.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = habit_builder_app/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = habit_builder_app/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		CA1101012E01D4A700AB17E5 /* IncomingCallModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IncomingCallModule.swift; path = habit_builder_app/IncomingCallModule.swift; sourceTree = "<group>"; };
+		CA1101022E01D4A700AB17E5 /* IncomingCallPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IncomingCallPayload.swift; path = habit_builder_app/IncomingCallPayload.swift; sourceTree = "<group>"; };
+		CA1101032E01D4A700AB17E5 /* IncomingCallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IncomingCallStore.swift; path = habit_builder_app/IncomingCallStore.swift; sourceTree = "<group>"; };
+		CA1101042E01D4A700AB17E5 /* IncomingCallBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = IncomingCallBridge.m; path = habit_builder_app/IncomingCallBridge.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F1A2B3C42E01D4A700AB17E5 /* habit_builder_app.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = habit_builder_app.entitlements; path = habit_builder_app/habit_builder_app.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,9 +53,14 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				CA1101012E01D4A700AB17E5 /* IncomingCallModule.swift */,
+				CA1101022E01D4A700AB17E5 /* IncomingCallPayload.swift */,
+				CA1101032E01D4A700AB17E5 /* IncomingCallStore.swift */,
+				CA1101042E01D4A700AB17E5 /* IncomingCallBridge.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				F1A2B3C42E01D4A700AB17E5 /* habit_builder_app.entitlements */,
 			);
 			name = habit_builder_app;
 			sourceTree = "<group>";
@@ -132,6 +146,14 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
+						SystemCapabilities = {
+							com.apple.BackgroundModes = {
+								enabled = 1;
+							};
+							com.apple.Push = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -247,6 +269,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				CA1100012E01D4A700AB17E5 /* IncomingCallModule.swift in Sources */,
+				CA1100022E01D4A700AB17E5 /* IncomingCallPayload.swift in Sources */,
+				CA1100032E01D4A700AB17E5 /* IncomingCallStore.swift in Sources */,
+				CA1100042E01D4A700AB17E5 /* IncomingCallBridge.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -258,7 +284,9 @@
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-habit_builder_app.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				APS_ENVIRONMENT = development;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = habit_builder_app/habit_builder_app.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = habit_builder_app/Info.plist;
@@ -286,7 +314,9 @@
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-habit_builder_app.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				APS_ENVIRONMENT = production;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = habit_builder_app/habit_builder_app.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = habit_builder_app/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;

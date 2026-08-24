@@ -14,6 +14,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // Start PushKit before React Native. A VoIP push can cold-launch the process, and iOS requires
+    // its callback to report a CallKit incoming call promptly even while the JS bundle is loading.
+    IncomingCallBootstrap.startPushKit()
+
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

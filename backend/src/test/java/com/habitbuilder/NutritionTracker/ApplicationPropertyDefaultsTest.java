@@ -19,6 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.habitbuilder.NutritionTracker.config.properties.AiProperties;
+import com.habitbuilder.NutritionTracker.config.properties.ApnsVoipProperties;
 import com.habitbuilder.NutritionTracker.config.properties.CorsProperties;
 import com.habitbuilder.NutritionTracker.config.properties.GeminiProperties;
 import com.habitbuilder.NutritionTracker.config.properties.GroqProperties;
@@ -142,5 +143,19 @@ class ApplicationPropertyDefaultsTest {
         assertEquals("", properties.resolvedMealAssistantId());
         assertEquals("", properties.resolvedHabitAssistantId());
         assertFalse(properties.dedicatedMealAssistantId().length() > 0);
+    }
+
+    @Test
+    void apnsVoipDeliveryDefaultsToSafelyDisabled() {
+        ApnsVoipProperties properties = context.getBean(ApnsVoipProperties.class);
+
+        assertFalse(properties.enabled());
+        assertFalse(properties.hasRequiredMetadata());
+        assertEquals("production", properties.normalizedEnvironment());
+        assertEquals(10000, properties.connectTimeoutMs());
+        assertEquals(10000, properties.requestTimeoutMs());
+        assertEquals(120L, properties.dueWindowSeconds());
+        assertEquals(30L, properties.retryBackoffSeconds());
+        assertEquals(3, properties.maxAttempts());
     }
 }

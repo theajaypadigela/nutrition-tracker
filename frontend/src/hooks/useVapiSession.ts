@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import Vapi from '@vapi-ai/react-native';
 import {
   initializeVapiClient,
@@ -8,6 +8,13 @@ import {
 import { toDebugJson } from '../utils/debug';
 import { useMicrophonePermission } from './useMicrophonePermission';
 import type { CallStatus } from '../components/voice/VoiceSessionScreen';
+import {
+  consumePendingHangup,
+  dismissIncomingCall,
+  nativeCallActionKey,
+  subscribeToNativeIncomingCallEvents,
+} from '../services/notifications/nativeIncomingCall';
+import { claimAction } from '../services/notifications/processedActions';
 
 /**
  * Loosely-typed Vapi client event message; the SDK does not export a message
@@ -66,11 +73,53 @@ export function useVapiSession(
   const lastVapiMessageRef = useRef<VapiMessage | null>(null);
   const structuredVapiOutputRef = useRef<VapiMessage | null>(null);
   const volumeLevelRef = useRef(0);
+  const nativeCallDismissedRef = useRef(false);
+  const nativeHangupHandledRef = useRef(false);
+  const nativeHangupStoppedVapiRef = useRef(false);
+  const nativeHangupQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
   const requestMicPermission = useMicrophonePermission();
+
+  const dismissNativeCallOnce = useCallback(() => {
+    if (nativeCallDismissedRef.current) return;
+    nativeCallDismissedRef.current = true;
+    dismissIncomingCall();
+  }, []);
+
+  const consumeNativeHangup = useCallback((): Promise<boolean> => {
+    const run = async () => {
+      if (!nativeHangupHandledRef.current) {
+        const payload = await consumePendingHangup();
+        if (!payload) return false;
+
+        // The native call is already gone; prevent later Vapi cleanup from ending it again.
+        nativeHangupHandledRef.current = true;
+        nativeCallDismissedRef.current = true;
+        await claimAction(nativeCallActionKey(payload, 'ended')).catch(() => true);
+      }
+
+      const current = vapiRef.current;
+      if (current && !nativeHangupStoppedVapiRef.current) {
+        nativeHangupStoppedVapiRef.current = true;
+        try {
+          current.stop();
+        } catch {
+          setStatus('error');
+        }
+      } else if (!current) {
+        // A hang-up can beat cold-start navigation/Vapi initialization.
+        setStatus('completed');
+      }
+      return true;
+    };
+
+    const next = nativeHangupQueueRef.current.then(run, run);
+    nativeHangupQueueRef.current = next.catch(() => undefined);
+    return next;
+  }, []);
 
   const disposeVapiInstance = useCallback(() => {
     const current = vapiRef.current;
@@ -103,6 +152,7 @@ export function useVapiSession(
 
       vapi.on('call-end', () => {
         console.log(`[${logTag}] Call ended`);
+        dismissNativeCallOnce();
 
         if (structuredVapiOutputRef.current) {
           console.log(
@@ -135,6 +185,7 @@ export function useVapiSession(
 
       vapi.on('error', e => {
         console.error(`[${logTag}] Error:`, e);
+        dismissNativeCallOnce();
         setStatus('error');
       });
 
@@ -179,17 +230,31 @@ export function useVapiSession(
         }
       });
     },
-    [logTag],
+    [dismissNativeCallOnce, logTag],
   );
 
-  // Cleanup Vapi instance when leaving the screen.
+  // Recover a CallKit end that arrived before React mounted, and handle live system hang-ups.
   useEffect(() => {
+    consumeNativeHangup().catch(() => {});
+    const appStateSubscription = AppState.addEventListener('change', next => {
+      if (next === 'active') consumeNativeHangup().catch(() => {});
+    });
+    const unsubscribeNative = subscribeToNativeIncomingCallEvents(event => {
+      if (event.result === 'ended') consumeNativeHangup().catch(() => {});
+    });
+
     return () => {
       disposeVapiInstance();
+      dismissNativeCallOnce();
+      appStateSubscription.remove();
+      unsubscribeNative();
     };
-  }, [disposeVapiInstance]);
+  }, [consumeNativeHangup, dismissNativeCallOnce, disposeVapiInstance]);
 
   const startSession = useCallback(async () => {
+    // The CallKit end may have been persisted just before the auto-starting screen mounted.
+    if (await consumeNativeHangup()) return;
+
     setStatus('requesting');
     setTranscript([]);
     transcriptRef.current = [];
@@ -197,13 +262,27 @@ export function useVapiSession(
     structuredVapiOutputRef.current = null;
     optionsRef.current.onSessionReset?.();
 
-    const hasPermission = await requestMicPermission();
+    let hasPermission: boolean;
+    try {
+      hasPermission = await requestMicPermission();
+    } catch (err) {
+      console.error(`[${logTag}] Failed to request microphone permission:`, err);
+      Alert.alert(
+        'Microphone Error',
+        'Could not request microphone access. Please check the app permissions in Settings and try again.',
+      );
+      setStatus('idle');
+      dismissNativeCallOnce();
+      return;
+    }
+
     if (!hasPermission) {
       Alert.alert(
         'Permission Required',
         optionsRef.current.permissionDeniedMessage,
       );
       setStatus('idle');
+      dismissNativeCallOnce();
       return;
     }
 
@@ -213,6 +292,9 @@ export function useVapiSession(
       registerVapiListeners(vapi);
       vapiRef.current = vapi;
 
+      // A system hang-up may land while permission/config requests are in flight.
+      if (await consumeNativeHangup()) return;
+
       console.log(`[${logTag}] Starting call with backend-issued session config`);
       await vapi.start(assistantId, {
         variableValues: optionsRef.current.getVariableValues(),
@@ -221,6 +303,7 @@ export function useVapiSession(
     } catch (err) {
       console.error(`[${logTag}] Failed to start voice session:`, err);
       Alert.alert('Error', 'Could not start voice session. Please try again.');
+      dismissNativeCallOnce();
       setStatus('error');
     }
   }, [
@@ -229,9 +312,13 @@ export function useVapiSession(
     requestMicPermission,
     disposeVapiInstance,
     registerVapiListeners,
+    consumeNativeHangup,
+    dismissNativeCallOnce,
   ]);
 
   const stopSession = useCallback(() => {
+    // The native call can be answered while Vapi is still requesting permission/config.
+    dismissNativeCallOnce();
     const vapi = vapiRef.current;
     if (!vapi) return;
 
@@ -241,7 +328,7 @@ export function useVapiSession(
     } catch (err) {
       console.error(`[${logTag}] Failed to stop voice session:`, err);
     }
-  }, [logTag]);
+  }, [dismissNativeCallOnce, logTag]);
 
   return {
     status,

@@ -3,6 +3,7 @@ import { createHabitApi } from '../habitApi';
 import { createFoodLogApi } from '../foodLogApi';
 import { createNutritionApi } from '../nutritionApi';
 import { createDashboardApi } from '../dashboardApi';
+import { createNotificationApi } from '../notificationApi';
 import { HttpClient } from '../types';
 
 const makeClient = () => {
@@ -44,6 +45,23 @@ describe('authApi', () => {
       name: 'Ada',
       age: '31',
       gender: 'f',
+    });
+  });
+});
+
+describe('notificationApi', () => {
+  it('registers and unregisters the iOS VoIP token with the authenticated contract', async () => {
+    const client = makeClient();
+    const api = createNotificationApi(client);
+
+    await api.registerIosVoipToken('push-token');
+    expect(client.post).toHaveBeenCalledWith('/notifications/ios/voip-token', {
+      token: 'push-token',
+    });
+
+    await api.unregisterIosVoipToken('push-token');
+    expect(client.delete).toHaveBeenCalledWith('/notifications/ios/voip-token', {
+      data: { token: 'push-token' },
     });
   });
 });
